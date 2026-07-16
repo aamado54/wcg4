@@ -100,7 +100,7 @@
                                        name="ing_{{ row.month }}_{{ cell.une.id }}"
                                        value="{% if cell.value is not None %}{{ cell.value|unlocalize }}{% endif %}"
                                        placeholder="{% if capture_currency == 'USD' %}${% else %}Q{% endif %}"
-                                       {% if cell.input_disabled %}disabled title="Defina el TC de este mes, o capture en $"{% endif %}>
+                                       {% if cell.input_disabled %}title="Sin TC guardado aún: complete la columna TC en este mismo envío, o capture en $"{% endif %}>
                                 {% if cell.measured_usd_display %}
                                 <div class="muted" style="font-size:0.72rem; margin-top:3px;">
                                     USD: {{ cell.measured_usd_display }}

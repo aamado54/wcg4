@@ -5,6 +5,7 @@ Vistas del área de Administración rediseñada.
 from __future__ import annotations
 
 import hashlib
+import logging
 from pathlib import Path
 
 from django.contrib import messages
@@ -12,6 +13,8 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.core.management import call_command
 from django.shortcuts import redirect, render
 from django.urls import reverse
+
+logger = logging.getLogger("pgc.admin_ingresos")
 
 from imports.forms import FileUploadForm
 from imports.models import FileUpload, guess_file_type_and_period
@@ -430,14 +433,35 @@ def admin_ingresos_year(request):
         capture_currency = (request.POST.get("capture_currency") or capture_currency).strip()
 
         if action == "save_ingresos_year":
+            ing_keys = sorted(k for k in request.POST if k.startswith("ing_"))
+            fx_keys = sorted(k for k in request.POST if k.startswith("fx_"))
+            logger.warning(
+                "ingresos_year POST year=%s curr=%s reason_len=%s "
+                "ing_nonempty=%s fx_nonempty=%s ing_sample=%s fx_sample=%s",
+                year,
+                capture_currency,
+                len(reason),
+                sum(1 for k in ing_keys if (request.POST.get(k) or "").strip()),
+                sum(1 for k in fx_keys if (request.POST.get(k) or "").strip()),
+                [(k, request.POST.get(k)) for k in ing_keys if (request.POST.get(k) or "").strip()][:8],
+                [(k, request.POST.get(k)) for k in fx_keys if (request.POST.get(k) or "").strip()][:8],
+            )
             try:
                 result = save_ingresos_year(request.user, year, request.POST, reason)
-                changes = result["changes"]
-                if changes:
+                income_n = result["income_changes"]
+                fx_n = result["fx_changes"]
+                logger.warning(
+                    "ingresos_year result year=%s income_changes=%s fx_changes=%s currency=%s",
+                    year,
+                    income_n,
+                    fx_n,
+                    result["currency"],
+                )
+                if income_n:
                     messages.success(
                         request,
-                        f"Guardado: {result['income_changes']} ingreso(s), "
-                        f"{result['fx_changes']} TC; moneda captura={result['currency']}.",
+                        f"Guardado: {income_n} ingreso(s), {fx_n} TC; "
+                        f"moneda captura={result['currency']}.",
                     )
                     if recalc_after:
                         # Recalcula score del mes foco del selector (no los 12).
@@ -450,9 +474,21 @@ def admin_ingresos_year(request):
                                 f"Ingresos guardados, pero falló el score de "
                                 f"{year}-{period.month:02d}: {exc}",
                             )
+                elif fx_n:
+                    messages.warning(
+                        request,
+                        f"Solo se guardaron {fx_n} tipo(s) de cambio. "
+                        "No llegó ningún valor de ingreso en el POST "
+                        "(celdas vacías o no enviadas). Complete ingresos y vuelva a Guardar.",
+                    )
                 else:
-                    messages.info(request, "Sin cambios.")
+                    messages.warning(
+                        request,
+                        "Sin cambios: no se recibieron ingresos ni tipos de cambio "
+                        "con valor nuevo. Revise el formulario y el motivo, luego reintente.",
+                    )
             except Exception as exc:
+                logger.warning("ingresos_year save failed year=%s err=%s", year, exc)
                 messages.error(request, str(exc))
             return redirect_admin_ingresos_year(
                 period=period, curr=capture_currency

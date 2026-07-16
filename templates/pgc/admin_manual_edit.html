@@ -185,7 +185,7 @@
                                                    value="{% if cell.value is not None %}{{ cell.value|unlocalize }}{% endif %}"
                                                    data-needs-fx="{% if not has_fx %}1{% else %}0{% endif %}"
                                                    placeholder="{% if cell.input_currency == 'USD' %}USD{% else %}GTQ{% endif %}"
-                                                   {% if cell.input_disabled %}disabled title="Defina el tipo de cambio primero, o capture en $"{% endif %}>
+                                                   {% if cell.input_disabled %}title="Sin TC guardado aún: complete el TC en este mismo envío, o capture en $"{% endif %}>
                                             <div class="muted" style="font-size:0.78rem; margin-top:4px;">
                                                 {% if cell.measured_usd_display %}
                                                 Guardado canónico: <strong>{{ cell.measured_usd_display }} USD</strong>
