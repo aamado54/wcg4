@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% load l10n %}
+
+{% block title %}Detalle clientes nuevos{% endblock %}
+
+{% block content %}
+<style>
+  .amt-prefix {
+    font-weight: 600;
+    color: #475569;
+    margin-right: 2px;
+  }
+  .mon-cell {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #0f3d56;
+  }
+  .investment-total {
+    margin-top: 8px;
+    padding: 8px 10px;
+    background: #f0fdfa;
+    border: 1px solid #99f6e4;
+    border-radius: 8px;
+    font-size: 0.92rem;
+  }
+  .investment-total .usd-tag {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #0f766e;
+    background: #ccfbf1;
+    padding: 1px 6px;
+    border-radius: 4px;
+    margin-left: 4px;
+  }
+</style>
+<div class="card">
+  <h2 style="margin-top:0;">Detalle de clientes</h2>
+  <p class="muted">
+    UNE: <strong>{{ une.name_es }}</strong> |
+    Periodo: <strong>{{ year }}-{{ month|stringformat:"02d" }}</strong>
+  </p>
+
+  {% if investment_ingresos_total is not None %}
+    <p class="investment-total">
+      Total Investment (USD):
+      <strong>${{ investment_ingresos_total|floatformat:2|unlocalize }}</strong>
+      <span class="usd-tag">USD</span>
+    </p>
+  {% endif %}
+  
+  <table>
+    <thead>
+      <tr>
+        <th style="text-align:left;">Cliente</th>
+        <th>NIT</th>
+        <th>Operación</th>
+        <th>Contratos previos</th>
+        <th>¿Cuenta como nuevo?</th>
+        <th title="Moneda original de la operación">Mon.</th>
+        <th>Monto</th>
+        <th style="text-align:left;">Observación</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+      <tr>
+        <td style="text-align:left;">{{ row.client_name|default:"-" }}</td>
+        <td>{{ row.nit|default:"-" }}</td>
+        <td>{{ row.operation_code|default:"-" }}</td>
+        <td>{{ row.previous_contracts }}</td>
+        <td>
+          {% if row.counts_as_new %}
+            <span class="ok">Sí</span>
+          {% else %}
+            <span class="bad">No</span>
+          {% endif %}
+        </td>
+        <td class="mon-cell">
+          {% if row.currency_code == "USD" or row.currency_code == "US$" or row.currency_code == "$" %}
+            USD
+          {% elif row.currency_code == "GTQ" or row.currency_code == "Q" or row.currency_code == "QUETZAL" or row.currency_code == "QUETZALES" %}
+            Q
+          {% else %}
+            {{ row.currency_code|default:"-" }}
+          {% endif %}
+        </td>
+        <td>
+          {% if row.amount is not None %}
+            {% if row.currency_code == "USD" or row.currency_code == "US$" or row.currency_code == "$" %}
+              <span class="amt-prefix">$</span>{{ row.amount|floatformat:2|unlocalize }}
+            {% elif row.currency_code == "GTQ" or row.currency_code == "Q" or row.currency_code == "QUETZAL" or row.currency_code == "QUETZALES" %}
+              <span class="amt-prefix">Q</span>{{ row.amount|floatformat:2|unlocalize }}
+            {% else %}
+              {{ row.amount|floatformat:2|unlocalize }}
+            {% endif %}
+          {% else %}
+            -
+          {% endif %}
+        </td>
+        <td style="text-align:left;">{{ row.observations|default:"-" }}</td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="8" style="text-align:center;">
+          No existen registros importados para esta UNE y periodo.
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

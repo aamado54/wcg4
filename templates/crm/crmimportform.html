@@ -1,0 +1,19 @@
+{% extends "base_wcg.html" %}
+{% block title %}{{ titulo }} — CRM{% endblock %}
+{% block content %}
+<h1>{{ titulo }}</h1>
+<form method="post" enctype="multipart/form-data" class="card p-3">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit" class="btn btn-primary mt-2">Importar</button>
+    <a href="{% url 'crm:entidad_list' %}" class="btn btn-link">Volver</a>
+</form>
+{% if batch %}
+<div class="card mt-3 p-3">
+    <h6>Resultado</h6>
+    <p class="mb-1">Estado: <strong>{{ batch.get_status_display }}</strong></p>
+    <p class="mb-1">Leídas: {{ batch.filas_leidas }} · Creados: {{ batch.creados }} · Actualizados: {{ batch.actualizados }} · Errores: {{ batch.errores }}</p>
+    {% if batch.log_texto %}<pre class="small bg-light p-2">{{ batch.log_texto }}</pre>{% endif %}
+</div>
+{% endif %}
+{% endblock %}

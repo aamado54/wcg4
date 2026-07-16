@@ -1,0 +1,29 @@
+{% extends "wcgone_base.html" %}
+
+{% block title %}PGC — WCG One{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-white">
+        <h1 class="h4 fw-semibold mb-0">PGC</h1>
+      </div>
+      <div class="card-body">
+        <p class="text-muted">
+          Acceso correcto al módulo PGC.
+        </p>
+        <p class="small text-muted mb-4">
+          Use el siguiente botón para ingresar al tablero operativo actual.
+        </p>
+        <div class="d-flex gap-2 flex-wrap">
+          <a href="https://wcg.lol/tablero/" class="btn btn-primary" target="_blank" rel="noopener noreferrer">
+            Ir a PGC
+          </a>
+          <a href="{% url 'portal:home' %}" class="btn btn-outline-secondary">Inicio WCG One</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

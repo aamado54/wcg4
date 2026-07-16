@@ -1,0 +1,17 @@
+{% extends "base_wcg.html" %}
+{% block title %}Importar — Riesgo{% endblock %}
+{% block content %}
+<h1>Importar datos de riesgo</h1>
+<form method="post" enctype="multipart/form-data" class="card p-3">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit" class="btn btn-primary mt-2">Importar</button>
+    <a href="{% url 'risk:comando_balon' %}" class="btn btn-link">Volver</a>
+</form>
+{% if batch %}
+<div class="card mt-3 p-3">
+    <p>Estado: <strong>{{ batch.get_status_display }}</strong> — Creados: {{ batch.creados }} · Actualizados: {{ batch.actualizados }} · Errores: {{ batch.errores }}</p>
+    {% if batch.log_texto %}<pre class="small bg-light p-2">{{ batch.log_texto }}</pre>{% endif %}
+</div>
+{% endif %}
+{% endblock %}

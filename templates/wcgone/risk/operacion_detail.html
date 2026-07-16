@@ -1,0 +1,87 @@
+{% extends "wcgone_base.html" %}
+
+{% block title %}{{ operacion.codigo_operacion }} — Balón de Riesgo — WCG One{% endblock %}
+
+{% block content %}
+<div class="mb-3">
+  <h1 class="h4 fw-semibold mb-1">Operación {{ operacion.codigo_operacion }}</h1>
+  <p class="text-muted small mb-0">
+    Cliente: <a href="{% url 'wcgone_risk:cliente_detail' operacion.entidad_id %}">{{ operacion.entidad.nombre }}</a>
+    {% if operacion.contrato_numero %} · Contrato {{ operacion.contrato_numero }}{% endif %}
+  </p>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-md-3"><div class="card border-0 shadow-sm"><div class="card-body small"><div class="text-muted">Producto</div><div class="fw-semibold">{{ operacion.producto|default:"—" }}</div></div></div></div>
+  <div class="col-md-3"><div class="card border-0 shadow-sm"><div class="card-body small"><div class="text-muted">Unidad</div><div class="fw-semibold">{{ operacion.unidad_negocio|default:"—" }}</div></div></div></div>
+  <div class="col-md-3"><div class="card border-0 shadow-sm"><div class="card-body small"><div class="text-muted">Monto original</div><div class="fw-semibold">{{ operacion.monto_original|default:"—" }}</div></div></div></div>
+  <div class="col-md-3"><div class="card border-0 shadow-sm"><div class="card-body small"><div class="text-muted">Estado</div><div class="fw-semibold">{{ operacion.estado|default:"—" }}</div></div></div></div>
+</div>
+
+<div class="card border-0 shadow-sm mb-3">
+  <div class="card-header bg-white fw-semibold">Historial de snapshots</div>
+  <div class="table-responsive">
+    <table class="table table-sm table-hover mb-0">
+      <thead>
+        <tr>
+          <th>Fecha</th>
+          <th>Estado</th>
+          <th class="text-end">Capital</th>
+          <th class="text-end">Vencido</th>
+          <th class="text-center">Días</th>
+          <th class="text-end">Renta</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for snap in snapshots %}
+        <tr>
+          <td>{{ snap.fecha_snapshot|date:"d/m/Y" }}</td>
+          <td>{{ snap.estado_operacion|default:"—" }}</td>
+          <td class="text-end">{{ snap.capital_balance|default:"—" }}</td>
+          <td class="text-end">{{ snap.past_due_balance|default:"—" }}</td>
+          <td class="text-center">{{ snap.due_days|default:"0" }}</td>
+          <td class="text-end">{{ snap.monthly_rent|default:"—" }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" class="text-muted text-center py-3">Sin snapshots para esta operación.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-md-6">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-white fw-semibold">Pagos programados</div>
+      <div class="table-responsive">
+        <table class="table table-sm mb-0">
+          <tbody>
+            {% for p in pagos_programados %}
+            <tr><td>{{ p.fecha_programada|date:"d/m/Y" }}</td><td class="text-end">{{ p.monto_capital|default:"—" }}</td></tr>
+            {% empty %}
+            <tr><td class="text-muted py-3">Sin pagos programados.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-white fw-semibold">Pagos realizados</div>
+      <div class="table-responsive">
+        <table class="table table-sm mb-0">
+          <tbody>
+            {% for p in pagos_realizados %}
+            <tr><td>{{ p.fecha_pago|date:"d/m/Y" }}</td><td class="text-end">{{ p.monto_capital|default:"—" }}</td></tr>
+            {% empty %}
+            <tr><td class="text-muted py-3">Sin pagos realizados.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

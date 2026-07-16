@@ -1,0 +1,28 @@
+{% extends "base_wcg.html" %}
+{% block title %}Operación {{ snapshot.referencia_operacion }}{% endblock %}
+{% block content %}
+<h1>Operación {{ snapshot.referencia_operacion }}</h1>
+<p class="text-muted">
+    <a href="{% url 'risk:cliente_detail' snapshot.entidad.codigo %}">{{ snapshot.entidad.nombre }}</a>
+    · {{ snapshot.fecha_snapshot }}
+</p>
+<dl class="row">
+    <dt class="col-sm-3">Unidad</dt><dd class="col-sm-9">{{ snapshot.entidad.unidad_negocio|default:"—" }}</dd>
+    <dt class="col-sm-3">Nivel riesgo</dt><dd class="col-sm-9">{{ snapshot.get_nivel_riesgo_display }}</dd>
+    <dt class="col-sm-3">Días mora</dt><dd class="col-sm-9">{{ snapshot.dias_mora }}</dd>
+    <dt class="col-sm-3">Saldo</dt><dd class="col-sm-9">Q{{ snapshot.saldo }}</dd>
+    <dt class="col-sm-3">Monto exigible</dt><dd class="col-sm-9">Q{{ snapshot.monto_exigible }}</dd>
+    <dt class="col-sm-3">Alerta</dt><dd class="col-sm-9">{% if snapshot.alerta %}Sí{% else %}No{% endif %}</dd>
+</dl>
+{% if snapshot.detalle %}<p>{{ snapshot.detalle }}</p>{% endif %}
+<h5>Historial de snapshots</h5>
+<table class="table table-sm bg-white">
+<thead><tr><th>Fecha</th><th>Mora</th><th>Saldo</th><th>Exigible</th><th>Nivel</th></tr></thead>
+<tbody>
+{% for h in historial %}
+<tr><td>{{ h.fecha_snapshot }}</td><td>{{ h.dias_mora }}</td><td>{{ h.saldo }}</td><td>{{ h.monto_exigible }}</td><td>{{ h.get_nivel_riesgo_display }}</td></tr>
+{% endfor %}
+</tbody>
+</table>
+<p><a href="{% url 'risk:comando_balon' %}">← Comando Balón</a></p>
+{% endblock %}

@@ -1,0 +1,94 @@
+{% extends "wcgone_base.html" %}
+
+{% block title %}Resultado importación #{{ batch.pk }} — WCG One{% endblock %}
+
+{% block content %}
+<div class="mb-3">
+  <h1 class="h4 fw-semibold mb-1">Resultado de importación #{{ batch.pk }}</h1>
+  <p class="text-muted small mb-0">{{ batch.archivo_nombre }} · {{ batch.fecha_carga|date:"d/m/Y H:i" }}</p>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-md-3 col-6">
+    <div class="card border-0 shadow-sm text-center">
+      <div class="card-body py-3">
+        <div class="stat-value">{{ batch.filas_leidas }}</div>
+        <div class="text-muted small">Filas leídas</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3 col-6">
+    <div class="card border-0 shadow-sm text-center">
+      <div class="card-body py-3">
+        <div class="stat-value text-success">{{ batch.filas_validas }}</div>
+        <div class="text-muted small">Filas válidas</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3 col-6">
+    <div class="card border-0 shadow-sm text-center">
+      <div class="card-body py-3">
+        <div class="stat-value text-danger">{{ batch.filas_error }}</div>
+        <div class="text-muted small">Filas con error</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3 col-6">
+    <div class="card border-0 shadow-sm text-center">
+      <div class="card-body py-3">
+        <div class="stat-value" style="font-size:1.1rem;">{{ batch.get_estado_display }}</div>
+        <div class="text-muted small">Estado</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card border-0 shadow-sm mb-3">
+  <div class="card-header bg-white fw-semibold">Detalle del lote</div>
+  <div class="card-body small">
+    <dl class="row mb-0">
+      <dt class="col-sm-3">Módulo</dt><dd class="col-sm-9">{{ batch.modulo }}</dd>
+      <dt class="col-sm-3">Tipo</dt><dd class="col-sm-9">{{ batch.tipo_importacion }}</dd>
+      <dt class="col-sm-3">Usuario</dt><dd class="col-sm-9">{{ batch.usuario|default:"—" }}</dd>
+      <dt class="col-sm-3">Resumen</dt><dd class="col-sm-9">{{ batch.observaciones|default:"—" }}</dd>
+    </dl>
+  </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+  <div class="card-header bg-white fw-semibold">Errores por fila {% if errores %}({{ errores|length }}){% endif %}</div>
+  <div class="table-responsive">
+    <table class="table table-sm mb-0">
+      <thead>
+        <tr>
+          <th>Fila</th>
+          <th>Campo</th>
+          <th>Mensaje</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for err in errores %}
+        <tr>
+          <td>{{ err.fila_numero }}</td>
+          <td>{{ err.campo|default:"—" }}</td>
+          <td>{{ err.mensaje_error }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="3" class="text-muted text-center py-3">Sin errores de fila registrados.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="mt-3">
+  <a href="/" class="btn btn-outline-secondary btn-sm">Inicio</a>
+  {% if batch.modulo == 'crm' %}
+  <a href="{% url 'wcgone_crm:entidad_list' %}" class="btn btn-primary btn-sm">Ver entidades</a>
+  {% elif batch.modulo == 'risk' %}
+  <a href="{% url 'wcgone_risk:comando_balon' %}" class="btn btn-primary btn-sm">Comando Balón</a>
+  {% elif batch.modulo == 'pgo' %}
+  <a href="{% url 'wcgone_pgo:ticket_list' %}" class="btn btn-primary btn-sm">Ver tickets</a>
+  {% endif %}
+</div>
+{% endblock %}

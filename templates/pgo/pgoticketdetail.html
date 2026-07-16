@@ -1,0 +1,10 @@
+{% extends "base_wcg.html" %}
+{% block title %}Ticket {{ ticket.codigo }}{% endblock %}
+{% block content %}
+<h1>{{ ticket.codigo }} — {{ ticket.titulo }}</h1>
+<p class="text-muted">{{ ticket.get_estado_display }} · {{ ticket.get_prioridad_display }}{% if ticket.entidad %} · {{ ticket.entidad.nombre }}{% endif %}</p>
+<p>{{ ticket.descripcion }}</p>
+<h5>Eventos</h5>
+<ul>{% for e in eventos %}<li class="small">{{ e.fecha|date:"d/m/Y H:i" }} — {{ e.get_tipo_display }}: {{ e.descripcion }}</li>{% empty %}<li class="text-muted">Sin eventos</li>{% endfor %}</ul>
+<p><a href="{% url 'pgo:ticket_list' %}">← Tickets</a></p>
+{% endblock %}

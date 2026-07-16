@@ -1,0 +1,61 @@
+{% extends "base_wcg.html" %}
+{% block title %}Comando Balón — Riesgo{% endblock %}
+{% block module_nav %}
+<nav class="mt-2 d-flex flex-wrap gap-2 small">
+    <a href="{% url 'risk:comando_balon' %}">Comando Balón</a>
+    <a href="{% url 'risk:importar' %}">Importar datos</a>
+</nav>
+{% endblock %}
+{% block content %}
+<h1 class="mb-4">Comando Balón</h1>
+
+<h5 class="mt-2">Operaciones (último snapshot)</h5>
+<div class="table-responsive mb-4">
+<table class="table table-sm table-hover bg-white">
+<thead>
+<tr>
+    <th>Cliente</th><th>Operación</th><th>Unidad</th><th>Saldo</th><th>Días mora</th><th>Exigible</th><th>Riesgo</th><th></th>
+</tr>
+</thead>
+<tbody>
+{% for s in operaciones %}
+<tr class="{% if s.alerta %}table-warning{% endif %}">
+    <td><a href="{% url 'risk:cliente_detail' s.entidad.codigo %}">{{ s.entidad.nombre }}</a></td>
+    <td>{{ s.referencia_operacion }}</td>
+    <td>{{ s.entidad.unidad_negocio|default:s.producto|default:"—" }}</td>
+    <td class="text-end">{{ s.saldo }}</td>
+    <td class="text-end">{{ s.dias_mora }}</td>
+    <td class="text-end">{{ s.monto_exigible }}</td>
+    <td>{{ s.get_nivel_riesgo_display }}</td>
+    <td><a href="{% url 'risk:operacion_detail' s.pk %}">Detalle</a></td>
+</tr>
+{% empty %}
+<tr><td colspan="8" class="text-muted">Sin snapshots. Ejecute seed o importe leasing.</td></tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-6">
+        <div class="card"><div class="card-header bg-danger text-white">Alertas ({{ alertas|length }})</div>
+        <ul class="list-group list-group-flush">
+            {% for s in alertas %}
+            <li class="list-group-item small">
+                <a href="{% url 'risk:operacion_detail' s.pk %}">{{ s.entidad.codigo }}</a> — {{ s.referencia_operacion }} (mora {{ s.dias_mora }}d)
+            </li>
+            {% empty %}<li class="list-group-item text-muted">Sin alertas</li>{% endfor %}
+        </ul></div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card"><div class="card-header">Pagos vencidos</div>
+        <ul class="list-group list-group-flush">
+            {% for p in pagos_vencidos %}
+            <li class="list-group-item small">
+                <a href="{% url 'risk:cliente_detail' p.entidad.codigo %}">{{ p.entidad.codigo }}</a> — {{ p.referencia }} ({{ p.fecha_programada }}) Q{{ p.monto }}
+            </li>
+            {% empty %}<li class="list-group-item text-muted">Sin pagos vencidos</li>{% endfor %}
+        </ul></div>
+    </div>
+</div>
+{% endblock %}

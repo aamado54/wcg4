@@ -1,0 +1,44 @@
+<nav class="navbar navbar-expand-lg navbar-dark navbar-wcg shadow-sm">
+  <div class="container">
+    <a class="navbar-brand fw-semibold" href="{% url 'portal:home' %}">WCG One</a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#wcgNav">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="wcgNav">
+      <ul class="navbar-nav me-auto">
+        <li class="nav-item">
+          <a class="nav-link{% if '/tablero/' in request.path or '/pgc/' in request.path %} active{% endif %}" href="{% url 'pgc:dashboard' %}">PGC</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link{% if '/crm/' in request.path %} active{% endif %}" href="{% url 'wcgone_crm:entidad_list' %}">CRM</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link{% if '/risk/' in request.path %} active{% endif %}" href="{% url 'wcgone_risk:comando_balon' %}">Balón de Riesgo</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link{% if '/pgo/' in request.path %} active{% endif %}" href="{% url 'wcgone_pgo:dashboard' %}">PGO</a>
+        </li>
+      </ul>
+      <ul class="navbar-nav">
+        {% if user.is_authenticated %}
+        <li class="nav-item">
+          <a class="nav-link" href="/admin/" target="_blank" rel="noopener">Admin</a>
+        </li>
+        <li class="nav-item">
+          <span class="nav-link disabled text-white-50">{{ user.get_username }}</span>
+        </li>
+        <li class="nav-item">
+          <form method="post" action="{% url 'logout' %}" class="d-inline">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-link nav-link">Salir</button>
+          </form>
+        </li>
+        {% else %}
+        <li class="nav-item">
+          <a class="nav-link" href="{% url 'login' %}">Ingresar</a>
+        </li>
+        {% endif %}
+      </ul>
+    </div>
+  </div>
+</nav>

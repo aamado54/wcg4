@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block title %}Bitácora — {{ period_label }}{% endblock %}
+
+{% block content %}
+{% include "pgc/admin/_styles.html" %}
+
+<div class="adm">
+    {% include "pgc/admin/_nav.html" with adm_nav_active="log" %}
+
+    <div class="adm-header">
+        <div class="adm-header-top">
+            <div>
+                <h2 style="margin:0; color:#0f3d56;">Bitácora del período</h2>
+                <div class="adm-period-label" style="font-size:1.4rem;">{{ period_label }}</div>
+                <span class="adm-period-status {{ snapshot.period_status }}">{{ snapshot.period_status_label }}</span>
+            </div>
+            <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:end;">
+                {% include "pgc/admin/_period_select.html" %}
+                <a href="{% url 'pgc:admin_monthly' %}?year={{ year }}&month_from={{ month_from }}&month_to={{ month_to }}&month={{ month }}" class="adm-btn adm-btn-secondary">Volver al tablero</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="adm-panel adm-scroll">
+        <table class="adm-edit-grid" style="text-align:left;">
+            <thead>
+                <tr>
+                    <th style="text-align:left;">Fecha</th>
+                    <th>Nivel</th>
+                    <th style="text-align:left;">Evento</th>
+                    <th style="text-align:left;">Detalle</th>
+                    <th>Usuario</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for entry in entries %}
+                <tr>
+                    <td style="text-align:left;">{{ entry.at|date:"d/m/Y H:i" }}</td>
+                    <td>
+                        <span class="adm-badge {% if entry.level == 'ERROR' %}observed{% elif entry.kind == 'manual_edit' %}reviewed{% else %}loaded{% endif %}">
+                            {{ entry.level }}
+                        </span>
+                    </td>
+                    <td style="text-align:left;">{{ entry.title }}</td>
+                    <td style="text-align:left;">{{ entry.detail }}</td>
+                    <td>{% if entry.user %}{{ entry.user }}{% else %}—{% endif %}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5">No hay registros para este período.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,275 @@
+{% extends "base.html" %}
+{% load l10n %}
+
+{% block title %}Venta cruzada vs meta{% endblock %}
+
+{% block content %}
+<style>
+  .group_separator td {
+    padding: 0;
+    height: 14px;
+    border-bottom: none;
+    background: #ffffff;
+  }
+</style>
+<div class="card">
+    <h2 style="margin-top:0;">Venta cruzada vs meta</h2>
+    <p class="muted">
+        Meta y resultado mensual de venta cruzada por UNE y periodo.
+    </p>
+
+    <form method="get" class="filters">
+        <div>
+            <label for="start_year">Año inicial</label><br>
+            <select name="start_year" id="start_year">
+                {% for p in available_periods %}
+                    <option value="{{ p.year }}"
+                        {% if report_filter.start_year == p.year and report_filter.start_month == p.month %}selected{% endif %}>
+                        {{ p.year }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div>
+            <label for="start_month">Mes inicial</label><br>
+            <select name="start_month" id="start_month">
+                {% for p in available_periods %}
+                    <option value="{{ p.month }}"
+                        {% if report_filter.start_year == p.year and report_filter.start_month == p.month %}selected{% endif %}>
+                        {{ p.month|stringformat:"02d" }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div>
+            <label for="month_count">Cantidad de meses</label><br>
+            <select name="month_count" id="month_count">
+                {% for opt in month_count_options %}
+                    <option value="{{ opt }}" {% if report_filter.month_count == opt %}selected{% endif %}>
+                        {{ opt }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div>
+          <label for="sort">Sort</label><br>
+          <select id="sort">
+            <option value="unes"
+              {% if report_sort.group_mode == "une" %}selected{% endif %}>
+              UNEs
+            </option>
+            <option value="fechas_asc"
+              {% if report_sort.group_mode == "period" and report_sort.date_order == "asc" %}selected{% endif %}>
+              Fechas ascendentes
+            </option>
+            <option value="fechas_desc"
+              {% if report_sort.group_mode == "period" and report_sort.date_order == "desc" %}selected{% endif %}>
+              Fechas descendentes
+            </option>
+          </select>
+          <input type="hidden" name="date_order" id="date_order"
+                 value="{% if report_sort.group_mode == 'period' and report_sort.date_order == 'desc' %}desc{% else %}asc{% endif %}">
+          <input type="hidden" name="group_mode" id="group_mode"
+                 value="{% if report_sort.group_mode == 'period' %}period{% else %}une{% endif %}">
+        </div>
+      
+        <div style="align-self:end;">
+            <button type="button" id="btn-export-md">.md export</button>
+        </div>
+    </form>
+
+    <table>
+        <thead>
+            <tr>
+                <th style="text-align:left;">UNE</th>
+                <th style="text-align:center;">Periodo</th>
+                <th style="text-align:center;">Meta venta cruzada</th>
+                <th style="text-align:center;">Venta cruzada real</th>
+                <th style="text-align:center;">Cumple</th>
+                <th style="text-align:center;">Puntos asignados</th>
+                <th style="text-align:center;">Total del mes</th>
+            </tr>
+        </thead>
+
+        <tbody>
+          {% for row in rows %}
+          {% if row.is_separator %}
+          <tr class="group_separator">
+            <td colspan="7"></td>
+          </tr>
+          {% else %}
+          <tr>
+            <td style="text-align:left;">{{ row.target.une.name_es }}</td>
+            <td style="text-align:center;">{{ row.target.year }}-{{ row.target.month|stringformat:"02d" }}</td>
+            <td style="text-align:center;">
+              {% if row.target.target_value %}
+              {{ row.target.target_value|floatformat:0|unlocalize }}
+              {% else %}
+              —
+              {% endif %}
+            </td>
+            <td style="text-align:center;">
+              {% if row.result and row.result.measured_value != None %}
+              {{ row.result.measured_value|floatformat:0|unlocalize }}
+              {% else %}
+              —
+              {% endif %}
+            </td>
+            <td style="text-align:center;">
+              {% if row.result and row.result.is_achieved %}
+              <span class="ok">Sí</span>
+              {% else %}
+              <span class="bad">No</span>
+              {% endif %}
+            </td>
+            <td style="text-align:center;">
+              {% if row.result %}
+              {{ row.result.points_awarded }}
+              {% else %}
+              0
+              {% endif %}
+            </td>
+            <td style="text-align:center;">
+              {% if row.scorecard %}
+              {{ row.scorecard.total_points }}
+              {% else %}
+              0
+              {% endif %}
+            </td>
+          </tr>
+          {% endif %}
+          {% empty %}
+          <tr>
+            <td colspan="7" style="text-align:center;">No hay datos de venta cruzada para los filtros seleccionados.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+          
+    </table>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const startPeriod = document.getElementById("start_period");
+    const startYear = document.getElementById("start_year");
+    const startMonth = document.getElementById("start_month");
+    const sort = document.getElementById("sort");
+    const dateOrder = document.getElementById("date_order");
+    const groupMode = document.getElementById("group_mode");
+    const btn = document.getElementById("btn-export-md");
+
+    function syncPeriodFields() {
+        if (!startPeriod) return;
+        const option = startPeriod.options[startPeriod.selectedIndex];
+        if (!option) return;
+        startYear.value = option.dataset.year || "";
+        startMonth.value = option.dataset.month || "";
+    }
+
+    function syncSortFields() {
+        if (!sort) return;
+        if (sort.value === "unes") {
+            groupMode.value = "une";
+            dateOrder.value = "asc";
+        } else if (sort.value === "fechas_desc") {
+            groupMode.value = "period";
+            dateOrder.value = "desc";
+        } else {
+            groupMode.value = "period";
+            dateOrder.value = "asc";
+        }
+    }
+
+
+    const filterForm = document.querySelector("form.filters");
+    function applyFilters() {
+        if (typeof syncPeriodFields === "function") syncPeriodFields();
+        if (typeof syncSortFields === "function") syncSortFields();
+        if (filterForm) filterForm.submit();
+    }
+
+    if (startPeriod) {
+        startPeriod.addEventListener("change", applyFilters);
+        syncPeriodFields();
+    }
+
+    if (sort) {
+        sort.addEventListener("change", applyFilters);
+        syncSortFields();
+    }
+
+    ["month_count", "mode", "start_year", "start_month", "year", "month", "une"].forEach(function (id) {
+        const el = document.getElementById(id);
+        if (el && el.tagName === "SELECT") {
+            el.addEventListener("change", applyFilters);
+        }
+    });
+
+    if (!btn) return;
+
+    btn.addEventListener("click", async function () {
+        syncPeriodFields();
+        syncSortFields();
+
+        const params = new URLSearchParams({
+            start_year: startYear.value || "",
+            start_month: startMonth.value || "",
+            month_count: document.getElementById("month_count")?.value || "",
+            date_order: dateOrder.value || "asc",
+            group_mode: groupMode.value || "une"
+        });
+
+        const url = `{% url 'pgc:venta_cruzada_export_md' %}?` + params.toString();
+
+        btn.disabled = true;
+        const originalText = btn.textContent;
+        btn.textContent = "Generando...";
+
+        try {
+            const response = await fetch(url, {
+                method: "GET",
+                headers: {
+                    "X-Requested-With": "XMLHttpRequest"
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error("No se pudo generar el archivo Markdown.");
+            }
+
+            const blob = await response.blob();
+
+            let filename = "pgc-venta-cruzada.md";
+            const disposition = response.headers.get("Content-Disposition");
+            if (disposition) {
+                const utf8Match = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+                const asciiMatch = disposition.match(/filename="([^"]+)"/i);
+
+                if (utf8Match && utf8Match[1]) {
+                    filename = decodeURIComponent(utf8Match[1]);
+                } else if (asciiMatch && asciiMatch[1]) {
+                    filename = asciiMatch[1];
+                }
+            }
+
+            const objectUrl = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = objectUrl;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(objectUrl);
+        } catch (error) {
+            alert(error.message || "Error generando la exportación.");
+        } finally {
+            btn.disabled = false;
+            btn.textContent = originalText;
+        }
+    });
+});
+</script>
+{% endblock %}

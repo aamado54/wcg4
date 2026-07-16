@@ -1,0 +1,13 @@
+{% extends "base_wcg.html" %}
+{% block title %}PGO — Tickets{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between mb-3"><h1>Tickets</h1>
+<a href="{% url 'pgo:importar' %}" class="btn btn-sm btn-outline-primary">Importar</a></div>
+<table class="table table-sm table-hover bg-white">
+<thead><tr><th>Código</th><th>Título</th><th>Estado</th><th>Prioridad</th><th>Unidad</th><th></th></tr></thead>
+<tbody>{% for t in tickets %}<tr>
+<td>{{ t.codigo }}</td><td>{{ t.titulo }}</td><td>{{ t.get_estado_display }}</td>
+<td>{{ t.get_prioridad_display }}</td><td>{{ t.unidad_negocio|default:"—" }}</td>
+<td><a href="{% url 'pgo:ticket_detail' t.codigo %}">Ver</a></td>
+</tr>{% empty %}<tr><td colspan="6" class="text-muted">Sin tickets</td></tr>{% endfor %}</tbody></table>
+{% endblock %}

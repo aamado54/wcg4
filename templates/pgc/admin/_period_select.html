@@ -1,0 +1,34 @@
+{# expects year, month_from, month_to, month_choices, year_choices; optional: tab, selected_block #}
+<form method="get" class="adm-period-select" id="adm-period-form">
+    <div>
+        <label for="year">Año</label><br>
+        <select id="year" name="year" onchange="this.form.requestSubmit()">
+            {% for y in year_choices %}
+            <option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div>
+        <label for="month_from">Desde</label><br>
+        <select id="month_from" name="month_from" onchange="this.form.requestSubmit()">
+            {% for m in month_choices %}
+            <option value="{{ m }}" {% if m == month_from %}selected{% endif %}>{{ m|stringformat:"02d" }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div>
+        <label for="month_to">Hasta</label><br>
+        <select id="month_to" name="month_to" onchange="this.form.requestSubmit()">
+            {% for m in month_choices %}
+            <option value="{{ m }}" {% if m == month_to %}selected{% endif %}>{{ m|stringformat:"02d" }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    {% if tab %}<input type="hidden" name="tab" value="{{ tab }}">{% endif %}
+    {% if selected_block %}<input type="hidden" name="block" value="{{ selected_block }}">{% endif %}
+</form>
+{% if period_is_range and single_month_ops %}
+<p class="muted adm-period-hint">Esta pantalla opera solo el fin del rango: <strong>{{ period_focus_label }}</strong>.</p>
+{% elif period_is_range and supports_month_range %}
+<p class="muted adm-period-hint">Mostrando rango <strong>{{ period_label }}</strong>.</p>
+{% endif %}

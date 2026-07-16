@@ -1,0 +1,8 @@
+{% extends "base_wcg.html" %}
+{% block title %}PGO — Resumen por usuario{% endblock %}
+{% block content %}
+<h1>Resumen por usuario</h1>
+<table class="table table-sm bg-white"><thead><tr><th>Usuario</th><th>Total</th><th>Abiertos</th></tr></thead>
+<tbody>{% for r in data %}<tr><td>{{ r.asignado_a__username|default:"—" }}</td><td>{{ r.total }}</td><td>{{ r.abiertos }}</td></tr>{% endfor %}</tbody></table>
+<p><a href="{% url 'pgo:dashboard' %}">← Dashboard</a></p>
+{% endblock %}

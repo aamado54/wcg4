@@ -1,0 +1,491 @@
+{% extends "base.html" %}
+{% load l10n %}
+
+{% block title %}Edición manual — {{ label }}{% endblock %}
+
+{% block content %}
+{% include "pgc/admin/_styles.html" %}
+
+<div class="adm">
+    {% include "pgc/admin/_nav.html" with adm_nav_active="manual" %}
+
+    <div class="adm-header">
+        <div class="adm-header-top">
+            <div>
+                <p class="muted" style="margin:0;">Edición manual del período</p>
+                <div class="adm-period-label">{{ label }}</div>
+                {% if not plan %}<p class="muted" style="color:#b45309;">No hay plan PGC para este año.</p>{% endif %}
+            </div>
+            {% include "pgc/admin/_period_select.html" %}
+        </div>
+    </div>
+
+    <div class="adm-route-hint">
+        <strong>Ruta sugerida:</strong>
+        Tipos de cambio → Metas (USD) → Resultados (ingresos Q o $ → se guardan en USD).
+        Metas/resultados usan el mes foco <code>{{ focus_label }}</code>; el TC usa el rango completo.
+    </div>
+
+    <div class="adm-tabs">
+        {% for tab_id, tab_label in tabs %}
+        <a href="?year={{ year }}&month_from={{ month_from }}&month_to={{ month_to }}&month={{ month }}&tab={{ tab_id }}"
+           class="{% if tab == tab_id %}active{% endif %}">{{ tab_label }}</a>
+        {% endfor %}
+    </div>
+
+    <div class="adm-layout">
+        <div>
+            <div class="adm-panel">
+                {% if tab == "targets" %}
+                <h3>Metas mensuales · {{ focus_label }}</h3>
+                <p class="subtitle">
+                    Metas de <strong>Ingresos en USD ($)</strong>. Las demás métricas son cantidades / cumplimiento, no moneda.
+                    Deje vacío para no modificar.
+                </p>
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="save_targets">
+                    <input type="hidden" name="year" value="{{ year }}">
+                    <input type="hidden" name="month" value="{{ month }}">
+                    <input type="hidden" name="month_from" value="{{ month_from }}">
+                    <input type="hidden" name="month_to" value="{{ month_to }}">
+                    <input type="hidden" name="tab" value="{{ tab }}">
+                    <div class="adm-scroll">
+                        <table class="adm-edit-grid">
+                            <thead>
+                                <tr>
+                                    <th>UNE</th>
+                                    {% for metric in metrics %}
+                                    <th>
+                                        {% if metric.code == "INGRESOS" %}
+                                        {{ metric.name }}<br><span class="adm-currency-tag">USD ($)</span>
+                                        {% else %}
+                                        {{ metric.name }}
+                                        {% endif %}
+                                    </th>
+                                    {% endfor %}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in target_rows %}
+                                <tr>
+                                    <td>{{ row.une.name_es }}</td>
+                                    {% for cell in row.cells %}
+                                    <td>
+                                        <input type="number" step="0.01"
+                                               name="target_{{ row.une.id }}_{{ cell.metric.id }}"
+                                               value="{% if cell.value is not None %}{{ cell.value|unlocalize }}{% endif %}">
+                                    </td>
+                                    {% endfor %}
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% include "pgc/admin/_save_footer.html" with reason_required=False %}
+
+                {% elif tab == "results" %}
+                <h3>Resultados mensuales · {{ focus_label }}</h3>
+                <p class="subtitle">
+                    <strong>Ingresos</strong>: elija <strong>Q</strong> o <strong>$</strong> por UNE.
+                    Si captura en Q, se convierte a USD con el TC del mes y se guarda el USD canónico.
+                    Si captura en $, se guarda directo en USD (sin TC). Las demás métricas no son moneda.
+                </p>
+
+                {% if not has_fx %}
+                <div class="adm-banner adm-banner-warn">
+                    <strong>Falta tipo de cambio para {{ focus_label }}.</strong>
+                    Sin TC no se pueden guardar ingresos en quetzales (Q). Sí se puede capturar en dólares ($).
+                    <a href="?year={{ year }}&month_from={{ month_from }}&month_to={{ month_to }}&month={{ month }}&tab=fx"
+                       class="adm-btn adm-btn-secondary" style="margin-left:8px;">Ir a tipos de cambio</a>
+                </div>
+                {% else %}
+                <div class="adm-banner adm-banner-info">
+                    TC del período {{ focus_label }}: <strong>1 USD = {{ fx_rate }} GTQ</strong>.
+                    Conversión: <code>GTQ ÷ TC → USD</code>.
+                </div>
+                {% endif %}
+
+                {% if stale_ingresos_count %}
+                <div class="adm-banner adm-banner-warn">
+                    <strong>{{ stale_ingresos_count }} ingreso(s) con TC desactualizado (STALE).</strong>
+                    El tipo de cambio cambió después de la captura en Q.
+                    <form method="post" style="display:inline; margin-left:8px;">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="recalc_stale_ingresos">
+                        <input type="hidden" name="year" value="{{ year }}">
+                        <input type="hidden" name="month" value="{{ month }}">
+                        <input type="hidden" name="month_from" value="{{ month_from }}">
+                        <input type="hidden" name="month_to" value="{{ month_to }}">
+                        <input type="hidden" name="tab" value="{{ tab }}">
+                        <input type="hidden" name="reason" value="Recálculo STALE desde resultados">
+                        <button type="submit" class="adm-btn adm-btn-primary">Recalcular USD desde GTQ</button>
+                    </form>
+                </div>
+                {% endif %}
+
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="save_results">
+                    <input type="hidden" name="year" value="{{ year }}">
+                    <input type="hidden" name="month" value="{{ month }}">
+                    <input type="hidden" name="month_from" value="{{ month_from }}">
+                    <input type="hidden" name="month_to" value="{{ month_to }}">
+                    <input type="hidden" name="tab" value="{{ tab }}">
+                    <div class="adm-scroll">
+                        <table class="adm-edit-grid">
+                            <thead>
+                                <tr>
+                                    <th>UNE</th>
+                                    {% for metric in metrics %}
+                                    <th>
+                                        {% if metric.code == "INGRESOS" %}
+                                        {{ metric.name }} (guardado USD)<br>
+                                        <span class="adm-currency-tag">captura Q o $</span>
+                                        {% else %}
+                                        {{ metric.name }}
+                                        {% endif %}
+                                    </th>
+                                    {% endfor %}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in result_rows %}
+                                <tr>
+                                    <td>{{ row.une.name_es }}</td>
+                                    {% for cell in row.cells %}
+                                    <td class="{% if cell.is_ingresos %}adm-ingresos-cell{% endif %}">
+                                        {% if cell.is_ingresos %}
+                                        <div class="adm-ingresos-stack">
+                                            <div class="adm-currency-toggle">
+                                                <label>
+                                                    <input type="radio"
+                                                           name="ingresos_curr_{{ row.une.id }}"
+                                                           value="GTQ"
+                                                           {% if cell.input_currency == "GTQ" %}checked{% endif %}
+                                                           onchange="admToggleIngresos(this)">
+                                                    Q
+                                                </label>
+                                                <label>
+                                                    <input type="radio"
+                                                           name="ingresos_curr_{{ row.une.id }}"
+                                                           value="USD"
+                                                           {% if cell.input_currency == "USD" %}checked{% endif %}
+                                                           onchange="admToggleIngresos(this)">
+                                                    $
+                                                </label>
+                                            </div>
+                                            <label class="muted adm-ingresos-label" style="font-size:0.75rem;">
+                                                {% if cell.input_currency == "USD" %}Ingreso (USD $){% else %}Ingreso (GTQ Q){% endif %}
+                                            </label>
+                                            <input type="text"
+                                                   class="adm-ingresos-input"
+                                                   inputmode="decimal"
+                                                   name="result_{{ row.une.id }}_{{ cell.metric.id }}"
+                                                   value="{% if cell.value is not None %}{{ cell.value|unlocalize }}{% endif %}"
+                                                   data-needs-fx="{% if not has_fx %}1{% else %}0{% endif %}"
+                                                   placeholder="{% if cell.input_currency == 'USD' %}USD{% else %}GTQ{% endif %}"
+                                                   {% if cell.input_disabled %}disabled title="Defina el tipo de cambio primero, o capture en $"{% endif %}>
+                                            <div class="muted" style="font-size:0.78rem; margin-top:4px;">
+                                                {% if cell.measured_usd_display %}
+                                                Guardado canónico: <strong>{{ cell.measured_usd_display }} USD</strong>
+                                                {% else %}
+                                                Guardado canónico USD: —
+                                                {% endif %}
+                                                {% if cell.fx_used %}<br>FX usado: {{ cell.fx_used }}{% endif %}
+                                                {% if cell.conversion_status == "STALE_FX" %}
+                                                <br><span style="color:#b45309;font-weight:600;">TC desactualizado</span>
+                                                {% elif cell.conversion_status == "CONVERTED" %}
+                                                <br><span style="color:#065f46;">Convertido Q→$</span>
+                                                {% elif cell.conversion_status == "NATIVE_USD" %}
+                                                <br><span style="color:#065f46;">USD nativo</span>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        {% else %}
+                                        <input type="number" step="0.01"
+                                               name="result_{{ row.une.id }}_{{ cell.metric.id }}"
+                                               value="{% if cell.value is not None %}{{ cell.value|unlocalize }}{% endif %}">
+                                        {% endif %}
+                                    </td>
+                                    {% endfor %}
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% include "pgc/admin/_save_footer.html" with reason_required=True %}
+
+                {% elif tab == "requirements" %}
+                <h3>Respuesta a requerimientos</h3>
+                <p class="subtitle">Cumplimiento manual por UNE. Si hay incidencia, indique nota o motivo.</p>
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="save_requirements">
+                    <input type="hidden" name="year" value="{{ year }}">
+                    <input type="hidden" name="month" value="{{ month }}">
+                    <input type="hidden" name="month_from" value="{{ month_from }}">
+                    <input type="hidden" name="month_to" value="{{ month_to }}">
+                    <input type="hidden" name="tab" value="{{ tab }}">
+                    <table class="adm-edit-grid">
+                        <thead>
+                            <tr><th>UNE</th><th>Cumple</th><th>Nota de incidencia</th></tr>
+                        </thead>
+                        <tbody>
+                            {% for item in requirements %}
+                            <tr>
+                                <td>{{ item.une.name_es }}</td>
+                                <td>
+                                    <input type="checkbox" name="req_compliant_{{ item.une.id }}" value="1"
+                                           {% if not item.obj or item.obj.is_compliant %}checked{% endif %}>
+                                </td>
+                                <td>
+                                    <input type="text" name="req_note_{{ item.une.id }}"
+                                           value="{% if item.obj %}{{ item.obj.incident_note }}{% endif %}"
+                                           style="max-width:280px;">
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% include "pgc/admin/_save_footer.html" with reason_required=False %}
+
+                {% elif tab == "fx" %}
+                <h3>Tipos de cambio · {{ label }}</h3>
+                <p class="subtitle">
+                    1 USD = X GTQ. Si el rango es varios meses, edite <strong>todos</strong> aquí.
+                    Si cambia un TC ya usado por ingresos capturados en Q, esos se marcan STALE (no se recalculan solos).
+                </p>
+                {% if missing_fx_months %}
+                <div class="adm-banner adm-banner-warn">
+                    Falta TC en: {% for m in missing_fx_months %}<code style="margin-right:6px;">{{ m }}</code>{% endfor %}
+                </div>
+                {% endif %}
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="save_fx">
+                    <input type="hidden" name="year" value="{{ year }}">
+                    <input type="hidden" name="month" value="{{ month }}">
+                    <input type="hidden" name="month_from" value="{{ month_from }}">
+                    <input type="hidden" name="month_to" value="{{ month_to }}">
+                    <input type="hidden" name="tab" value="{{ tab }}">
+                    <div class="adm-scroll">
+                        <table class="adm-edit-grid" style="max-width:420px;">
+                            <thead>
+                                <tr>
+                                    <th>Mes</th>
+                                    <th>1 USD = … GTQ</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in fx_rows %}
+                                <tr {% if row.is_focus %}style="background:#f0f9ff;"{% endif %}>
+                                    <td style="text-align:left;">
+                                        {{ row.label }}
+                                        {% if row.missing %}<span class="muted"> (sin TC)</span>{% endif %}
+                                        {% if row.is_focus %}<span class="muted"> · foco</span>{% endif %}
+                                    </td>
+                                    <td>
+                                        <input type="text"
+                                               name="fx_value_{{ row.month }}"
+                                               inputmode="decimal"
+                                               style="padding:8px; width:160px;"
+                                               value="{% if row.value is not None %}{{ row.value|unlocalize }}{% endif %}"
+                                               placeholder="ej. 7.85">
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% include "pgc/admin/_save_footer.html" with reason_required=False %}
+
+                {% elif tab == "aliases" %}
+                <h3>Alias de UNE</h3>
+                <p class="subtitle">Normalice valores crudos detectados en importaciones.
+                    Si el valor crudo menciona <strong>Investment</strong>, siempre es <strong>Inversiones</strong>.</p>
+                {% if pending_aliases %}
+                <p><strong>Valores pendientes en este período:</strong>
+                    {% for raw in pending_aliases %}<code style="margin-right:6px;">{{ raw }}</code>{% endfor %}
+                </p>
+                {% endif %}
+                <form method="post" style="margin-bottom:20px;">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="save_alias">
+                    <input type="hidden" name="year" value="{{ year }}">
+                    <input type="hidden" name="month" value="{{ month }}">
+                    <input type="hidden" name="month_from" value="{{ month_from }}">
+                    <input type="hidden" name="month_to" value="{{ month_to }}">
+                    <input type="hidden" name="tab" value="{{ tab }}">
+                    <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:end;">
+                        <div>
+                            <label>Valor crudo</label><br>
+                            <input type="text" name="alias_raw" list="pending-alias-list" style="padding:8px; min-width:200px;">
+                            <datalist id="pending-alias-list">
+                                {% for raw in pending_aliases %}<option value="{{ raw }}">{% endfor %}
+                            </datalist>
+                        </div>
+                        <div>
+                            <label>UNE destino</label><br>
+                            <select name="alias_une">
+                                {% for une in unes %}<option value="{{ une.id }}">{{ une.name_es }}</option>{% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    {% include "pgc/admin/_save_footer.html" with reason_required=False %}
+
+                <h4 style="font-size:0.92rem;">Alias activos — edite UNE y guarde</h4>
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="save_aliases_bulk">
+                    <input type="hidden" name="year" value="{{ year }}">
+                    <input type="hidden" name="month" value="{{ month }}">
+                    <input type="hidden" name="month_from" value="{{ month_from }}">
+                    <input type="hidden" name="month_to" value="{{ month_to }}">
+                    <input type="hidden" name="tab" value="{{ tab }}">
+                    <div class="adm-scroll" style="max-height:360px;">
+                        <table class="adm-edit-grid">
+                            <thead><tr><th>Valor crudo</th><th>UNE</th></tr></thead>
+                            <tbody>
+                                {% for alias in aliases %}
+                                <tr>
+                                    <td style="text-align:left;">{{ alias.raw_value }}</td>
+                                    <td>
+                                        <select name="alias_{{ alias.id }}_une">
+                                            {% for une in unes %}
+                                            <option value="{{ une.id }}" {% if alias.une_id == une.id %}selected{% endif %}>
+                                                {{ une.name_es }}
+                                            </option>
+                                            {% endfor %}
+                                        </select>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr><td colspan="2" class="muted">Sin aliases activos.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% include "pgc/admin/_save_footer.html" with reason_required=False %}
+
+                {% elif tab == "imports" %}
+                <h3>Registros importados</h3>
+                <p class="subtitle">Corrija filas con observaciones o UNE no resueltas.</p>
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="save_imports">
+                    <input type="hidden" name="year" value="{{ year }}">
+                    <input type="hidden" name="month" value="{{ month }}">
+                    <input type="hidden" name="month_from" value="{{ month_from }}">
+                    <input type="hidden" name="month_to" value="{{ month_to }}">
+                    <input type="hidden" name="tab" value="{{ tab }}">
+
+                    <h4 style="font-size:0.92rem; margin-top:0;">Clientes nuevos</h4>
+                    {% if new_client_rows %}
+                    <div class="adm-scroll">
+                        <table class="adm-edit-grid">
+                            <thead>
+                                <tr><th>Mes</th><th>Cliente</th><th>UNE</th><th>¿Cuenta?</th><th>Observaciones</th></tr>
+                            </thead>
+                            <tbody>
+                                {% for row in new_client_rows %}
+                                <tr>
+                                    <td class="muted">{{ row.month|stringformat:"02d" }}</td>
+                                    <td>{{ row.client_name|default:row.operation_code }}</td>
+                                    <td>{{ row.une.name_es }}</td>
+                                    <td>
+                                        <input type="checkbox" name="nc_{{ row.id }}_counts_as_new" value="1"
+                                               {% if row.counts_as_new %}checked{% endif %}>
+                                    </td>
+                                    <td>
+                                        <input type="text" name="nc_{{ row.id }}_observations" value="{{ row.observations }}" style="max-width:200px;">
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="muted">Sin filas de clientes nuevos para este período.</p>
+                    {% endif %}
+
+                    <h4 style="font-size:0.92rem; margin-top:20px;">Venta cruzada</h4>
+                    {% if cross_sale_rows %}
+                    <div class="adm-scroll">
+                        <table class="adm-edit-grid">
+                            <thead>
+                                <tr><th>Cliente</th><th>Origen</th><th>Destino</th><th>Raw origen</th><th>Raw destino</th></tr>
+                            </thead>
+                            <tbody>
+                                {% for row in cross_sale_rows %}
+                                <tr>
+                                    <td>{{ row.client_name|default:row.operation_code }}</td>
+                                    <td>
+                                        <select name="cs_{{ row.id }}_orig">
+                                            <option value="">—</option>
+                                            {% for une in unes %}
+                                            <option value="{{ une.id }}" {% if row.une_origin_id == une.id %}selected{% endif %}>{{ une.code }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </td>
+                                    <td>
+                                        <select name="cs_{{ row.id }}_dest">
+                                            <option value="">—</option>
+                                            {% for une in unes %}
+                                            <option value="{{ une.id }}" {% if row.une_destination_id == une.id %}selected{% endif %}>{{ une.code }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </td>
+                                    <td class="muted">{{ row.raw_une_origin }}</td>
+                                    <td class="muted">{{ row.raw_une_destination }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="muted">Sin filas de venta cruzada para este período.</p>
+                    {% endif %}
+                    {% include "pgc/admin/_save_footer.html" with reason_required=False %}
+
+                {% elif tab == "notes" %}
+                <h3>Notas del período</h3>
+                <p class="subtitle">Observaciones administrativas visibles para el equipo operativo.</p>
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="save_notes">
+                    <input type="hidden" name="year" value="{{ year }}">
+                    <input type="hidden" name="month" value="{{ month }}">
+                    <input type="hidden" name="month_from" value="{{ month_from }}">
+                    <input type="hidden" name="month_to" value="{{ month_to }}">
+                    <input type="hidden" name="tab" value="{{ tab }}">
+                    <textarea name="period_note" rows="6" style="width:100%; padding:12px; border:1px solid #d9e2ec; border-radius:8px;">{{ period_note }}</textarea>
+                    {% include "pgc/admin/_save_footer.html" with reason_required=False %}
+                {% endif %}
+            </div>
+        </div>
+
+        <div>
+            <div class="adm-side-card">
+                <h4>Guía rápida</h4>
+                <div class="adm-reminder"><strong>1.</strong> Tipos de cambio del rango (si captura ingresos en Q).</div>
+                <div class="adm-reminder"><strong>2.</strong> Metas de ingresos siempre en <strong>USD ($)</strong>.</div>
+                <div class="adm-reminder"><strong>3.</strong> Resultados → Ingresos: Q o $; lo guardado es siempre USD.</div>
+                <div class="adm-reminder">Campos vacíos no sobrescriben. Resultados requieren motivo.</div>
+            </div>
+            <div class="adm-side-card">
+                <h4>Cambios recientes</h4>
+                {% for edit in recent_edits %}
+                <div class="adm-log-item">
+                    <strong>{{ edit.get_entity_type_display }}</strong> · {{ edit.field_name }}<br>
+                    {{ edit.old_value|default:"—" }} → {{ edit.new_value|default:"—" }}
+                    <br><span class="muted">{{ edit.created_at|date:"d/m/Y H:i" }}{% if edit.edited_by %} · {{ edit.edited_by.username }}{% endif %}</span>
+                </div>
+                {% empty %}
+                <p class="muted">Sin ediciones manuales en este período.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% load l10n %}
+
+{% block title %}Ingresos anuales {{ year }}{% endblock %}
+
+{% block content %}
+{% include "pgc/admin/_styles.html" %}
+
+<div class="adm">
+    {% include "pgc/admin/_nav.html" with adm_nav_active="ingresos_year" %}
+
+    <div class="adm-header">
+        <div class="adm-header-top">
+            <div>
+                <p class="muted" style="margin:0;">Captura de ingresos reales · año completo</p>
+                <div class="adm-period-label">{{ year }}</div>
+                {% if not plan %}<p class="muted" style="color:#b45309;">No hay plan PGC para este año.</p>{% endif %}
+            </div>
+            {% include "pgc/admin/_period_select.html" %}
+        </div>
+    </div>
+
+    <div class="adm-panel">
+        <h3 style="margin-top:0;">Ingresos por UNE · enero a diciembre</h3>
+        <p class="subtitle">
+            Columnas = las 4 UNEs. Filas = 12 meses fijos.
+            Elija moneda de captura (<strong>Q</strong> o <strong>$</strong>); lo guardado canónico es siempre <strong>USD</strong>.
+            La 5.ª columna es el tipo de cambio del mes (1 USD = X GTQ), editable.
+        </p>
+
+        <form method="get" class="adm-currency-bar" style="margin-bottom:14px;">
+            <input type="hidden" name="year" value="{{ year }}">
+            <input type="hidden" name="month_from" value="{{ month_from }}">
+            <input type="hidden" name="month_to" value="{{ month_to }}">
+            <input type="hidden" name="month" value="{{ month }}">
+            <label style="font-weight:600;">Moneda de captura:</label>
+            <label>
+                <input type="radio" name="curr" value="GTQ" {% if capture_currency == "GTQ" %}checked{% endif %}
+                       onchange="this.form.submit()"> Q (GTQ)
+            </label>
+            <label>
+                <input type="radio" name="curr" value="USD" {% if capture_currency == "USD" %}checked{% endif %}
+                       onchange="this.form.submit()"> $ (USD)
+            </label>
+            <span class="muted" style="margin-left:8px;">
+                {% if capture_currency == "GTQ" %}
+                Conversión: <code>GTQ ÷ TC del mes → USD</code>
+                {% else %}
+                Se guarda directo en USD (sin TC).
+                {% endif %}
+            </span>
+        </form>
+
+        {% if capture_currency == "GTQ" and missing_fx_months %}
+        <div class="adm-banner adm-banner-warn">
+            Falta TC en: {% for m in missing_fx_months %}<code style="margin-right:6px;">{{ m }}</code>{% endfor %}
+            Complete la columna TC antes de capturar ingresos en Q en esos meses (o capture en $).
+        </div>
+        {% endif %}
+
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="save_ingresos_year">
+            <input type="hidden" name="year" value="{{ year }}">
+            <input type="hidden" name="month" value="{{ month }}">
+            <input type="hidden" name="month_from" value="{{ month_from }}">
+            <input type="hidden" name="month_to" value="{{ month_to }}">
+            <input type="hidden" name="capture_currency" value="{{ capture_currency }}">
+
+            <div class="adm-scroll">
+                <table class="adm-edit-grid adm-year-ingresos">
+                    <thead>
+                        <tr>
+                            <th>Mes</th>
+                            {% for une in unes %}
+                            <th>
+                                {{ une.name_es }}<br>
+                                <span class="adm-currency-tag">
+                                    {% if capture_currency == "GTQ" %}captura Q → USD{% else %}captura $ (USD){% endif %}
+                                </span>
+                            </th>
+                            {% endfor %}
+                            <th>
+                                TC<br>
+                                <span class="adm-currency-tag">1 USD = … GTQ</span>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in month_rows %}
+                        <tr>
+                            <td style="text-align:left; white-space:nowrap;">
+                                <strong>{{ row.label }}</strong>
+                                <span class="muted"> {{ year }}-{{ row.month|stringformat:"02d" }}</span>
+                            </td>
+                            {% for cell in row.cells %}
+                            <td class="adm-ingresos-cell">
+                                <input type="text"
+                                       inputmode="decimal"
+                                       name="ing_{{ row.month }}_{{ cell.une.id }}"
+                                       value="{% if cell.value is not None %}{{ cell.value|unlocalize }}{% endif %}"
+                                       placeholder="{% if capture_currency == 'USD' %}${% else %}Q{% endif %}"
+                                       {% if cell.input_disabled %}disabled title="Defina el TC de este mes, o capture en $"{% endif %}>
+                                {% if cell.measured_usd_display %}
+                                <div class="muted" style="font-size:0.72rem; margin-top:3px;">
+                                    USD: {{ cell.measured_usd_display }}
+                                    {% if cell.conversion_status == "STALE_FX" %}
+                                    · <span style="color:#b45309;">TC viejo</span>
+                                    {% endif %}
+                                </div>
+                                {% endif %}
+                            </td>
+                            {% endfor %}
+                            <td>
+                                <input type="text"
+                                       inputmode="decimal"
+                                       name="fx_{{ row.month }}"
+                                       value="{% if row.fx_value is not None %}{{ row.fx_value|unlocalize }}{% endif %}"
+                                       placeholder="ej. 7.85"
+                                       style="width:90px;">
+                                {% if not row.has_fx %}
+                                <div class="muted" style="font-size:0.72rem; color:#b45309;">sin TC</div>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            {% include "pgc/admin/_save_footer.html" with reason_required=True %}
+    </div>
+</div>
+{% endblock %}

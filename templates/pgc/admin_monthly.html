@@ -1,0 +1,228 @@
+{% extends "base.html" %}
+{% load l10n %}
+
+{% block title %}Administración mensual{% endblock %}
+
+{% block content %}
+{% include "pgc/admin/_styles.html" %}
+
+<div class="adm">
+    {% include "pgc/admin/_nav.html" with adm_nav_active="monthly" show_django_admin=True %}
+
+    <div class="adm-header">
+        <div class="adm-header-top">
+            <div>
+                <p class="muted" style="margin:0;">Panel de operaciones</p>
+                <div class="adm-period-label">{{ snapshot.label }}</div>
+                <span class="adm-period-status {{ snapshot.period_status }}">{{ snapshot.period_status_label }}</span>
+            </div>
+            <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:end;">
+                {% include "pgc/admin/_period_select.html" %}
+            </div>
+        </div>
+    </div>
+
+    <div class="adm-route">
+        {% for block in snapshot.blocks %}
+        <a href="?year={{ year }}&month_from={{ month_from }}&month_to={{ month_to }}&month={{ month }}&block={{ block.id }}"
+           class="adm-block-card {% if block.id == selected_block %}active{% endif %}">
+            <div class="adm-block-step">Paso {{ block.step }}</div>
+            <div class="adm-block-title">{{ block.label }}</div>
+            <span class="adm-badge {{ block.status }}">{{ block.status_label }}</span>
+            <div class="adm-block-meta">
+                {{ block.summary }}
+                {% if block.last_action_at %}
+                <br>{{ block.last_action_at|date:"d/m/Y H:i" }}{% if block.last_action_by %} · {{ block.last_action_by }}{% endif %}
+                {% endif %}
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+
+    <div class="adm-layout">
+        <div>
+            <div class="adm-panel">
+                <h3>{{ block_detail.label }}</h3>
+                <p class="subtitle">{{ block_detail.short }}</p>
+
+                <ul class="adm-checklist">
+                    {% for item in block_detail.checklist %}
+                    <li class="{% if item.done %}done{% endif %}">{{ item.label }}</li>
+                    {% endfor %}
+                </ul>
+
+                {% if selected_block == "targets" %}
+                <p class="muted">Ajuste metas del plan en la pantalla de edición manual.</p>
+                <a href="{% url 'pgc:admin_manual_edit' %}?year={{ year }}&month={{ month }}&tab=targets"
+                   class="adm-btn adm-btn-primary">Editar metas del período</a>
+
+                {% elif selected_block == "manual_requirements" %}
+                <p class="muted">Registre cumplimiento de respuesta a requerimientos por UNE.</p>
+                <a href="{% url 'pgc:admin_manual_edit' %}?year={{ year }}&month={{ month }}&tab=requirements"
+                   class="adm-btn adm-btn-primary">Editar requerimientos</a>
+
+                {% elif selected_block == "review" %}
+                <p class="muted">Revise el tablero después de cargar y recalcular.</p>
+                <a href="{% url 'pgc:dashboard' %}?year={{ year }}&month={{ month }}" class="adm-btn adm-btn-primary">Abrir tablero</a>
+                <a href="{% url 'pgc:admin_ingresos_year' %}?year={{ year }}&month_from={{ month_from }}&month_to={{ month_to }}&month={{ month }}"
+                   class="adm-btn adm-btn-secondary">Captura ingresos (año)</a>
+                <a href="{% url 'pgc:ingresos' %}?year={{ year }}&month={{ month }}" class="adm-btn adm-btn-secondary">Ingresos vs meta</a>
+
+                {% else %}
+                <form method="post" enctype="multipart/form-data" style="margin-bottom:16px;">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="upload">
+                    <input type="hidden" name="block" value="{{ selected_block }}">
+                    <input type="hidden" name="year" value="{{ year }}">
+                    <input type="hidden" name="month" value="{{ month }}">
+                    <input type="hidden" name="month_from" value="{{ month_from }}">
+                    <input type="hidden" name="month_to" value="{{ month_to }}">
+                    <div style="margin-bottom:10px;">{{ upload_form.stored_file }}</div>
+                    <button type="submit" class="adm-btn adm-btn-primary">Subir archivo</button>
+                </form>
+
+                {% if block_detail.uploads %}
+                <h4 style="margin:0 0 8px; font-size:0.92rem;">Archivos del período</h4>
+                {% for u in block_detail.uploads %}
+                <div class="adm-upload-row">
+                    <div>
+                        <strong>{{ u.filename }}</strong><br>
+                        <span class="muted">{{ u.status_display }} · {{ u.created_at|date:"d/m/Y H:i" }}{% if u.user %} · {{ u.user }}{% endif %}</span>
+                    </div>
+                    <div class="adm-upload-actions">
+                        <form method="post" class="adm-process-form">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="process">
+                            <input type="hidden" name="block" value="{{ selected_block }}">
+                            <input type="hidden" name="file_id" value="{{ u.id }}">
+                            <input type="hidden" name="year" value="{{ year }}">
+                            <input type="hidden" name="month" value="{{ month }}">
+                            <input type="hidden" name="month_from" value="{{ month_from }}">
+                            <input type="hidden" name="month_to" value="{{ month_to }}">
+                            {% if u.status == "PARSED_OK" %}
+                            <button type="button" class="adm-btn adm-btn-ghost" disabled title="Ya procesado">Procesado</button>
+                            {% else %}
+                            <button type="submit" class="adm-btn adm-btn-secondary adm-process-btn">Procesar</button>
+                            {% endif %}
+                        </form>
+                        {% if u.can_discard %}
+                        <form method="post" class="adm-discard-form"
+                              onsubmit="return confirm('¿Quitar de la cola «{{ u.filename|escapejs }}»? Solo elimina el archivo pendiente; no toca datos ya procesados.');">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="discard_pending">
+                            <input type="hidden" name="block" value="{{ selected_block }}">
+                            <input type="hidden" name="file_id" value="{{ u.id }}">
+                            <input type="hidden" name="year" value="{{ year }}">
+                            <input type="hidden" name="month" value="{{ month }}">
+                            <input type="hidden" name="month_from" value="{{ month_from }}">
+                            <input type="hidden" name="month_to" value="{{ month_to }}">
+                            <button type="submit" class="adm-btn adm-btn-discard">Quitar de la cola</button>
+                        </form>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+                {% endif %}
+
+                {% if selected_block == "new_clients" and block_detail.stats.duplicate_rows %}
+                <div style="margin-top:16px; padding:12px 14px; border:1px solid #f0c36d; border-radius:8px; background:#fff9eb;">
+                    <strong>Duplicados detectados:</strong>
+                    {{ block_detail.stats.duplicate_rows }} registro(s) repetido(s) en el detalle de clientes.
+                    <form method="post" style="margin-top:10px;" class="adm-dedup-form"
+                          onsubmit="return confirm('¿Eliminar {{ block_detail.stats.duplicate_rows }} registro(s) duplicado(s)? Se conservará una copia de cada cliente.');">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="dedup_new_clients">
+                        <input type="hidden" name="year" value="{{ year }}">
+                        <input type="hidden" name="month" value="{{ month }}">
+                    <input type="hidden" name="month_from" value="{{ month_from }}">
+                    <input type="hidden" name="month_to" value="{{ month_to }}">
+                        <button type="submit" class="adm-btn adm-btn-primary">Eliminar duplicados</button>
+                    </form>
+                </div>
+                {% endif %}
+
+                {% if selected_block == "financial" %}
+                <p class="muted" style="margin-top:12px;">
+                    Confirme el <a href="{% url 'pgc:admin_manual_edit' %}?year={{ year }}&month={{ month }}&tab=fx">tipo de cambio</a> antes de importar WC*.
+                </p>
+                {% elif selected_block == "new_clients" %}
+                <p class="muted" style="margin-top:12px;">
+                    Edite filas en
+                    <a href="{% url 'pgc:admin_new_clients_browse' %}?year={{ year }}&month={{ month }}">Clientes (browse)</a>,
+                    reasigne UNE en
+                    <a href="{% url 'pgc:admin_new_clients_une' %}?year={{ year }}&month={{ month }}">Clientes (UNE)</a>,
+                    o use
+                    <a href="{% url 'pgc:admin_manual_edit' %}?year={{ year }}&month={{ month }}&tab=imports">registros importados</a>
+                    /
+                    <a href="{% url 'pgc:admin_manual_edit' %}?year={{ year }}&month={{ month }}&tab=aliases">alias UNE</a>.
+                </p>
+                {% elif selected_block == "cross_sale" %}
+                <p class="muted" style="margin-top:12px;">
+                    Corrija filas en <a href="{% url 'pgc:admin_manual_edit' %}?year={{ year }}&month={{ month }}&tab=imports">registros importados</a>
+                    o <a href="{% url 'pgc:admin_manual_edit' %}?year={{ year }}&month={{ month }}&tab=aliases">alias UNE</a>.
+                </p>
+                {% endif %}
+                {% endif %}
+            </div>
+        </div>
+
+        <div>
+            <div class="adm-side-card">
+                <h4>Resumen del período</h4>
+                <div class="adm-stat-grid">
+                    <div class="adm-stat"><div class="value">{{ snapshot.summary.files_loaded }}</div><div class="label">Archivos</div></div>
+                    <div class="adm-stat"><div class="value">{{ snapshot.summary.valid_rows }}</div><div class="label">Filas válidas</div></div>
+                    <div class="adm-stat"><div class="value">{{ snapshot.summary.rows_with_observations }}</div><div class="label">Observaciones</div></div>
+                    <div class="adm-stat"><div class="value">{{ snapshot.summary.pending_aliases }}</div><div class="label">Alias pendientes</div></div>
+                </div>
+                {% if snapshot.summary.last_score_update %}
+                <p class="muted" style="margin:12px 0 0; font-size:0.82rem;">Último score: {{ snapshot.summary.last_score_update|date:"d/m/Y H:i" }}</p>
+                {% endif %}
+            </div>
+
+            <div class="adm-side-card">
+                <h4>Recordatorios</h4>
+                <div class="adm-reminder">Verifique el período activo antes de subir archivos.</div>
+                <div class="adm-reminder">Confirme que el archivo corresponde al bloque seleccionado.</div>
+                <div class="adm-reminder">Revise alias UNE nuevos antes de confiar en el score.</div>
+                <div class="adm-reminder">Tras cargar datos, use el botón de recálculo (amarillo si hay pendientes).</div>
+            </div>
+
+            <div class="adm-side-card">
+                <h4>Bitácora reciente</h4>
+                {% for entry in recent_log %}
+                <div class="adm-log-item">
+                    <strong>{{ entry.title }}</strong><br>{{ entry.detail }}
+                    <br><span class="muted">{{ entry.at|date:"d/m/Y H:i" }}{% if entry.user %} · {{ entry.user }}{% endif %}</span>
+                </div>
+                {% empty %}
+                <p class="muted">Sin actividad.</p>
+                {% endfor %}
+                <a href="{% url 'pgc:admin_monthly_log' %}?year={{ year }}&month={{ month }}"
+                   class="adm-btn adm-btn-ghost" style="margin-top:10px; width:100%; text-align:center;">Ver bitácora completa</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.querySelectorAll(".adm-process-form, .adm-dedup-form").forEach(function (form) {
+    form.addEventListener("submit", function () {
+        var btn = form.querySelector('button[type="submit"]');
+        if (btn && !btn.disabled) {
+            btn.disabled = true;
+            btn.textContent = "Procesando…";
+        }
+    });
+});
+document.querySelectorAll(".adm-discard-form").forEach(function (form) {
+    form.addEventListener("submit", function () {
+        var btn = form.querySelector('button[type="submit"]');
+        if (btn && !btn.disabled) {
+            btn.disabled = true;
+            btn.textContent = "Quitando…";
+        }
+    });
+});
+</script>
+{% endblock %}

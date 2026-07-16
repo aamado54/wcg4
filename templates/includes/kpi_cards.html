@@ -1,0 +1,12 @@
+<div class="row g-2 mb-3">
+  {% for kpi in kpis %}
+  <div class="{{ kpi.col_class|default:'col-md-3 col-6' }}">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body py-2 px-3 text-center">
+        <div class="stat-value" style="font-size:1.4rem;">{{ kpi.value }}</div>
+        <div class="text-muted small">{{ kpi.label }}</div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>

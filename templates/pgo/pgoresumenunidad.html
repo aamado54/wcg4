@@ -1,0 +1,8 @@
+{% extends "base_wcg.html" %}
+{% block title %}PGO — Resumen por unidad{% endblock %}
+{% block content %}
+<h1>Resumen por unidad</h1>
+<table class="table table-sm bg-white"><thead><tr><th>Código</th><th>Unidad</th><th>Total tickets</th></tr></thead>
+<tbody>{% for r in data %}<tr><td>{{ r.unidad_negocio__code|default:"—" }}</td><td>{{ r.unidad_negocio__nombre|default:"—" }}</td><td>{{ r.total }}</td></tr>{% endfor %}</tbody></table>
+<p><a href="{% url 'pgo:dashboard' %}">← Dashboard</a></p>
+{% endblock %}

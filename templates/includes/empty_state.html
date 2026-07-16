@@ -1,0 +1,12 @@
+<div class="alert alert-info d-flex align-items-start gap-3 mb-3" role="alert">
+  <div class="flex-grow-1">
+    <h2 class="h6 alert-heading mb-1">{{ title }}</h2>
+    <p class="mb-2 small">{{ message }}</p>
+    {% if import_url %}
+    <a href="{{ import_url }}" class="btn btn-sm btn-primary">{{ import_label|default:"Importar datos" }}</a>
+    {% endif %}
+    {% if secondary_url %}
+    <a href="{{ secondary_url }}" class="btn btn-sm btn-outline-secondary ms-1">{{ secondary_label }}</a>
+    {% endif %}
+  </div>
+</div>

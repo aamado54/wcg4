@@ -1,0 +1,79 @@
+{% extends "wcgone_base.html" %}
+
+{% block title %}Tickets — PGO — WCG One{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+  <h1 class="h4 fw-semibold mb-0">PGO — Tickets</h1>
+  <div class="d-flex gap-1 flex-wrap">
+    <a href="{% url 'wcgone_pgo:importar_tickets' %}" class="btn btn-sm btn-outline-secondary">Importar</a>
+    <a href="{% url 'wcgone_pgo:export_tickets' %}{% if export_query %}?{{ export_query }}{% endif %}" class="btn btn-sm btn-outline-primary">Exportar CSV</a>
+    <a href="{% url 'wcgone_pgo:dashboard' %}" class="btn btn-sm btn-outline-secondary">Dashboard</a>
+  </div>
+</div>
+
+<form method="get" class="row g-2 mb-3">
+  <div class="col-md-3">
+    <input type="text" name="estado" value="{{ request.GET.estado }}" class="form-control form-control-sm" placeholder="Estado">
+  </div>
+  <div class="col-md-2">
+    <input type="text" name="periodo" value="{{ request.GET.periodo }}" class="form-control form-control-sm" placeholder="YYYY-MM">
+  </div>
+  <div class="col-md-2">
+    <input type="text" name="prioridad" value="{{ request.GET.prioridad }}" class="form-control form-control-sm" placeholder="Prioridad">
+  </div>
+  <div class="col-md-2">
+    <button type="submit" class="btn btn-primary btn-sm w-100">Filtrar</button>
+  </div>
+</form>
+
+{% if not tickets and not request.GET %}
+{% include "includes/empty_state.html" with title="Sin tickets" message="Cargue tickets desde un archivo CSV/XLSX para listar, filtrar y exportar operación de helpdesk." import_url="/pgo/importar-tickets/" import_label="Importar tickets" %}
+{% endif %}
+
+<div class="card border-0 shadow-sm">
+  <div class="table-responsive">
+    <table class="table table-hover table-wcg mb-0">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Título</th>
+          <th>Estado</th>
+          <th>Prioridad</th>
+          <th>Sistema</th>
+          <th>Período</th>
+          <th>SLA</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for ticket in tickets %}
+        <tr>
+          <td>{{ ticket.ticket_externo_id|default:ticket.pk }}</td>
+          <td>{{ ticket.titulo|truncatechars:60 }}</td>
+          <td>{{ ticket.estado_normalizado|default:ticket.estado_raw|default:"—" }}</td>
+          <td>{{ ticket.prioridad|default:"—" }}</td>
+          <td>{{ ticket.sistema|default:"—" }}</td>
+          <td>{{ ticket.anio_mes|default:"—" }}</td>
+          <td>
+            {% if ticket.sla_cumplido %}
+            <span class="badge text-bg-success">Sí</span>
+            {% else %}
+            <span class="badge text-bg-secondary">No</span>
+            {% endif %}
+          </td>
+          <td class="text-end">
+            <a href="{% url 'wcgone_pgo:ticket_detail' ticket.pk %}" class="btn btn-sm btn-outline-primary">Ver</a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="8" class="text-center text-muted py-4">
+          No hay resultados con los filtros actuales.
+          <a href="{% url 'wcgone_pgo:importar_tickets' %}">Importar tickets</a>
+        </td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

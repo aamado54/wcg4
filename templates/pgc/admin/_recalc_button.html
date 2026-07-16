@@ -1,0 +1,45 @@
+{# Botón universal de recálculo inteligente. Espera recalc_status + year/month* en contexto. #}
+{% if recalc_status %}
+<form method="post"
+      action="{% url 'pgc:admin_smart_recalc' %}"
+      class="adm-recalc-form"
+      title="{{ recalc_status.button_hint }}">
+    {% csrf_token %}
+    <input type="hidden" name="year" value="{{ year }}">
+    <input type="hidden" name="month" value="{{ month }}">
+    <input type="hidden" name="month_from" value="{{ month_from }}">
+    <input type="hidden" name="month_to" value="{{ month_to }}">
+    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+    <button type="submit"
+            class="adm-recalc-btn {% if recalc_status.is_pending %}is-pending{% else %}is-ready{% endif %}">
+        <span class="adm-recalc-symbol" aria-hidden="true">{% if recalc_status.is_pending %}△{% else %}✓{% endif %}</span>
+        <span class="adm-recalc-text">
+            {% if recalc_status.is_pending %}
+            Recalcular pendientes
+            <span class="adm-recalc-count">({{ recalc_status.pending_count }})</span>
+            {% else %}
+            Recálculo al día
+            {% endif %}
+        </span>
+        <span class="adm-recalc-spinner" aria-hidden="true"></span>
+    </button>
+</form>
+<script>
+(function () {
+  var form = document.currentScript && document.currentScript.previousElementSibling;
+  if (!form || !form.classList || !form.classList.contains("adm-recalc-form")) {
+    form = document.querySelector(".adm-recalc-form");
+  }
+  if (!form || form.dataset.recalcBound) return;
+  form.dataset.recalcBound = "1";
+  form.addEventListener("submit", function () {
+    var btn = form.querySelector(".adm-recalc-btn");
+    if (!btn || btn.disabled) return;
+    btn.disabled = true;
+    btn.classList.add("is-working");
+    var text = btn.querySelector(".adm-recalc-text");
+    if (text) text.textContent = "Recalculando…";
+  });
+})();
+</script>
+{% endif %}

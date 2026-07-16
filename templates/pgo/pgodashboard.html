@@ -1,0 +1,44 @@
+{% extends "base_wcg.html" %}
+{% block title %}PGO — Dashboard{% endblock %}
+{% block module_nav %}
+<nav class="mt-2 d-flex flex-wrap gap-2 small">
+    <a href="{% url 'pgo:dashboard' %}">Dashboard</a>
+    <a href="{% url 'pgo:ticket_list' %}">Tickets</a>
+    <a href="{% url 'pgo:importar' %}">Importar</a>
+    <a href="{% url 'pgo:resumen_usuario' %}">Por usuario</a>
+    <a href="{% url 'pgo:resumen_unidad' %}">Por unidad</a>
+</nav>
+{% endblock %}
+{% block content %}
+<h1 class="mb-4">Dashboard PGO</h1>
+<div class="row g-3 mb-4">
+    <div class="col-md-3"><div class="card p-3 text-center"><div class="fs-3">{{ recibidos }}</div><div class="text-muted small">Tickets recibidos</div></div></div>
+    <div class="col-md-3"><div class="card p-3 text-center"><div class="fs-3">{{ abiertos }}</div><div class="text-muted small">Abiertos / en proceso</div></div></div>
+    <div class="col-md-3"><div class="card p-3 text-center"><div class="fs-3">{{ cerrados }}</div><div class="text-muted small">Cerrados</div></div></div>
+</div>
+
+<h5>Resultados por período y unidad</h5>
+<table class="table table-sm bg-white mb-4">
+<thead>
+<tr><th>Período</th><th>Unidad</th><th>Cerrados</th><th>Abiertos</th><th>T. promedio (h)</th><th>SLA %</th></tr>
+</thead>
+<tbody>
+{% for r in resultados %}
+<tr>
+    <td>{{ r.periodo }}</td>
+    <td>{{ r.unidad_negocio.nombre }}</td>
+    <td>{{ r.tickets_cerrados }}</td>
+    <td>{{ r.tickets_abiertos }}</td>
+    <td>{{ r.tiempo_promedio_horas }}</td>
+    <td>{{ r.cumplimiento_sla_pct }}%</td>
+</tr>
+{% empty %}
+<tr><td colspan="6" class="text-muted">Sin resultados calculados. Ejecute seed o importe tickets.</td></tr>
+{% endfor %}
+</tbody>
+</table>
+
+<h5>Tickets por unidad</h5>
+<table class="table table-sm bg-white"><thead><tr><th>Unidad</th><th>Total</th></tr></thead>
+<tbody>{% for r in por_unidad %}<tr><td>{{ r.unidad_negocio__nombre|default:"—" }}</td><td>{{ r.total }}</td></tr>{% empty %}<tr><td colspan="2" class="text-muted">Sin datos</td></tr>{% endfor %}</tbody></table>
+{% endblock %}

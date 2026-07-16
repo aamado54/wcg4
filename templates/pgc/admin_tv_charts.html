@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+
+{% block title %}Charts TV{% endblock %}
+
+{% block content %}
+{% include "pgc/admin/_styles.html" %}
+<style>
+  .tv-urls { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.84rem; line-height: 1.55; }
+  .tv-live-grid, .tv-thumbs {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 12px;
+    margin-top: 12px;
+  }
+  .tv-thumbs { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .tv-card, .tv-set {
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 10px 12px;
+    background: #fff;
+  }
+  .tv-set { margin-bottom: 12px; }
+  .tv-card img, .tv-thumbs img {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    object-fit: contain;
+    background: #f8fafc;
+    border-radius: 6px;
+    border: 1px solid #edf2f7;
+    margin-top: 6px;
+  }
+  .tv-missing {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #94a3b8;
+    background: #f8fafc;
+    border-radius: 6px;
+    border: 1px dashed #cbd5e1;
+    font-size: 0.82rem;
+    margin-top: 6px;
+  }
+  .tv-set-head {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .tv-slot-label {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    font-size: 0.8rem;
+  }
+  .tv-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid #edf2f7;
+  }
+  @media (max-width: 720px) {
+    .tv-thumbs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+</style>
+
+<div class="adm">
+  {% include "pgc/admin/_nav.html" with adm_nav_active="tv_charts" show_django_admin=True %}
+
+  <div class="adm-header">
+    <div class="adm-header-top">
+      <div>
+        <p class="muted" style="margin:0;">Televisor · charts vivos</p>
+        <div class="adm-period-label">TV charts</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="adm-panel" style="margin-bottom:16px;">
+    <h3 style="margin-top:0;">Vivos (lectura TV)</h3>
+    <p class="muted" style="margin-top:0;">
+      URLs públicas fijas. La exportación del tablero guarda una copia con fecha/hora;
+      aquí se <strong>copia</strong> al nombre vivo (no se renombra el archivado).
+      Directorio servidor: <code>media/tv/</code> (archive + live).
+    </p>
+    <div class="tv-urls">
+      {% for slot in live_slots %}
+      <div>
+        {{ request.scheme }}://{{ request.get_host }}{{ slot.url }}
+        {% if slot.exists %}· listo{% else %}· vacío{% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    <div class="tv-live-grid">
+      {% for slot in live_slots %}
+      <div class="tv-card">
+        <strong>{{ slot.name }}</strong>
+        {% if slot.exists %}
+        <img src="{{ slot.url }}?v={{ slot.size }}" alt="{{ slot.name }}">
+        {% else %}
+        <div class="tv-missing">Sin archivo</div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="adm-panel">
+    <h3 style="margin-top:0;">Archivo (nombres con fecha/hora)</h3>
+    <p class="muted" style="margin-top:0;">
+      Marque PNG y use <em>Copiar a TV</em> o <em>Borrar seleccionados</em>.
+      O active un set completo g1–g4 de un sello.
+    </p>
+
+    {% if not archive_sets %}
+    <p class="muted">
+      Aún no hay PNG archivados. Use <strong>Exportación 4 charts</strong> en el Tablero principal;
+      se descargan localmente y también se guardan aquí.
+    </p>
+    {% else %}
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="stamp" id="tv-stamp" value="">
+
+      {% for aset in archive_sets %}
+      <div class="tv-set">
+        <div class="tv-set-head">
+          <div>
+            <strong>Sello {{ aset.stamp }}</strong>
+            {% if aset.complete %}
+            <span class="adm-badge loaded">completo</span>
+            {% else %}
+            <span class="adm-badge observed">incompleto</span>
+            {% endif %}
+          </div>
+          {% if aset.complete %}
+          <button
+            type="submit"
+            class="adm-btn adm-btn-primary"
+            name="action"
+            value="promote_stamp"
+            onclick="document.getElementById('tv-stamp').value='{{ aset.stamp }}';"
+          >Activar este set en TV</button>
+          {% endif %}
+        </div>
+        <div class="tv-thumbs">
+          {% for s in aset.slots %}
+          <div>
+            {% if s.file %}
+            <label class="tv-slot-label">
+              <input type="checkbox" name="files" value="{{ s.name }}">
+              g{{ s.slot }}
+            </label>
+            <img src="{{ s.preview_url }}" alt="{{ s.name }}">
+            {% else %}
+            <div class="tv-slot-label muted">g{{ s.slot }}</div>
+            <div class="tv-missing">falta</div>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endfor %}
+
+      <div class="tv-actions">
+        <button type="submit" class="adm-btn adm-btn-primary" name="action" value="promote">
+          Copiar seleccionados a TV
+        </button>
+        <button
+          type="submit"
+          class="adm-btn adm-btn-secondary"
+          name="action"
+          value="delete"
+          onclick="return confirm('¿Borrar los PNG archivados seleccionados? Los vivos no se tocan.');"
+        >Borrar seleccionados</button>
+      </div>
+    </form>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

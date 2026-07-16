@@ -1,0 +1,11 @@
+{% extends "base_wcg.html" %}
+{% block title %}Importar tickets — PGO{% endblock %}
+{% block content %}
+<h1>Importar tickets</h1>
+<form method="post" enctype="multipart/form-data" class="card p-3">
+    {% csrf_token %}{{ form.as_p }}
+    <button type="submit" class="btn btn-primary mt-2">Importar</button>
+    <a href="{% url 'pgo:dashboard' %}" class="btn btn-link">Volver</a>
+</form>
+{% if batch %}<div class="card mt-3 p-3"><p>Creados: {{ batch.creados }} · Actualizados: {{ batch.actualizados }} · Errores: {{ batch.errores }}</p>{% if batch.log_texto %}<pre class="small">{{ batch.log_texto }}</pre>{% endif %}</div>{% endif %}
+{% endblock %}

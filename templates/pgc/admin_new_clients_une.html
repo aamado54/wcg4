@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% load l10n %}
+
+{% block title %}Clientes nuevos — UNE {{ label }}{% endblock %}
+
+{% block content %}
+{% include "pgc/admin/_styles.html" %}
+
+<div class="adm">
+    {% include "pgc/admin/_nav.html" with adm_nav_active="clients_une" %}
+
+    <div class="adm-header">
+        <div class="adm-header-top">
+            <div>
+                <p class="muted" style="margin:0;">Reasignar UNE · solo este campo</p>
+                <div class="adm-period-label">{{ label }}</div>
+                <p class="muted" style="margin:0;">{{ row_count }} registro(s). Opciones: 1 Factoraje · 2 Leasing · 3 Insurance · 4 Inversiones.</p>
+            </div>
+            {% include "pgc/admin/_period_select.html" %}
+        </div>
+    </div>
+
+    <div class="adm-panel">
+        <h3 style="margin-top:0;">Cambiar UNE</h3>
+        <p class="subtitle">Los demás campos son de solo lectura. Elija una de las cuatro UNEs por fila.</p>
+
+        <div class="adm-une-legend">
+            {% for une in unes %}
+            <span class="adm-une-legend-item"><strong>{{ une.short }}</strong> {{ une.name_es }}</span>
+            {% endfor %}
+        </div>
+
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="year" value="{{ year }}">
+            <input type="hidden" name="month" value="{{ month }}">
+            <input type="hidden" name="month_from" value="{{ month_from }}">
+            <input type="hidden" name="month_to" value="{{ month_to }}">
+
+            <div class="adm-scroll">
+                <table class="adm-edit-grid adm-une-grid">
+                    <thead>
+                        <tr>
+                            <th>Mes</th>
+                            <th>Cliente</th>
+                            <th>NIT</th>
+                            <th>Operación</th>
+                            <th>¿Nuevo?</th>
+                            <th>Monto</th>
+                            <th>UNE</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in rows %}
+                        <tr>
+                            <td class="muted">{{ row.month|stringformat:"02d" }}</td>
+                            <td style="text-align:left;">{{ row.client_name|default:"—" }}</td>
+                            <td>{{ row.nit|default:"—" }}</td>
+                            <td>{{ row.operation_code|default:"—" }}</td>
+                            <td>{% if row.counts_as_new %}<span style="color:#065f46;font-weight:600;">Sí</span>{% else %}<span style="color:#b91c1c;">No</span>{% endif %}</td>
+                            <td>{% if row.currency %}{{ row.currency.code }} {% endif %}{% if row.amount != None %}{{ row.amount }}{% else %}—{% endif %}</td>
+                            <td>
+                                <div class="adm-une-pick" role="radiogroup" aria-label="UNE de {{ row.client_name }}">
+                                    {% for une in unes %}
+                                    <label class="adm-une-opt {% if row.une_id == une.id %}is-current{% endif %}">
+                                        <input type="radio"
+                                               name="une_{{ row.id }}"
+                                               value="{{ une.id }}"
+                                               {% if row.une_id == une.id %}checked{% endif %}>
+                                        <span class="adm-une-short">{{ une.short }}</span>
+                                        <span class="adm-une-name">{{ une.name_es }}</span>
+                                    </label>
+                                    {% endfor %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="7" class="muted">Sin registros en este período.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            {% include "pgc/admin/_save_footer.html" with reason_required=False %}
+    </div>
+</div>
+{% endblock %}

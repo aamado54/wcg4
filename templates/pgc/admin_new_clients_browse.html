@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+{% load l10n %}
+
+{% block title %}Clientes nuevos — browse {{ label }}{% endblock %}
+
+{% block content %}
+{% include "pgc/admin/_styles.html" %}
+
+<div class="adm">
+    {% include "pgc/admin/_nav.html" with adm_nav_active="clients_browse" %}
+
+    <div class="adm-header">
+        <div class="adm-header-top">
+            <div>
+                <p class="muted" style="margin:0;">Editor de registros · clientes nuevos</p>
+                <div class="adm-period-label">{{ label }}</div>
+                <p class="muted" style="margin:0;">{{ row_count }} registro(s)
+                    {% if not header %}<span style="color:#b45309;"> · sin encabezado aún (se crea al agregar el primero)</span>{% endif %}
+                </p>
+            </div>
+            {% include "pgc/admin/_period_select.html" %}
+        </div>
+    </div>
+
+    <div class="adm-panel">
+        <h3 style="margin-top:0;">Browse · editar / eliminar / agregar</h3>
+        <p class="subtitle">Edite celdas, marque Eliminar, o complete la fila nueva al final. Guarde al terminar.</p>
+
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="year" value="{{ year }}">
+            <input type="hidden" name="month" value="{{ month }}">
+            <input type="hidden" name="month_from" value="{{ month_from }}">
+            <input type="hidden" name="month_to" value="{{ month_to }}">
+
+            <div class="adm-scroll">
+                <table class="adm-edit-grid adm-browse-grid">
+                    <thead>
+                        <tr>
+                            <th>Eliminar</th>
+                            <th>Id</th>
+                            <th>Mes</th>
+                            <th>UNE</th>
+                            <th>Cliente</th>
+                            <th>NIT</th>
+                            <th>Operación</th>
+                            <th>Contratos</th>
+                            <th>¿Nuevo?</th>
+                            <th>Moneda</th>
+                            <th>Monto</th>
+                            <th>UNE raw</th>
+                            <th>Observación</th>
+                            <th>Fila origen</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in rows %}
+                        <tr>
+                            <td>
+                                <input type="checkbox" name="delete_ids" value="{{ row.id }}" title="Eliminar este registro">
+                            </td>
+                            <td class="muted">{{ row.id }}</td>
+                            <td class="muted">{{ row.month|stringformat:"02d" }}</td>
+                            <td>
+                                <select name="row_{{ row.id }}_une" required>
+                                    {% for une in unes %}
+                                    <option value="{{ une.id }}" {% if row.une_id == une.id %}selected{% endif %}>
+                                        {{ une.short }} {{ une.name_es }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </td>
+                            <td><input type="text" name="row_{{ row.id }}_client_name" value="{{ row.client_name }}"></td>
+                            <td><input type="text" name="row_{{ row.id }}_nit" value="{{ row.nit }}" style="max-width:110px;"></td>
+                            <td><input type="text" name="row_{{ row.id }}_operation_code" value="{{ row.operation_code }}" style="max-width:120px;"></td>
+                            <td><input type="number" name="row_{{ row.id }}_previous_contracts" value="{{ row.previous_contracts }}" style="max-width:70px;"></td>
+                            <td style="text-align:center;">
+                                <input type="checkbox" name="row_{{ row.id }}_counts_as_new" value="1" {% if row.counts_as_new %}checked{% endif %}>
+                            </td>
+                            <td>
+                                <select name="row_{{ row.id }}_currency">
+                                    <option value="">—</option>
+                                    {% for cur in currencies %}
+                                    <option value="{{ cur.id }}" {% if row.currency_id == cur.id %}selected{% endif %}>{{ cur.code }}</option>
+                                    {% endfor %}
+                                </select>
+                            </td>
+                            <td><input type="text" name="row_{{ row.id }}_amount" value="{% if row.amount != None %}{{ row.amount }}{% endif %}" style="max-width:110px;"></td>
+                            <td><input type="text" name="row_{{ row.id }}_raw_une_value" value="{{ row.raw_une_value }}" style="max-width:100px;"></td>
+                            <td><input type="text" name="row_{{ row.id }}_observations" value="{{ row.observations }}"></td>
+                            <td><input type="number" name="row_{{ row.id }}_source_row_number" value="{% if row.source_row_number != None %}{{ row.source_row_number }}{% endif %}" style="max-width:70px;"></td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="14" class="muted">Sin registros en este período.</td></tr>
+                        {% endfor %}
+
+                        <tr class="adm-browse-new">
+                            <td class="muted">Nuevo</td>
+                            <td class="muted">—</td>
+                            <td>
+                                <select name="new_month">
+                                    {% for m in month_choices %}
+                                    {% if m >= month_from and m <= month_to %}
+                                    <option value="{{ m }}" {% if m == month %}selected{% endif %}>{{ m|stringformat:"02d" }}</option>
+                                    {% endif %}
+                                    {% endfor %}
+                                </select>
+                            </td>
+                            <td>
+                                <select name="new_une">
+                                    <option value="">— UNE —</option>
+                                    {% for une in unes %}
+                                    <option value="{{ une.id }}">{{ une.short }} {{ une.name_es }}</option>
+                                    {% endfor %}
+                                </select>
+                            </td>
+                            <td><input type="text" name="new_client_name" placeholder="Cliente"></td>
+                            <td><input type="text" name="new_nit" placeholder="NIT" style="max-width:110px;"></td>
+                            <td><input type="text" name="new_operation_code" placeholder="Operación" style="max-width:120px;"></td>
+                            <td><input type="number" name="new_previous_contracts" value="0" style="max-width:70px;"></td>
+                            <td style="text-align:center;"><input type="checkbox" name="new_counts_as_new" value="1"></td>
+                            <td>
+                                <select name="new_currency">
+                                    <option value="">—</option>
+                                    {% for cur in currencies %}
+                                    <option value="{{ cur.id }}">{{ cur.code }}</option>
+                                    {% endfor %}
+                                </select>
+                            </td>
+                            <td><input type="text" name="new_amount" placeholder="Monto" style="max-width:110px;"></td>
+                            <td><input type="text" name="new_raw_une_value" style="max-width:100px;"></td>
+                            <td><input type="text" name="new_observations"></td>
+                            <td><input type="number" name="new_source_row_number" style="max-width:70px;"></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            {% include "pgc/admin/_save_footer.html" with reason_required=False %}
+    </div>
+</div>
+{% endblock %}

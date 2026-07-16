@@ -1,0 +1,81 @@
+{% extends "wcgone_base.html" %}
+
+{% block title %}Guía de uso — WCG One{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+  <h1 class="h3 fw-semibold mb-1">Guía de uso — WCG One</h1>
+  <p class="text-muted mb-0">Referencia rápida para demo interna y uso gerencial.</p>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-8">
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-header bg-white fw-semibold">¿Qué es cada módulo?</div>
+      <div class="card-body small">
+        <dl>
+          <dt>CRM — Clientes</dt>
+          <dd class="mb-3">Maestro único de entidades, contactos, productos relacionados, interacciones y tareas de seguimiento comercial.</dd>
+          <dt>Balón de Riesgo</dt>
+          <dd class="mb-3">Cuadro operativo de mora y saldos vencidos por operación, basado en snapshots históricos (leasing y similares).</dd>
+          <dt>PGO — Operación</dt>
+          <dd class="mb-3">Indicadores de helpdesk: tickets, tiempos de atención, cumplimiento de SLA y resúmenes por período.</dd>
+          <dt>PGC</dt>
+          <dd class="mb-0">Plan de gestión comercial operativo integrado en este mismo proyecto Django (<code>/pgc/</code>, <code>/tablero/</code>).</dd>
+        </dl>
+      </div>
+    </div>
+
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-header bg-white fw-semibold">Ruta sugerida para demo (15–20 min)</div>
+      <ol class="list-group list-group-flush small">
+        <li class="list-group-item"><strong>1.</strong> <a href="{% url 'portal:home' %}">Panel principal</a> — KPIs globales e importaciones recientes.</li>
+        <li class="list-group-item"><strong>2.</strong> <a href="{% url 'wcgone_crm:entidad_list' %}">CRM — Clientes</a> — listado, resumen, detalle, export CSV.</li>
+        <li class="list-group-item"><strong>3.</strong> <a href="{% url 'wcgone_risk:comando_balon' %}">Riesgo — Comando Balón</a> — mora, saldos vencidos, historial por operación.</li>
+        <li class="list-group-item"><strong>4.</strong> <a href="{% url 'wcgone_pgo:dashboard' %}">PGO — Dashboard</a> — tickets abiertos/cerrados y SLA.</li>
+        <li class="list-group-item"><strong>5.</strong> <a href="/admin/">Admin Django</a> — soporte operativo y revisión de lotes de importación.</li>
+      </ol>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-white fw-semibold">Sembrar datos demo</div>
+      <div class="card-body small">
+        <pre class="bg-light p-2 rounded mb-2"><code>python manage.py seed_wcg_demo
+python manage.py seed_wcg_demo --fresh</code></pre>
+        <p class="mb-0 text-muted">El comando crea entidades, contactos, snapshots, tickets y lotes de importación simulados marcados como <code>origen=demo</code>.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-header bg-white fw-semibold">Estado del sistema</div>
+      <ul class="list-group list-group-flush small">
+        <li class="list-group-item"><span class="badge text-bg-success me-1">Operativo</span> CRM, Risk, PGO, importaciones, export CSV</li>
+        <li class="list-group-item"><span class="badge text-bg-warning me-1">Placeholder</span> PGC integración visual</li>
+        <li class="list-group-item"><span class="badge text-bg-secondary me-1">Pendiente</span> Scoring PGO avanzado, permisos por módulo</li>
+      </ul>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-white fw-semibold">Checklist pre-demo</div>
+      <ul class="list-group list-group-flush small">
+        <li class="list-group-item">☐ Usuario creado (<code>createsuperuser</code>)</li>
+        <li class="list-group-item">☐ Datos demo sembrados</li>
+        <li class="list-group-item">☐ Login en <a href="{% url 'login' %}">/accounts/login/</a></li>
+        <li class="list-group-item">☐ Panel principal con KPIs &gt; 0</li>
+        <li class="list-group-item">☐ CRM lista y detalle navegables</li>
+        <li class="list-group-item">☐ Comando Balón con snapshots</li>
+        <li class="list-group-item">☐ PGO dashboard con tickets</li>
+        <li class="list-group-item">☐ Export CSV probado</li>
+        <li class="list-group-item">☐ Admin accesible</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="mt-3">
+  <a href="{% url 'portal:home' %}" class="btn btn-outline-secondary btn-sm">← Volver al panel principal</a>
+  <a href="{% url 'wcgone_crm:importar' %}" class="btn btn-outline-primary btn-sm">Importar CRM</a>
+</div>
+{% endblock %}

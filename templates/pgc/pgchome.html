@@ -1,0 +1,33 @@
+{% extends "base_wcg.html" %}
+{% block title %}PGC — Módulo{% endblock %}
+{% block module_nav %}
+<nav class="mt-2 d-flex flex-wrap gap-2 small">
+    <a href="{% url 'pgc:dashboard' %}">Tablero</a>
+    <a href="{% url 'pgc:ingresos' %}">Ingresos vs meta</a>
+    <a href="{% url 'pgc:clientes_nuevos' %}">Clientes</a>
+    <a href="{% url 'pgc:venta_cruzada' %}">Venta cruzada</a>
+    <a href="{% url 'pgc:respuesta_reqs' %}">Respuesta reqs</a>
+</nav>
+{% endblock %}
+{% block content %}
+<h1 class="mb-3">PGC — Planeación y cumplimiento</h1>
+<p class="text-muted">Módulo existente integrado a WCG One. Las rutas históricas del PGC se mantienen en la raíz del sitio.</p>
+<div class="card p-4">
+    <h5>Accesos rápidos</h5>
+    <div class="d-flex flex-wrap gap-2 mt-2">
+        <a class="btn btn-primary" href="{% url 'pgc:dashboard' %}">Ir al tablero PGC</a>
+        {% if user.is_superuser %}
+        <a class="btn btn-outline-secondary" href="{% url 'pgc:admin_monthly' %}">Administración mensual</a>
+        {% endif %}
+    </div>
+</div>
+<div class="card mt-3 p-3 border-warning">
+    <h6 class="text-warning">TODO — Integración PGC</h6>
+    <ul class="small mb-0">
+        <li>Mapear clientes PGC existentes → <code>core.Entidad</code> (script de sincronización)</li>
+        <li>Enlazar <code>UnidadNegocio.une_pgc</code> con UNE del scoreboard</li>
+        <li>Exponer métricas PGC en dashboard WCG One si se requiere vista unificada</li>
+        <li>Migrar templates PGC a <code>base_wcg.html</code> gradualmente (hoy usan <code>base.html</code> legacy)</li>
+    </ul>
+</div>
+{% endblock %}

@@ -1,0 +1,125 @@
+{% extends "wcgone_base.html" %}
+
+{% block title %}Clientes — CRM — WCG One{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+  <h1 class="h4 fw-semibold mb-0">CRM — Clientes y entidades</h1>
+  <div class="d-flex gap-1 flex-wrap">
+    <a href="{% url 'wcgone_crm:importar' %}" class="btn btn-sm btn-outline-secondary">Importar</a>
+    <a href="{% url 'wcgone_crm:export_entidades' %}{% if export_query %}?{{ export_query }}{% endif %}" class="btn btn-sm btn-outline-primary">Exportar CSV</a>
+    <a href="{% url 'wcgone_crm:contacto_list' %}" class="btn btn-sm btn-outline-secondary">Contactos</a>
+    <a href="{% url 'wcgone_crm:tarea_list' %}" class="btn btn-sm btn-outline-secondary">Tareas</a>
+  </div>
+</div>
+
+<div class="card border-0 shadow-sm mb-3">
+  <div class="card-body py-2 px-3 small">
+    <div class="row g-2">
+      <div class="col-md-3"><strong>Total:</strong> {{ summary.total }}</div>
+      <div class="col-md-3"><strong>Activas:</strong> {{ summary.activas }}</div>
+      <div class="col-md-3"><strong>Inactivas:</strong> {{ summary.inactivas }}</div>
+      <div class="col-md-3">
+        <strong>Top ciudades:</strong>
+        {% for item in summary.por_ciudad %}{{ item.ciudad }} ({{ item.total }}){% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}
+      </div>
+    </div>
+    {% if summary.por_riesgo %}
+    <div class="mt-1 text-muted">
+      <strong>Categoría riesgo:</strong>
+      {% for item in summary.por_riesgo %}{{ item.categoria_riesgo }} ({{ item.total }}){% if not forloop.last %}, {% endif %}{% endfor %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<form method="get" class="row g-2 mb-3">
+  <div class="col-md-4">
+    <input type="search" name="q" value="{{ request.GET.q }}" class="form-control form-control-sm" placeholder="Buscar nombre o NIT">
+  </div>
+  <div class="col-md-3">
+    <select name="tipo" class="form-select form-select-sm">
+      <option value="">Todos los tipos</option>
+      {% for value, label in tipo_choices %}
+      <option value="{{ value }}"{% if request.GET.tipo == value %} selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-md-2">
+    <select name="activo" class="form-select form-select-sm">
+      <option value="">Activo / Inactivo</option>
+      <option value="1"{% if request.GET.activo == '1' %} selected{% endif %}>Activos</option>
+      <option value="0"{% if request.GET.activo == '0' %} selected{% endif %}>Inactivos</option>
+    </select>
+  </div>
+  <div class="col-md-2">
+    <button type="submit" class="btn btn-primary btn-sm w-100">Filtrar</button>
+  </div>
+</form>
+
+{% if not entidades and not request.GET %}
+{% include "includes/empty_state.html" with title="Sin clientes registrados" message="Importe un archivo CSV/XLSX con entidades o clientes para poblar el CRM y usar esta vista en demo gerencial." import_url="/crm/importar/" import_label="Importar entidades" %}
+{% endif %}
+
+<div class="card border-0 shadow-sm">
+  <div class="table-responsive">
+    <table class="table table-hover table-wcg mb-0 align-middle">
+      <thead>
+        <tr>
+          <th>Nombre</th>
+          <th>NIT</th>
+          <th>Tipo</th>
+          <th>Ciudad</th>
+          <th>Contactos</th>
+          <th>Productos</th>
+          <th>Estado</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for entidad in entidades %}
+        <tr>
+          <td>{{ entidad.nombre }}</td>
+          <td>{{ entidad.nit|default:"—" }}</td>
+          <td>{{ entidad.get_tipo_entidad_display }}</td>
+          <td>{{ entidad.ciudad|default:"—" }}</td>
+          <td>{{ entidad.num_contactos }}</td>
+          <td>{{ entidad.num_productos }}</td>
+          <td>
+            {% if entidad.activo %}
+            <span class="badge text-bg-success">Activo</span>
+            {% else %}
+            <span class="badge text-bg-secondary">Inactivo</span>
+            {% endif %}
+          </td>
+          <td class="text-end">
+            <a href="{% url 'wcgone_crm:entidad_detail' entidad.pk %}" class="btn btn-sm btn-outline-primary">Ver</a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="8" class="text-center text-muted py-4">
+            No hay resultados con los filtros actuales.
+            <a href="{% url 'wcgone_crm:importar' %}">Importar entidades</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% if is_paginated %}
+<nav class="mt-3">
+  <ul class="pagination pagination-sm justify-content-center">
+    {% if page_obj.has_previous %}
+    <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}&q={{ request.GET.q }}&tipo={{ request.GET.tipo }}&activo={{ request.GET.activo }}">Anterior</a></li>
+    {% endif %}
+    <li class="page-item disabled"><span class="page-link">Pág. {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span></li>
+    {% if page_obj.has_next %}
+    <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}&q={{ request.GET.q }}&tipo={{ request.GET.tipo }}&activo={{ request.GET.activo }}">Siguiente</a></li>
+    {% endif %}
+  </ul>
+</nav>
+{% endif %}
+{% endblock %}

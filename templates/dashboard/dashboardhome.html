@@ -1,0 +1,200 @@
+{% extends "base_wcg.html" %}
+{% load static %}
+{% block title %}Menú principal — WCG{% endblock %}
+{% block extra_head %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+{% endblock %}
+{% block extra_css %}
+.menu-page {
+  --ink: #1c2a32;
+  --muted: #5b6b75;
+  --accent: #0f766e;
+  --panel: rgba(255, 252, 248, 0.92);
+  font-family: "Source Sans 3", "Segoe UI", sans-serif;
+  color: var(--ink);
+  position: relative;
+  min-height: calc(100vh - 140px);
+  margin: -8px -12px 0;
+  padding: 28px 20px 48px;
+  overflow: hidden;
+}
+
+.menu-page h1,
+.menu-page h2,
+.menu-page .menu-brand {
+  font-family: "Fraunces", Georgia, serif;
+  letter-spacing: -0.02em;
+}
+
+.menu-bg {
+  display: none;
+}
+
+.menu-shell {
+  position: relative;
+  z-index: 1;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.menu-brand {
+  font-size: clamp(1.8rem, 3vw, 2.5rem);
+  font-weight: 700;
+  margin: 0 0 6px;
+  color: #0f3d56;
+}
+
+.menu-lead {
+  color: var(--muted);
+  margin: 0 0 28px;
+  font-size: 1.05rem;
+  max-width: 36rem;
+}
+
+.menu-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.menu-card {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  background: var(--panel);
+  border: 1px solid rgba(15, 61, 86, 0.12);
+  border-radius: 16px;
+  padding: 22px 22px 20px;
+  box-shadow: 0 10px 30px rgba(15, 61, 86, 0.08);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.menu-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(15, 118, 110, 0.35);
+  box-shadow: 0 16px 34px rgba(15, 61, 86, 0.12);
+  color: inherit;
+}
+
+.menu-card h2 {
+  margin: 0 0 8px;
+  font-size: 1.45rem;
+  color: #0f3d56;
+}
+
+.menu-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
+.menu-card .go {
+  display: inline-block;
+  margin-top: 14px;
+  font-weight: 700;
+  color: var(--accent);
+  font-size: 0.92rem;
+}
+
+.menu-foot {
+  margin-top: 28px;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.menu-foot a { color: #0f3d56; font-weight: 600; }
+
+/* Desktop: zoom solo horizontal (~15%); panel +20% alto → menos crop arriba/abajo */
+@media (min-width: 900px) {
+  .menu-page {
+    display: grid;
+    grid-template-columns: minmax(240px, 32%) 1fr;
+    gap: 28px;
+    align-items: start;
+    padding: 32px 28px 56px;
+    margin: -8px -16px 0;
+    background: #f4f6f8;
+  }
+  .menu-bg {
+    display: block;
+    position: relative;
+    border-radius: 22px;
+    overflow: hidden;
+    /* +20% altura respecto a 520px → más imagen vertical visible */
+    min-height: 624px;
+    max-height: calc((100vh - 160px) * 1.2);
+    aspect-ratio: 3 / 5;
+    box-shadow: 0 18px 40px rgba(15, 61, 86, 0.08);
+    background: #f4f6f8;
+    padding: 0;
+  }
+  .menu-bg img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center center;
+    /* Zoom solo en X (igual que antes); sin scaleY extra = menos crop vertical */
+    transform: scaleX(1.15);
+    transform-origin: center center;
+    display: block;
+  }
+  .menu-shell { padding-top: 12px; }
+}
+
+/* Mobile: sin imagen, tipografía clara y apilado simple */
+@media (max-width: 899px) {
+  .menu-page {
+    background:
+      radial-gradient(circle at top right, rgba(15, 118, 110, 0.12), transparent 40%),
+      linear-gradient(180deg, #fbf8f3 0%, #f3f6f8 100%);
+    border-radius: 0;
+  }
+  .menu-grid {
+    grid-template-columns: 1fr;
+  }
+  .menu-card {
+    border-radius: 14px;
+  }
+}
+{% endblock %}
+
+{% block content %}
+<div class="menu-page">
+  <aside class="menu-bg" aria-hidden="true">
+    <img src="{% static 'img/splashv.jpg' %}" alt="Working Capital Group">
+  </aside>
+
+  <div class="menu-shell">
+    <h1 class="menu-brand">Working Capital Group</h1>
+    <p class="menu-lead">Foco de esta demo: <strong>PGC</strong> (tablero y reportes). CRM, PGO y Balón de Riesgo están disponibles como vista preliminar.</p>
+
+    <div class="menu-grid">
+      <a class="menu-card" href="{% url 'pgc:dashboard' %}">
+        <h2>PGC</h2>
+        <p>Planeación, cumplimiento de metas y generación de reportes.</p>
+        <span class="go">Entrar →</span>
+      </a>
+      <a class="menu-card" href="{% url 'pgo:dashboard' %}">
+        <h2>PGO</h2>
+        <p>Vista preliminar — tickets, tiempos y eficiencia operativa.</p>
+        <span class="go">Entrar →</span>
+      </a>
+      <a class="menu-card" href="{% url 'crm:entidad_list' %}">
+        <h2>CRM</h2>
+        <p>Vista preliminar — entidades, contactos e interacciones.</p>
+        <span class="go">Entrar →</span>
+      </a>
+      <a class="menu-card" href="{% url 'risk:comando_balon' %}">
+        <h2>Balón de Riesgo</h2>
+        <p>Vista preliminar — estados financieros, pagos y alertas.</p>
+        <span class="go">Entrar →</span>
+      </a>
+    </div>
+  </div>
+</div>
+{% endblock %}

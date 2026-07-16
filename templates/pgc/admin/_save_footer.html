@@ -1,0 +1,13 @@
+<div class="adm-form-footer">
+    <div>
+        <label for="reason">Motivo{% if reason_required %} (obligatorio){% else %} (opcional){% endif %}</label><br>
+        <input type="text" name="reason" id="reason" {% if reason_required %}required{% endif %}
+               placeholder="Ej. corrección tras revisión de archivo">
+    </div>
+    <label style="display:flex; align-items:center; gap:6px; font-size:0.88rem;">
+        <input type="checkbox" name="recalc_after" value="1">
+        Recalcular período después de guardar
+    </label>
+    <button type="submit" class="adm-btn adm-btn-primary">Guardar cambios</button>
+</div>
+</form>

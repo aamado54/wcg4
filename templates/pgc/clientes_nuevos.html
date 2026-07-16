@@ -1,0 +1,308 @@
+{% extends "base.html" %}
+{% load l10n %}
+
+{% block title %}Clientes vs meta{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2 style="margin-top:0;">Clientes vs meta</h2>
+    <p class="muted">
+        Meta y resultado mensual con número de clientes nuevos por UNE y periodo, y detalle de todos los clientes.
+    </p>
+    <p class="muted" style="margin-top:4px;">
+        <strong>Nota:</strong> el score de ingresos se calcula en USD.
+        El Tablero reporta el resultado final en <strong>puntos</strong>.
+    </p>
+
+    <form method="get" class="filters">
+        <div>
+            <label for="start_year">Año inicial</label><br>
+            <select name="start_year" id="start_year">
+                {% for p in available_periods %}
+                    <option value="{{ p.year }}"
+                        {% if report_filter.start_year == p.year and report_filter.start_month == p.month %}selected{% endif %}>
+                        {{ p.year }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div>
+            <label for="start_month">Mes inicial</label><br>
+            <select name="start_month" id="start_month">
+                {% for p in available_periods %}
+                    <option value="{{ p.month }}"
+                        {% if report_filter.start_year == p.year and report_filter.start_month == p.month %}selected{% endif %}>
+                        {{ p.month|stringformat:"02d" }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div>
+            <label for="month_count">Cantidad de meses</label><br>
+            <select name="month_count" id="month_count">
+                {% for opt in month_count_options %}
+                    <option value="{{ opt }}" {% if report_filter.month_count == opt %}selected{% endif %}>
+                        {{ opt }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div>
+          <label for="sort">Sort</label><br>
+          <select id="sort">
+            <option value="unes"
+              {% if report_sort.group_mode == "une" %}selected{% endif %}>
+              UNEs
+            </option>
+            <option value="fechas_asc"
+              {% if report_sort.group_mode == "period" and report_sort.date_order == "asc" %}selected{% endif %}>
+              Fechas ascendentes
+            </option>
+            <option value="fechas_desc"
+              {% if report_sort.group_mode == "period" and report_sort.date_order == "desc" %}selected{% endif %}>
+              Fechas descendentes
+            </option>
+          </select>
+          <input type="hidden" name="date_order" id="date_order"
+                 value="{% if report_sort.group_mode == 'period' and report_sort.date_order == 'desc' %}desc{% else %}asc{% endif %}">
+          <input type="hidden" name="group_mode" id="group_mode"
+                 value="{% if report_sort.group_mode == 'period' %}period{% else %}une{% endif %}">
+        </div>
+      
+        <div style="align-self:end;">
+            <button type="button" id="btn-export-md">.md export</button>
+        </div>
+    </form>
+
+    <table>
+        <thead>
+            <tr>
+                <th>UNE</th>
+                <th>Periodo</th>
+                <th>Meta clientes</th>
+                <th>Clientes reales</th>
+                <th>¿Cumple?</th>
+                <th>Puntos asignados</th>
+                <th>Total del mes</th>
+                <th>Detalle</th>
+            </tr>
+
+            <style>
+              .group_separator td {
+                padding: 0;
+                height: 14px;
+                border-bottom: none;
+                background: #ffffff;
+              }
+            
+              .detail-icon-link {
+                text-decoration: none;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+              }
+            
+              .detail-icon {
+                width: 14px;
+                height: 14px;
+                border-radius: 50%;
+                border: 2px solid;
+                box-sizing: border-box;
+              }
+            
+              .detail-icon-link.has-detail .detail-icon {
+                background-color: #22c55e;
+                border-color: #15803d;
+              }
+            
+              .detail-icon-link.no-detail .detail-icon {
+                background-color: #e5e7eb;
+                border-color: #9ca3af;
+              }
+            
+              .detail-icon-link.has-detail:hover .detail-icon {
+                border-color: #166534;
+              }
+            
+              .detail-icon-link.no-detail:hover .detail-icon {
+                border-color: #6b7280;
+              }
+            </style>
+        </thead>
+        <tbody>
+            {% for row in rows %}
+                {% if row.is_separator %}
+                    <tr class="group_separator">
+                        <td colspan="8"></td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td>{{ row.target.une.name_es }}</td>
+                        <td>{{ row.target.year }}-{{ row.target.month|stringformat:"02d" }}</td>
+                        <td>
+                            {% if row.target.target_value %}
+                                {{ row.target.target_value|floatformat:0|unlocalize }}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if row.real_value_override is not None %}
+                                {{ row.real_value_override|floatformat:0|unlocalize }}
+                            {% elif row.result %}
+                                {{ row.result.measured_value|floatformat:0|unlocalize }}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if row.result and row.result.is_achieved %}
+                                <span class="ok">Sí</span>
+                            {% else %}
+                                <span class="bad">No</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if row.result %}
+                                {{ row.result.points_awarded }}
+                            {% else %}
+                                0
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if row.scorecard %}
+                                {{ row.scorecard.total_points }}
+                            {% else %}
+                                0
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a
+                                href="{% url 'pgc:clientes_nuevos_detail' %}?une_id={{ row.target.une.id }}&year={{ row.target.year }}&month={{ row.target.month }}"
+                                class="detail-icon-link {% if row.has_detail %}has-detail{% else %}no-detail{% endif %}"
+                                aria-label="Ver detalle de clientes"
+                            >
+                                <span class="detail-icon"></span>
+                            </a>
+                        </td>
+                    </tr>
+          
+                {% endif %}
+            {% empty %}
+                <tr>
+                    <td colspan="8">No hay datos de clientes para los filtros seleccionados.</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const startYear = document.getElementById("start_year");
+    const startMonth = document.getElementById("start_month");
+    const sort = document.getElementById("sort");
+    const dateOrder = document.getElementById("date_order");
+    const groupMode = document.getElementById("group_mode");
+    const btn = document.getElementById("btn-export-md");
+
+    function syncSortFields() {
+        if (!sort) return;
+        if (sort.value === "unes") {
+            groupMode.value = "une";
+            dateOrder.value = "asc";
+        } else if (sort.value === "fechas_desc") {
+            groupMode.value = "period";
+            dateOrder.value = "desc";
+        } else {
+            groupMode.value = "period";
+            dateOrder.value = "asc";
+        }
+    }
+
+    const filterForm = document.querySelector("form.filters");
+    function applyFilters() {
+        if (typeof syncSortFields === "function") syncSortFields();
+        if (filterForm) filterForm.submit();
+    }
+
+    if (sort) {
+        sort.addEventListener("change", applyFilters);
+        syncSortFields();
+    }
+
+    ["month_count", "start_year", "start_month"].forEach(function (id) {
+        const el = document.getElementById(id);
+        if (el && el.tagName === "SELECT") {
+            el.addEventListener("change", applyFilters);
+        }
+    });
+
+    if (!btn) return;
+
+    btn.addEventListener("click", async function () {
+        syncSortFields();
+      
+        const params = new URLSearchParams({
+            start_year: startYear.value || "",
+            start_month: startMonth.value || "",
+            month_count: document.getElementById("month_count")?.value || "",
+            date_order: dateOrder.value || "asc",
+            group_mode: groupMode.value || "une"
+        });
+
+        const url = `{% url 'pgc:clientes_nuevos_export_md' %}?` + params.toString();
+
+        btn.disabled = true;
+        const originalText = btn.textContent;
+        btn.textContent = "Generando...";
+
+        try {
+            const response = await fetch(url, {
+                method: "GET",
+                headers: {
+                    "X-Requested-With": "XMLHttpRequest"
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error("No se pudo generar el archivo Markdown.");
+            }
+
+            const blob = await response.blob();
+
+            let filename = "pgc-clientes-nuevos.md";
+            const disposition = response.headers.get("Content-Disposition");
+            if (disposition) {
+                const utf8Match = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+                const asciiMatch = disposition.match(/filename="([^"]+)"/i);
+
+                if (utf8Match && utf8Match[1]) {
+                    filename = decodeURIComponent(utf8Match[1]);
+                } else if (asciiMatch && asciiMatch[1]) {
+                    filename = asciiMatch[1];
+                }
+            }
+
+            const objectUrl = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = objectUrl;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(objectUrl);
+        } catch (error) {
+            alert(error.message || "Error generando la exportación.");
+        } finally {
+            btn.disabled = false;
+            btn.textContent = originalText;
+        }
+    });
+});
+</script>
+
+{% endblock %}

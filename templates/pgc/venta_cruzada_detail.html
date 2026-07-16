@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}Detalle venta cruzada
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const form = document.querySelector("form.filters");
+    if (!form) return;
+    form.querySelectorAll("select").forEach(function (sel) {
+        sel.addEventListener("change", function () { form.submit(); });
+    });
+});
+</script>
+
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>Detalle de venta cruzada</h2>
+
+    <form method="get" class="filters">
+        <div>
+            <label for="year">Año</label><br>
+            <select name="year" id="year">
+                <option value="">Todos</option>
+                {% for y in available_years %}
+                    <option value="{{ y }}" {% if selected_year == y|stringformat:"s" %}selected{% endif %}>{{ y }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div>
+            <label for="month">Mes</label><br>
+            <select name="month" id="month">
+                <option value="">Todos</option>
+                {% for m in months %}
+                    <option value="{{ m }}" {% if selected_month == m|stringformat:"s" %}selected{% endif %}>{{ m }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div>
+            <label for="une">UNE origen</label><br>
+            <select name="une" id="une">
+                <option value="">Todas</option>
+                {% for item in unes %}
+                    <option value="{{ item.code }}" {% if selected_une == item.code %}selected{% endif %}>{{ item.name_es }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+    </form>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Periodo</th>
+                <th>UNE origen</th>
+                <th>UNE destino</th>
+                <th>Cliente</th>
+                <th>Operación</th>
+                <th>Fecha</th>
+                <th>Moneda</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in rows %}
+            <tr>
+                <td>{{ row.year }}-{{ row.month|stringformat:"02d" }}</td>
+                <td>{{ row.une_origin.name_es|default:row.raw_une_origin }}</td>
+                <td>{{ row.une_destination.name_es|default:row.raw_une_destination }}</td>
+                <td>{{ row.client_name|default:"—" }}</td>
+                <td>{{ row.operation_code|default:"—" }}</td>
+                <td>{{ row.date|default:"—" }}</td>
+                <td>{% if row.currency %}{{ row.currency.code }}{% else %}—{% endif %}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="7" style="text-align:center;">No hay detalles de venta cruzada para los filtros seleccionados.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
+

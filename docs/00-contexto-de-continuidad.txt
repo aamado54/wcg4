@@ -1,0 +1,21 @@
+# Contexto de continuidad
+
+Este proyecto `wcg_one` nace como la nueva implementación integrada de WCG One.
+
+Existe un sistema legado previo en:
+~/wc/pgc1/dashboard
+
+Ese sistema corresponde al módulo PGC ya desarrollado y NO debe reescribirse por completo en esta fase.
+
+Decisión aprobada:
+- `wcg_one` será el nuevo proyecto Django contenedor.
+- `pgc1/dashboard` seguirá existiendo como legado.
+- La convivencia inicial se manejará mediante una app `legacy_pgc1`.
+- Primero se construyen portal, core, crm, risk y pgo.
+- Luego se integra progresivamente PGC.
+
+Los documentos fuente de decisión son:
+- documento-2-especificacion-funcional-v1-wcg-one.md
+- documento-3-especificacion-tecnica-django-wcg-one.md
+- documento-4-modelos-migraciones-admin-para-cursor.md
+- documento-5-prompt-maestro-para-cursor-construccion-wcg-one.md

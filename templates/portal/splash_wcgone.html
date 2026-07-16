@@ -1,0 +1,117 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>WCG One</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      height: 100%;
+      background: #0f1a2e;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    }
+    .splash-page {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+    }
+    .splash-enter {
+      position: relative;
+      display: block;
+      width: 100%;
+      max-width: 100vw;
+      max-height: 100vh;
+      margin: 0;
+      padding: 0;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      text-decoration: none;
+      color: inherit;
+      outline: none;
+    }
+    .splash-enter:focus-visible {
+      outline: 2px solid rgba(255, 255, 255, 0.85);
+      outline-offset: 4px;
+    }
+    .splash-enter picture,
+    .splash-enter img {
+      display: block;
+      width: 100%;
+      max-height: 100vh;
+      object-fit: contain;
+      margin: 0 auto;
+    }
+    .splash-overlay {
+      position: absolute;
+      left: 50%;
+      bottom: clamp(1.25rem, 4vw, 2.5rem);
+      transform: translateX(-50%);
+      text-align: center;
+      color: #fff;
+      text-shadow: 0 1px 8px rgba(0, 0, 0, 0.65);
+      pointer-events: none;
+      padding: 0 1rem;
+      max-width: 90vw;
+    }
+    .splash-overlay .lead {
+      margin: 0 0 0.35rem;
+      font-size: clamp(1rem, 2.5vw, 1.25rem);
+      font-weight: 500;
+      letter-spacing: 0.02em;
+    }
+    .splash-overlay .hint {
+      margin: 0;
+      font-size: clamp(0.75rem, 1.8vw, 0.875rem);
+      opacity: 0.88;
+    }
+  </style>
+</head>
+<body>
+  <div class="splash-page">
+    <a
+      href="{% url 'portal:home' %}"
+      class="splash-enter"
+      id="splash-enter"
+      aria-label="Entrar a WCG One"
+    >
+      <picture>
+        <source
+          media="(max-width: 767px)"
+          srcset="{% static 'portal/img/wcg_splash_v1v.jpg' %}"
+        >
+        <img
+          src="{% static 'portal/img/wcg_splash_v1h.jpg' %}"
+          alt="Working Capital Group — WCG One"
+          width="1920"
+          height="1080"
+        >
+      </picture>
+      <div class="splash-overlay">
+        <p class="lead">Haga clic para entrar</p>
+        <p class="hint">También puede presionar Enter o Espacio</p>
+      </div>
+    </a>
+  </div>
+  <script>
+    (function () {
+      var link = document.getElementById("splash-enter");
+      function goPanel() {
+        window.location.href = link.href;
+      }
+      document.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" || e.key === " " || e.code === "Space") {
+          e.preventDefault();
+          goPanel();
+        }
+      });
+      link.focus();
+    })();
+  </script>
+</body>
+</html>

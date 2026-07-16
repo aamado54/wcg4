@@ -1,0 +1,90 @@
+{% extends "wcgone_base.html" %}
+
+{% block title %}Resultados — PGO — WCG One{% endblock %}
+
+{% block content %}
+<style>
+  /*
+    Mismo patrón visual que PGC (dashboard.html):
+    Sí  = cian-azulado; No = ámbar-naranja (distingibles también en daltonismo verde-rojo).
+    Fuente de verdad: PgoPeriodScore.clasifica (BooleanField), no se recalcula aquí.
+  */
+  table.pgo-scoreboard tbody tr.row-clasifica-si td { background: #dff6fb; }
+  table.pgo-scoreboard tbody tr.row-clasifica-no td { background: #fde8c8; }
+  table.pgo-scoreboard tbody tr.row-clasifica-si td:first-child { box-shadow: inset 5px 0 0 #0284c7; }
+  table.pgo-scoreboard tbody tr.row-clasifica-no td:first-child { box-shadow: inset 5px 0 0 #c2410c; }
+  table.pgo-scoreboard tbody tr.row-clasifica-si:hover td { background: #cfeef7; }
+  table.pgo-scoreboard tbody tr.row-clasifica-no:hover td { background: #fbd9a8; }
+</style>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h4 fw-semibold mb-0">Resultados por período</h1>
+  <a href="{% url 'wcgone_pgo:dashboard' %}" class="btn btn-sm btn-outline-secondary">Dashboard</a>
+</div>
+
+<form method="get" class="mb-3">
+  <div class="input-group input-group-sm" style="max-width: 200px;">
+    <input type="text" name="periodo" value="{{ request.GET.periodo }}" class="form-control" placeholder="YYYY-MM">
+    <button class="btn btn-primary" type="submit">Filtrar</button>
+  </div>
+</form>
+
+<div class="row g-3">
+  <div class="col-lg-6">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-white fw-semibold">Puntajes por período</div>
+      <div class="table-responsive">
+        <table class="table table-sm mb-0 pgo-scoreboard">
+          <thead><tr><th>Período</th><th>Área</th><th>Unidad</th><th class="text-end">Puntaje</th><th>Clasifica</th></tr></thead>
+          <tbody>
+            {% for score in scores %}
+            <tr class="{% if score.clasifica %}row-clasifica-si{% else %}row-clasifica-no{% endif %}">
+              <td>{{ score.periodo }}</td>
+              <td>{{ score.area|default:"—" }}</td>
+              <td>{{ score.unidad_negocio|default:"—" }}</td>
+              <td class="text-end">{{ score.puntaje_total }}</td>
+              <td>
+                {% if score.clasifica %}
+                  <span class="badge text-bg-success">Sí</span>
+                {% else %}
+                  <span class="badge text-bg-secondary">No</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="text-muted text-center py-3">Sin puntajes calculados.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="card-footer bg-white small text-muted">
+        Color de fila según <code>PgoPeriodScore.clasifica</code> (valor almacenado).
+        En el código actual no hay comando que calcule ese booleano ni umbral ≥80.
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-white fw-semibold">Agregados mensuales</div>
+      <div class="table-responsive">
+        <table class="table table-sm mb-0">
+          <thead><tr><th>Período</th><th>Unidad</th><th>Recibidos</th><th>Cerrados</th><th>Prom. h</th></tr></thead>
+          <tbody>
+            {% for agg in aggs %}
+            <tr>
+              <td>{{ agg.periodo }}</td>
+              <td>{{ agg.unidad_negocio }}</td>
+              <td>{{ agg.tickets_recibidos }}</td>
+              <td>{{ agg.tickets_cerrados }}</td>
+              <td>{{ agg.tiempo_promedio_horas }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="text-muted text-center py-3">Sin agregados mensuales.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

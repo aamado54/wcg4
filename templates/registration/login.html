@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div style="max-width: 420px; margin: 3rem auto; padding: 2rem; border: 1px solid #ddd; border-radius: 12px;">
+  <h1 style="margin-bottom: 1rem;">Iniciar sesión</h1>
+
+  {% if form.errors %}
+    <div style="margin-bottom: 1rem; color: #b00020;">
+      Usuario o contraseña incorrectos. Intenta de nuevo.
+    </div>
+  {% endif %}
+
+  {% if next %}
+    <div style="margin-bottom: 1rem; color: #555;">
+      Debes iniciar sesión para continuar.
+    </div>
+  {% endif %}
+
+  <form method="post">
+    {% csrf_token %}
+    <div style="margin-bottom: 1rem;">
+      <label for="{{ form.username.id_for_label }}">Usuario</label><br>
+      {{ form.username }}
+    </div>
+    <div style="margin-bottom: 1rem;">
+      <label for="{{ form.password.id_for_label }}">Contraseña</label><br>
+      {{ form.password }}
+    </div>
+    <button type="submit" style="padding: 0.6rem 1rem;">Entrar</button>
+    {% if next %}
+      <input type="hidden" name="next" value="{{ next }}">
+    {% endif %}
+  </form>
+</div>
+{% endblock %}

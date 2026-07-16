@@ -1,0 +1,116 @@
+{% extends "wcgone_base.html" %}
+
+{% block title %}{{ entidad.nombre }} — CRM — WCG One{% endblock %}
+
+{% block content %}
+<div class="mb-2">
+  <a href="{% url 'wcgone_crm:entidad_list' %}" class="btn btn-sm btn-outline-secondary">← Volver a clientes</a>
+</div>
+<div class="d-flex justify-content-between align-items-start mb-3">
+  <div>
+    <h1 class="h4 fw-semibold mb-1">{{ entidad.nombre }}</h1>
+    <p class="text-muted small mb-0">
+      {{ entidad.get_tipo_entidad_display }}
+      {% if entidad.nit %} · NIT {{ entidad.nit }}{% endif %}
+      {% if entidad.ciudad %} · {{ entidad.ciudad }}{% endif %}
+    </p>
+  </div>
+  {% if entidad.activo %}
+  <span class="badge text-bg-success">Activo</span>
+  {% else %}
+  <span class="badge text-bg-secondary">Inactivo</span>
+  {% endif %}
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-4">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header bg-white fw-semibold">Datos generales</div>
+      <div class="card-body small">
+        <dl class="row mb-0">
+          <dt class="col-5">Comercial</dt><dd class="col-7">{{ entidad.nombre_comercial|default:"—" }}</dd>
+          <dt class="col-5">Email</dt><dd class="col-7">{{ entidad.email|default:"—" }}</dd>
+          <dt class="col-5">Teléfono</dt><dd class="col-7">{{ entidad.telefono|default:"—" }}</dd>
+          <dt class="col-5">Sector</dt><dd class="col-7">{{ entidad.sector_economico|default:"—" }}</dd>
+          <dt class="col-5">Riesgo</dt><dd class="col-7">{{ entidad.categoria_riesgo|default:"—" }}</dd>
+        </dl>
+        {% if entidad.notas %}
+        <hr>
+        <p class="mb-0 text-muted">{{ entidad.notas }}</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-8">
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-header bg-white fw-semibold">Contactos</div>
+      <div class="table-responsive">
+        <table class="table table-sm mb-0">
+          <thead><tr><th>Nombre</th><th>Cargo</th><th>Email</th><th>Teléfono</th></tr></thead>
+          <tbody>
+            {% for c in contactos %}
+            <tr><td>{{ c.nombre }}</td><td>{{ c.cargo|default:"—" }}</td><td>{{ c.email|default:"—" }}</td><td>{{ c.telefono_movil|default:"—" }}</td></tr>
+            {% empty %}
+            <tr><td colspan="4" class="text-muted text-center py-3">Sin contactos.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-header bg-white fw-semibold">Productos relacionados</div>
+      <div class="table-responsive">
+        <table class="table table-sm mb-0">
+          <thead><tr><th>Producto</th><th>Unidad</th><th>Estado</th><th>Inicio</th></tr></thead>
+          <tbody>
+            {% for rel in relaciones_producto %}
+            <tr>
+              <td>{{ rel.producto.nombre }}</td>
+              <td>{{ rel.unidad_negocio|default:"—" }}</td>
+              <td>{{ rel.estado|default:"—" }}</td>
+              <td>{{ rel.fecha_inicio|date:"d/m/Y"|default:"—" }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4" class="text-muted text-center py-3">Sin productos relacionados.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="row g-3">
+      <div class="col-md-6">
+        <div class="card border-0 shadow-sm h-100">
+          <div class="card-header bg-white fw-semibold">Interacciones recientes</div>
+          <ul class="list-group list-group-flush small">
+            {% for i in interacciones %}
+            <li class="list-group-item">
+              <strong>{{ i.fecha|date:"d/m/Y" }}</strong> — {{ i.tipo_interaccion }}: {{ i.resumen }}
+            </li>
+            {% empty %}
+            <li class="list-group-item text-muted">Sin interacciones.</li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="card border-0 shadow-sm h-100">
+          <div class="card-header bg-white fw-semibold">Tareas abiertas</div>
+          <ul class="list-group list-group-flush small">
+            {% for t in tareas %}
+            <li class="list-group-item">
+              {{ t.descripcion|truncatechars:60 }}
+              {% if t.fecha_limite %}<span class="text-muted">· {{ t.fecha_limite|date:"d/m/Y" }}</span>{% endif %}
+            </li>
+            {% empty %}
+            <li class="list-group-item text-muted">Sin tareas pendientes.</li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

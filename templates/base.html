@@ -1,0 +1,344 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}PGC - WCG{% endblock %}</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            background: #f4f6f8;
+            color: #1f2937;
+        }
+
+        header {
+            background: #0f3d56;
+            color: white;
+            padding: 16px 24px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 18px;
+            flex-wrap: wrap;
+        }
+
+        .brand-title {
+            margin: 0;
+            font-size: 1.35rem;
+        }
+
+        .top-nav {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .top-nav a {
+            color: white;
+            text-decoration: none;
+            padding: 8px 10px;
+            border-radius: 6px;
+            background: rgba(255,255,255,0.08);
+        }
+
+        .top-nav a:hover {
+            background: rgba(255,255,255,0.16);
+        }
+
+        /* Mismo gris claro que la mayor superficie de /panel/ (#f4f6f8) */
+        .top-nav a.nav-menu-principal {
+            background: #f4f6f8;
+            color: #0f3d56;
+            font-weight: 700;
+        }
+
+        .top-nav a.nav-menu-principal:hover {
+            background: #e8edf2;
+            color: #0a2f42;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            position: relative;
+        }
+
+        .user-badge {
+            font-size: 0.92rem;
+            color: #dbeafe;
+            white-space: nowrap;
+        }
+
+        .gear-wrap {
+            position: relative;
+        }
+
+        .gear-btn {
+            width: 42px;
+            height: 42px;
+            border-radius: 999px;
+            border: 1px solid rgba(255,255,255,0.25);
+            background: rgba(255,255,255,0.10);
+            color: white;
+            cursor: pointer;
+            font-size: 1.2rem;
+            line-height: 1;
+        }
+
+        .gear-btn:hover {
+            background: rgba(255,255,255,0.18);
+        }
+
+        .gear-menu {
+            position: absolute;
+            right: 0;
+            top: calc(100% + 8px);
+            min-width: 240px;
+            background: white;
+            color: #1f2937;
+            border: 1px solid #d1d5db;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.14);
+            display: none;
+            z-index: 1000;
+            overflow: hidden;
+        }
+
+        .gear-menu.open {
+            display: block;
+        }
+
+        .gear-menu a,
+        .gear-menu button {
+            display: block;
+            width: 100%;
+            text-align: left;
+            padding: 12px 14px;
+            background: white;
+            color: #1f2937;
+            border: none;
+            border-bottom: 1px solid #eef2f7;
+            text-decoration: none;
+            font-size: 0.95rem;
+            cursor: pointer;
+        }
+
+        .gear-menu a:hover,
+        .gear-menu button:hover {
+            background: #f8fafc;
+        }
+
+        .gear-menu .menu-label {
+            padding: 10px 14px;
+            font-size: 0.82rem;
+            font-weight: 700;
+            color: #64748b;
+            background: #f8fafc;
+            border-bottom: 1px solid #e5e7eb;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        main {
+            padding: 24px;
+        }
+
+        .card {
+            background: white;
+            border: 1px solid #d9e2ec;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+
+        .filters {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 18px;
+        }
+
+        label {
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        select, button {
+            padding: 8px 10px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            font-size: 0.95rem;
+        }
+
+        button {
+            background: #0f766e;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 8px;
+        }
+
+        th, td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #e5e7eb;
+            text-align: center;
+            font-size: 0.95rem;
+            vertical-align: middle;
+        }
+
+        th {
+            background: #f8fafc;
+            text-align: center;
+        }
+
+        th:first-child, td:first-child {
+            text-align: left;
+        }
+
+        .ok {
+            color: #166534;
+            font-weight: 700;
+        }
+
+        .bad {
+            color: #b91c1c;
+            font-weight: 700;
+        }
+
+        .muted {
+            color: #64748b;
+        }
+
+        tbody tr:hover {
+            background: #f8fafc;
+        }
+
+        @media (max-width: 900px) {
+            .header-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .header-left,
+            .header-right {
+                justify-content: space-between;
+            }
+
+            .top-nav {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container header-row">
+            <div class="header-left">
+                <h1 class="brand-title">PGC - Working Capital Group</h1>
+
+                {% if user.is_authenticated %}
+                <nav class="top-nav">
+                    <a href="{% url 'portal:home' %}" class="nav-menu-principal">Menú principal</a>
+                    <a href="{% url 'pgc:dashboard' %}">Tablero</a>
+                    <a href="{% url 'pgc:ingresos' %}">Ingresos vs meta</a>
+                    <a href="{% url 'pgc:clientes_nuevos' %}">Clientes</a>
+                    <a href="{% url 'pgc:venta_cruzada' %}">Venta cruzada</a>
+                    <a href="{% url 'pgc:respuesta_reqs' %}">Respuesta reqs</a>
+                  <a href="{% static 'docs/WCG-PGC.pdf' %}" target="_blank" rel="noopener noreferrer">Ayuda</a>
+                </nav>
+                {% endif %}
+            </div>
+
+            {% if user.is_authenticated %}
+            <div class="header-right">
+                <div class="user-badge">
+                    {{ user.username }}
+                </div>
+
+                <div class="gear-wrap">
+                    <button type="button" class="gear-btn" id="gear-btn" aria-label="Abrir opciones">⚙</button>
+
+                    <div class="gear-menu" id="gear-menu">
+                        <div class="menu-label">Sesión</div>
+                        <form method="post" action="{% url 'logout' %}">
+                            {% csrf_token %}
+                            <button type="submit">Cambiar de usuario</button>
+                        </form>
+
+                        {% if user.is_superuser %}
+                            <div class="menu-label">superusuario</div>
+                            <a href="{% url 'pgc:admin_monthly' %}">Administración</a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </header>
+
+    <main>
+
+        {% if messages %}
+          <div style="margin:16px 0;">
+            {% for message in messages %}
+              <div style="padding:12px 14px; border-radius:8px; margin-bottom:10px; background:#ecfdf5; border:1px solid #a7f3d0; color:#065f46;">
+                {{ message }}
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      
+        <div class="container">
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+
+    {% if user.is_authenticated %}
+    <script>
+        (function () {
+            const btn = document.getElementById("gear-btn");
+            const menu = document.getElementById("gear-menu");
+            if (!btn || !menu) return;
+
+            btn.addEventListener("click", function (e) {
+                e.stopPropagation();
+                menu.classList.toggle("open");
+            });
+
+            document.addEventListener("click", function (e) {
+                if (!menu.contains(e.target) && !btn.contains(e.target)) {
+                    menu.classList.remove("open");
+                }
+            });
+
+            document.addEventListener("keydown", function (e) {
+                if (e.key === "Escape") {
+                    menu.classList.remove("open");
+                }
+            });
+        })();
+    </script>
+    {% endif %}
+</body>
+</html>

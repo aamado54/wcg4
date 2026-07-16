@@ -1,0 +1,66 @@
+{% extends "wcgone_base.html" %}
+
+{% block title %}{{ cliente.nombre }} — Balón de Riesgo — WCG One{% endblock %}
+
+{% block content %}
+<div class="mb-3">
+  <h1 class="h4 fw-semibold mb-1">{{ cliente.nombre }}</h1>
+  <p class="text-muted small mb-0">NIT {{ cliente.nit|default:"—" }} · {{ cliente.get_tipo_entidad_display }}</p>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-white fw-semibold">Operaciones</div>
+      <div class="table-responsive">
+        <table class="table table-sm mb-0">
+          <thead><tr><th>Código</th><th>Producto</th><th>Unidad</th><th>Estado</th><th></th></tr></thead>
+          <tbody>
+            {% for op in operaciones %}
+            <tr>
+              <td>{{ op.codigo_operacion }}</td>
+              <td>{{ op.producto|default:"—" }}</td>
+              <td>{{ op.unidad_negocio|default:"—" }}</td>
+              <td>{{ op.estado|default:"—" }}</td>
+              <td class="text-end">
+                <a href="{% url 'wcgone_risk:operacion_detail' op.pk %}" class="btn btn-sm btn-outline-primary">Historial</a>
+              </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="text-muted text-center py-3">Sin operaciones.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-5">
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-header bg-white fw-semibold">Alertas activas</div>
+      <ul class="list-group list-group-flush small">
+        {% for alerta in alertas %}
+        <li class="list-group-item">
+          <span class="badge text-bg-{{ alerta.severidad|default:'secondary' }}">{{ alerta.tipo_alerta }}</span>
+          {{ alerta.mensaje|truncatechars:80 }}
+        </li>
+        {% empty %}
+        <li class="list-group-item text-muted">Sin alertas activas.</li>
+        {% endfor %}
+      </ul>
+    </div>
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-white fw-semibold">Snapshots recientes</div>
+      <ul class="list-group list-group-flush small">
+        {% for snap in snapshots_recientes %}
+        <li class="list-group-item d-flex justify-content-between">
+          <span>{{ snap.operacion.codigo_operacion }} · {{ snap.fecha_snapshot|date:"d/m/Y" }}</span>
+          <span class="text-muted">{{ snap.due_days|default:0 }} días</span>
+        </li>
+        {% empty %}
+        <li class="list-group-item text-muted">Sin snapshots.</li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+</div>
+{% endblock %}

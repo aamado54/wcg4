@@ -1,0 +1,29 @@
+{% extends "wcgone_base.html" %}
+
+{% block title %}PGC — WCG One{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-white">
+        <h1 class="h4 fw-semibold mb-0">Módulo PGC</h1>
+      </div>
+      <div class="card-body">
+        <p class="text-muted">
+          El módulo PGC se integra progresivamente a WCG One. En esta etapa opera como
+          <strong>placeholder ordenado</strong> mientras se completa la absorción del sistema legado.
+        </p>
+        <div class="alert alert-info small mb-4">
+          El PGC funcional completo sigue disponible en el sistema legado.
+          Use el enlace inferior para acceder durante la transición.
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+          <a href="{% url 'pgc:module_home' %}" class="btn btn-primary">Ir a PGC Legado</a>
+          <a href="{% url 'portal:home' %}" class="btn btn-outline-secondary">Volver al inicio</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

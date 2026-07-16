@@ -1,0 +1,36 @@
+{# expects year, month, month_from, month_to, adm_nav_active; optional show_django_admin, recalc_status #}
+<div class="adm-nav">
+    <a href="{% url 'pgc:admin_monthly' %}?year={{ year }}&month_from={{ month_from }}&month_to={{ month_to }}&month={{ month }}"
+       class="{% if adm_nav_active == 'monthly' %}active{% endif %}">Tablero mensual</a>
+    <a href="{% url 'pgc:admin_ingresos_year' %}?year={{ year }}&month_from={{ month_from }}&month_to={{ month_to }}&month={{ month }}"
+       class="{% if adm_nav_active == 'ingresos_year' %}active{% endif %}">Ingresos (año)</a>
+    <a href="{% url 'pgc:admin_manual_edit' %}?year={{ year }}&month_from={{ month_from }}&month_to={{ month_to }}&month={{ month }}"
+       class="{% if adm_nav_active == 'manual' %}active{% endif %}">Edición manual</a>
+    <a href="{% url 'pgc:admin_new_clients_browse' %}?year={{ year }}&month_from={{ month_from }}&month_to={{ month_to }}&month={{ month }}"
+       class="{% if adm_nav_active == 'clients_browse' %}active{% endif %}">Clientes (browse)</a>
+    <a href="{% url 'pgc:admin_new_clients_une' %}?year={{ year }}&month_from={{ month_from }}&month_to={{ month_to }}&month={{ month }}"
+       class="{% if adm_nav_active == 'clients_une' %}active{% endif %}">Clientes (UNE)</a>
+    <a href="{% url 'pgc:admin_monthly_log' %}?year={{ year }}&month_from={{ month_from }}&month_to={{ month_to }}&month={{ month }}"
+       class="{% if adm_nav_active == 'log' %}active{% endif %}">Bitácora</a>
+    <a href="{% url 'pgc:admin_tv_charts' %}?year={{ year }}&month_from={{ month_from }}&month_to={{ month_to }}&month={{ month }}"
+       class="{% if adm_nav_active == 'tv_charts' %}active{% endif %}">TV charts</a>
+    <div class="adm-nav-recalc">
+        {% include "pgc/admin/_recalc_button.html" %}
+    </div>
+    {% if show_django_admin %}
+    <a href="/admin/" class="adm-btn-ghost">Soporte técnico</a>
+    {% endif %}
+</div>
+{% if recalc_status and recalc_status.is_pending and recalc_status.pending_periods %}
+<details class="adm-recalc-details">
+    <summary>Ver {{ recalc_status.pending_count }} período(s) pendiente(s)</summary>
+    <ul>
+        {% for p in recalc_status.pending_periods %}
+        <li>
+            <strong>{{ p.label }}</strong>
+            — {{ p.reasons|join:"; " }}
+        </li>
+        {% endfor %}
+    </ul>
+</details>
+{% endif %}

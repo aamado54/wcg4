@@ -1,0 +1,1107 @@
+{% extends "base.html" %}
+
+{% block title %}Tablero principal PGC{% endblock %}
+
+{% block content %}
+<style>
+  .group_separator td {
+    padding: 0;
+    height: 14px;
+    border-bottom: none;
+    background: #ffffff;
+  }
+
+  /*
+    Filas Clasifica Sí/No:
+    No usar verde/rojo puros (poco distinguibles en daltonismo deuteran/protan).
+    Sí  = cian-azulado claro (tono frío)
+    No  = ámbar-naranja claro (tono cálido)
+    + borde izquierdo más saturado como refuerzo.
+  */
+  table.pgc-scoreboard tbody tr.row-clasifica-si td {
+    background: #dff6fb;
+  }
+  table.pgc-scoreboard tbody tr.row-clasifica-no td {
+    background: #fde8c8;
+  }
+  table.pgc-scoreboard tbody tr.row-clasifica-si td:first-child {
+    box-shadow: inset 5px 0 0 #0284c7;
+  }
+  table.pgc-scoreboard tbody tr.row-clasifica-no td:first-child {
+    box-shadow: inset 5px 0 0 #c2410c;
+  }
+  table.pgc-scoreboard tbody tr.row-clasifica-si:hover td {
+    background: #cfeef7;
+  }
+  table.pgc-scoreboard tbody tr.row-clasifica-no:hover td {
+    background: #fbd9a8;
+  }
+</style>
+<div class="card">
+    <h2 style="margin-top:0;">Tablero principal de puntos - {{ selected_mode|default:"modo1" }}</h2>
+  
+    <p class="muted">
+        Resumen mensual de puntos por UNE y periodo.
+    </p>
+
+    <form method="get" class="filters">
+        <div>
+            <label for="start_period">Desde</label><br>
+            <select id="start_period">
+                {% for p in available_periods %}
+                    <option
+                        value="{{ p.year }}-{{ p.month|stringformat:'02d' }}"
+                        data-year="{{ p.year }}"
+                        data-month="{{ p.month }}"
+                        {% if report_filter.start_year == p.year and report_filter.start_month == p.month %}selected{% endif %}
+                    >
+                        {{ p.year }}-{{ p.month|stringformat:"02d" }}
+                    </option>
+                {% endfor %}
+            </select>
+            <input type="hidden" name="start_year" id="start_year" value="{{ report_filter.start_year }}">
+            <input type="hidden" name="start_month" id="start_month" value="{{ report_filter.start_month }}">
+        </div>
+
+        <div>
+            <label for="month_count">Meses incluidos</label><br>
+            <select name="month_count" id="month_count">
+                {% for n in month_count_options %}
+                    <option value="{{ n }}" {% if report_filter.month_count == n %}selected{% endif %}>
+                        {{ n }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div>
+            <label for="mode">Modalidad</label><br>
+            <select name="mode" id="mode">
+                {% for opt in mode_options %}
+                    <option value="{{ opt }}" {% if selected_mode == opt %}selected{% endif %}>
+                        {{ opt }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+      
+        <div>
+          <label for="sort">Sort</label><br>
+          <select id="sort">
+            <option value="unes"
+              {% if report_sort.group_mode == "une" %}selected{% endif %}>
+              UNEs
+            </option>
+            <option value="fechas_asc"
+              {% if report_sort.group_mode == "period" and report_sort.date_order == "asc" %}selected{% endif %}>
+              Fechas ascendentes
+            </option>
+            <option value="fechas_desc"
+              {% if report_sort.group_mode == "period" and report_sort.date_order == "desc" %}selected{% endif %}>
+              Fechas descendentes
+            </option>
+          </select>
+          <input type="hidden" name="date_order" id="date_order"
+                 value="{% if report_sort.group_mode == 'period' and report_sort.date_order == 'desc' %}desc{% else %}asc{% endif %}">
+          <input type="hidden" name="group_mode" id="group_mode"
+                 value="{% if report_sort.group_mode == 'period' %}period{% else %}une{% endif %}">
+        </div>
+      
+        <div style="align-self:end;">
+            <button type="button" id="btn-export-md">.md export</button>
+        </div>
+        <div style="align-self:end;">
+            <button type="button" id="btn-export-4-charts-svg">Exportación 4 charts</button>
+            {% csrf_token %}
+        </div>
+    </form>
+
+    <table class="pgc-scoreboard">
+        <thead>
+            <tr>
+                <th>UNE</th>
+                <th>Periodo</th>
+                <th>Ingresos</th>
+                <th>Clientes nuevos</th>
+                <th>Venta cruzada</th>
+                <th>Respuesta reqs</th>
+                <th>Total</th>
+                <th>Clasifica</th>
+            </tr>
+        </thead>
+        <tbody>
+          {% for row in rows %}
+            {% if row.is_separator %}
+              <tr class="group_separator">
+                <td colspan="8"></td>
+              </tr>
+            {% else %}
+              <tr class="{% if row.scorecard.is_month_qualified %}row-clasifica-si{% else %}row-clasifica-no{% endif %}">
+                <td>{{ row.scorecard.une.name_es }}</td>
+                <td>{{ row.scorecard.year }}-{{ row.scorecard.month|stringformat:"02d" }}</td>
+                
+                <td>{{ row.p_ingresos|floatformat:1 }}</td>
+                <td>{{ row.p_clientes|floatformat:1 }}</td>
+                <td>{{ row.p_venta_cruzada|floatformat:0 }}</td>
+                <td>{{ row.p_respuesta_reqs|floatformat:0 }}</td>
+                <td><strong>{{ row.scorecard.total_points|floatformat:1 }}</strong></td>
+
+                <td>
+                  {% if row.scorecard.is_month_qualified %}
+                    <span class="ok">Sí</span>
+                  {% else %}
+                    <span class="bad">No</span>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endif %}
+          {% empty %}
+            <tr>
+              <td colspan="8">No hay scorecards para los filtros seleccionados.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+          
+    </table>
+</div>
+
+<div class="card" style="margin-top:24px;">
+  <h3 style="margin-top:0;">Tendencias comparativas</h3>
+  <p class="muted">
+    Estos gráficos usan el mismo rango de períodos seleccionado en el filtro superior.
+  </p>
+
+  <div class="filters" style="margin-bottom:16px;">
+    <div>
+      <label for="chart_type">Tipo</label><br>
+      <select id="chart_type">
+        <option value="mixed" selected>Mixto</option>
+        <option value="line">Líneas</option>
+        <option value="bar">Barras</option>
+      </select>
+    </div>
+
+    <div>
+      <label for="chart_accumulated">Modo</label><br>
+      <label style="display:inline-flex; align-items:center; gap:8px; margin-top:6px;">
+        <input type="checkbox" id="chart_accumulated">
+        Acumulado dentro del rango
+      </label>
+    </div>
+
+    <div style="min-width:320px;">
+      <label>UNEs incluidas</label>
+      <div id="chart_une_checklist" style="margin-top:8px; display:flex; flex-wrap:wrap; gap:12px;"></div>
+    </div>
+
+    <div style="align-self:end;">
+      <button type="button" id="btn-generar-reportes" class="adm-btn adm-btn-primary" style="padding:9px 15px; border-radius:8px; font-weight:600; background:#0f766e; color:#fff; border:none; cursor:pointer;">
+        Generar reportes
+      </button>
+    </div>
+  </div>
+  
+  <div class="card" style="margin-top:12px;">
+    <h4 style="margin-top:0; margin-bottom:4px;">Ingresos brutos</h4>
+    <p class="muted" style="margin-top:0;">Comparación de cifras reales vs metas por período.</p>
+    <div id="plot_ingresos_brutos" style="width:100%; height:420px;"></div>
+  </div>
+
+  <div class="card" style="margin-top:16px;">
+    <h4 style="margin-top:0; margin-bottom:4px;">Clientes nuevos</h4>
+    <p class="muted" style="margin-top:0;">Comparación de cifras reales vs metas por período.</p>
+    <div id="plot_clientes_nuevos" style="width:100%; height:420px;"></div>
+  </div>
+
+  <div class="card" style="margin-top:16px;">
+    <h4 style="margin-top:0; margin-bottom:4px;">Venta cruzada</h4>
+    <p class="muted" style="margin-top:0;">Comparación de cifras reales vs metas por período.</p>
+    <div id="plot_venta_cruzada" style="width:100%; height:420px;"></div>
+  </div>
+</div>
+
+{{ chart_payload_json|json_script:"chart-payload-data" }}
+
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const startPeriod = document.getElementById("start_period");
+    const startYear = document.getElementById("start_year");
+    const startMonth = document.getElementById("start_month");
+    const sort = document.getElementById("sort");
+    const dateOrder = document.getElementById("date_order");
+    const groupMode = document.getElementById("group_mode");
+    const btn = document.getElementById("btn-export-md");
+
+    function syncPeriodFields() {
+        if (!startPeriod) return;
+        const option = startPeriod.options[startPeriod.selectedIndex];
+        if (!option) return;
+        startYear.value = option.dataset.year || "";
+        startMonth.value = option.dataset.month || "";
+    }
+
+    function syncSortFields() {
+        if (!sort) return;
+        if (sort.value === "unes") {
+            groupMode.value = "une";
+            dateOrder.value = "asc";
+        } else if (sort.value === "fechas_desc") {
+            groupMode.value = "period";
+            dateOrder.value = "desc";
+        } else {
+            groupMode.value = "period";
+            dateOrder.value = "asc";
+        }
+    }
+
+
+    const filterForm = document.querySelector("form.filters");
+    function applyFilters() {
+        if (typeof syncPeriodFields === "function") syncPeriodFields();
+        if (typeof syncSortFields === "function") syncSortFields();
+        if (filterForm) filterForm.submit();
+    }
+
+    if (startPeriod) {
+        startPeriod.addEventListener("change", applyFilters);
+        syncPeriodFields();
+    }
+
+    if (sort) {
+        sort.addEventListener("change", applyFilters);
+        syncSortFields();
+    }
+
+    ["month_count", "mode", "start_year", "start_month", "year", "month", "une"].forEach(function (id) {
+        const el = document.getElementById(id);
+        if (el && el.tagName === "SELECT") {
+            el.addEventListener("change", applyFilters);
+        }
+    });
+
+    if (!btn) return;
+
+    btn.addEventListener("click", async function () {
+        syncPeriodFields();
+        syncSortFields();
+
+        const mode = document.getElementById("mode");
+
+        const params = new URLSearchParams({
+            start_year: startYear.value || "",
+            start_month: startMonth.value || "",
+            month_count: document.getElementById("month_count")?.value || "",
+            date_order: dateOrder.value || "asc",
+            group_mode: groupMode.value || "une",
+            mode: mode?.value || "modo1"
+        });
+
+        const url = `{% url 'pgc:dashboard_export_md' %}?` + params.toString();
+
+        btn.disabled = true;
+        const originalText = btn.textContent;
+        btn.textContent = "Generando...";
+
+        try {
+            const response = await fetch(url, {
+                method: "GET",
+                headers: {
+                    "X-Requested-With": "XMLHttpRequest"
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error("No se pudo generar el archivo Markdown.");
+            }
+
+            const blob = await response.blob();
+
+            let filename = "pgc-tablero-principal.md";
+            const disposition = response.headers.get("Content-Disposition");
+            if (disposition) {
+                const utf8Match = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+                const asciiMatch = disposition.match(/filename="([^"]+)"/i);
+
+                if (utf8Match && utf8Match[1]) {
+                    filename = decodeURIComponent(utf8Match[1]);
+                } else if (asciiMatch && asciiMatch[1]) {
+                    filename = asciiMatch[1];
+                }
+            }
+
+            const objectUrl = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = objectUrl;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(objectUrl);
+        } catch (error) {
+            alert(error.message || "Error generando la exportación.");
+        } finally {
+            btn.disabled = false;
+            btn.textContent = originalText;
+        }
+    });
+});
+</script>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+  const payloadNode = document.getElementById("chart-payload-data");
+  if (!payloadNode) return;
+  
+  let chartPayload = JSON.parse(payloadNode.textContent);
+  if (typeof chartPayload === "string") {
+    chartPayload = JSON.parse(chartPayload);
+  }
+  
+  if (!chartPayload || !chartPayload.metrics || !chartPayload.unes) {
+    console.error("chartPayload inválido:", chartPayload);
+    return;
+  }
+  
+  const typeSelect = document.getElementById("chart_type");
+  const accumulatedCheckbox = document.getElementById("chart_accumulated");
+  const uneChecklist = document.getElementById("chart_une_checklist");
+
+  const metricOrder = [
+    "INGRESOS",
+    "CLIENTES_NUEVOS",
+    "VENTA_CRUZADA"
+  ];
+
+  const plotMap = {
+    "INGRESOS": "plot_ingresos_brutos",
+    "CLIENTES_NUEVOS": "plot_clientes_nuevos",
+    "VENTA_CRUZADA": "plot_venta_cruzada"
+  };
+
+  function buildUneChecklist() {
+    uneChecklist.innerHTML = "";
+    chartPayload.unes.forEach(function (une) {
+      const label = document.createElement("label");
+      label.style.display = "inline-flex";
+      label.style.alignItems = "center";
+      label.style.gap = "6px";
+
+      const input = document.createElement("input");
+      input.type = "checkbox";
+      input.name = "chart_une";
+      input.value = une.code;
+      input.checked = true;
+      input.addEventListener("change", renderAllCharts);
+
+      const text = document.createTextNode(une.name_es);
+
+      label.appendChild(input);
+      label.appendChild(text);
+      uneChecklist.appendChild(label);
+    });
+  }
+
+  function getSelectedUneCodes() {
+    return Array.from(document.querySelectorAll('input[name="chart_une"]:checked'))
+      .map(function (input) { return input.value; });
+  }
+
+  function accumulateValues(values) {
+    let running = 0;
+    return values.map(function (value) {
+      const safeValue = Number(value || 0);
+      running += safeValue;
+      return running;
+    });
+  }
+
+  function buildMetricSeries(metricCode, selectedUneCodes, accumulated) {
+    const metric = chartPayload.metrics[metricCode];
+  
+    if (!metric || !metric.periods) {
+      console.error("Métrica faltante o inválida:", metricCode, chartPayload);
+      return {
+        labels: [],
+        realValues: [],
+        targetValues: [],
+        meta: {
+          title: metricCode,
+          subtitle: "Sin datos",
+          y_axis: "Valor"
+        }
+      };
+    }
+  
+    const labels = [];
+    const realValues = [];
+    const targetValues = [];
+  
+    metric.periods.forEach(function (period) {
+      labels.push(period.label);
+  
+      let realSum = 0;
+      let targetSum = 0;
+  
+      selectedUneCodes.forEach(function (uneCode) {
+        const item = period.by_une?.[uneCode];
+        if (item) {
+          realSum += Number(item.real || 0);
+          targetSum += Number(item.target || 0);
+        }
+      });
+  
+      realValues.push(realSum);
+      targetValues.push(targetSum);
+    });
+  
+    return {
+      labels: labels,
+      realValues: accumulated ? accumulateValues(realValues) : realValues,
+      targetValues: accumulated ? accumulateValues(targetValues) : targetValues,
+      meta: metric
+    };
+  }
+
+  function buildTraces(metricCode, selectedUneCodes, accumulated, chartType) {
+    const series = buildMetricSeries(metricCode, selectedUneCodes, accumulated);
+
+    if (chartType === "line") {
+      return [
+        {
+          x: series.labels,
+          y: series.targetValues,
+          type: "scatter",
+          mode: "lines+markers",
+          name: "Meta",
+          line: { color: "#7f8c8d", width: 3, dash: "dash" },
+          marker: { size: 7 }
+        },
+        {
+          x: series.labels,
+          y: series.realValues,
+          type: "scatter",
+          mode: "lines+markers",
+          name: "Real",
+          line: { color: "#1f77b4", width: 3 },
+          marker: { size: 7 }
+        }
+      ];
+    }
+
+    if (chartType === "bar") {
+      return [
+        {
+          x: series.labels,
+          y: series.targetValues,
+          type: "bar",
+          name: "Meta",
+          marker: { color: "#b0b7bf" }
+        },
+        {
+          x: series.labels,
+          y: series.realValues,
+          type: "bar",
+          name: "Real",
+          marker: { color: "#1f77b4" }
+        }
+      ];
+    }
+
+    
+    return [
+      {
+        x: series.labels,
+        y: series.realValues,
+        type: "bar",
+        name: "Real",
+        marker: { color: "#1f77b4" }
+      },
+      {
+        x: series.labels,
+        y: series.targetValues,
+        type: "scatter",
+        mode: "lines",
+        name: "Meta",
+        line: { color: "#7f8c8d", width: 3, dash: "dash" },
+        marker: { size: 7 }
+      }
+    ];
+  }
+
+    
+  function buildLayout(metricCode, accumulated) {
+    const metric = chartPayload.metrics[metricCode];
+    const series = buildMetricSeries(metricCode, getSelectedUneCodes(), accumulated);
+
+    const titleText = accumulated
+      ? `${metric.title}<br><sup>${metric.subtitle}. Modo acumulado dentro del rango.</sup>`
+      : `${metric.title}<br><sup>${metric.subtitle}. Modo mensual.</sup>`;
+
+    return {
+      title: {
+        text: titleText,
+        font: {
+          size: 20,
+          color: "#166534"
+        }
+      },
+      barmode: "group",
+      margin: { l: 60, r: 24, t: 80, b: 80 },
+      legend: {
+        orientation: "h",
+        yanchor: "top",
+        y: -0.2,
+        xanchor: "center",
+        x: 0.5
+      },
+      xaxis: {
+        title: "Período",
+        type: "category",
+        categoryorder: "array",
+        categoryarray: series.labels,
+        tickmode: "array",
+        tickvals: series.labels,
+        ticktext: series.labels
+      },
+      yaxis: {
+        title: metric.y_axis,
+        rangemode: "tozero"
+      },
+      paper_bgcolor: "white",
+      plot_bgcolor: "white"
+    };
+  }
+
+  function renderChart(metricCode) {
+    const selectedUneCodes = getSelectedUneCodes();
+    const chartType = typeSelect.value;
+    const accumulated = accumulatedCheckbox.checked;
+
+    const traces = buildTraces(metricCode, selectedUneCodes, accumulated, chartType);
+    const layout = buildLayout(metricCode, accumulated);
+
+    const config = {
+      responsive: true,
+      displaylogo: false,
+      // Bloquea toda interacción del usuario
+      staticPlot: true,          // Desactiva zoom, pan, selección, etc.
+      scrollZoom: false,
+      doubleClick: false,
+      editable: false,
+      displayModeBar: false      // Oculta barra de herramientas
+    };
+
+    Plotly.react(plotMap[metricCode], traces, layout, config);
+  }
+    
+    
+  function renderAllCharts() {
+    const selectedUneCodes = getSelectedUneCodes();
+    if (!selectedUneCodes.length) {
+      metricOrder.forEach(function (metricCode) {
+        Plotly.purge(plotMap[metricCode]);
+        document.getElementById(plotMap[metricCode]).innerHTML =
+          '<div class="muted" style="padding:24px;">Selecciona al menos una UNE.</div>';
+      });
+      return;
+    }
+
+    metricOrder.forEach(renderChart);
+  }
+
+  buildUneChecklist();
+  typeSelect.addEventListener("change", renderAllCharts);
+  accumulatedCheckbox.addEventListener("change", renderAllCharts);
+  renderAllCharts();
+
+  // --- Exportación 4 charts: PNG 1920×1080 (TV). ---
+  // EXPORT_SVG_VERSION=v11-bars-navy-blue-png
+  // No modifica charts visibles (buildLayout / renderChart).
+  // Los 4 charts (FACTORING, LEASING, INSURANCE, GRUPO) usan el MISMO layout.
+
+  const EXPORT_SVG_VERSION = "v11-bars-navy-blue-png";
+  const EXPORT_SUBTITLE =
+    "Real vs meta por período. Cifras acumuladas dentro del rango.";
+  const EXPORT_WIDTH = 1920;
+  const EXPORT_HEIGHT = 1080;
+  const IMAGE_WIDTH = 1920;
+  const IMAGE_HEIGHT = 1080;
+  // Superior: 155 px. Inferior: espacio para meses/Período/leyenda + ~155 px blancos libres.
+  // (v6 dejó solo ~35 px libres abajo; +120 → ≈155 px blancos limpios.)
+  const EXPORT_MARGIN_T = 155;
+  const EXPORT_MARGIN_B = 275;
+  const EXPORT_MARGIN_L = 100;
+  const EXPORT_MARGIN_R = 80;
+  const EXPORT_TITLE_SIZE = 72;
+  const EXPORT_SUBTITLE_SIZE = 22;
+  const EXPORT_AXIS_TITLE_SIZE = 24;
+  const EXPORT_TICK_SIZE = 20;
+  const EXPORT_LEGEND_SIZE = 24;
+  // Colores de marca (exactos). Real = azul navy de relleno; Meta = casi negro (línea).
+  const EXPORT_COLOR_TEXT = "#3D3F3F";
+  const EXPORT_COLOR_REAL = "#1D284A";
+  const EXPORT_COLOR_META = "#010202";
+
+  function getExportIngresosPeriods() {
+    const exportBlock = chartPayload.export_ingresos;
+    if (exportBlock && Array.isArray(exportBlock.periods) && exportBlock.periods.length) {
+      return {
+        periods: exportBlock.periods,
+        yAxis: exportBlock.y_axis || "Cifras en miles de US$",
+      };
+    }
+    const metric = chartPayload.metrics && chartPayload.metrics.INGRESOS;
+    if (!metric || !metric.periods || !metric.periods.length) {
+      return { periods: [], yAxis: "Cifras en miles de US$" };
+    }
+    const last = metric.periods[metric.periods.length - 1];
+    const endYear = Number(last.year);
+    const endMonth = Number(last.month);
+    return {
+      periods: metric.periods.filter(function (p) {
+        return Number(p.year) === endYear && Number(p.month) >= 1 && Number(p.month) <= endMonth;
+      }),
+      yAxis: metric.y_axis || "Cifras en miles de US$",
+    };
+  }
+
+  function buildExportIncomeSeries(periods, selectedUneCodes) {
+    const labels = [];
+    const realValues = [];
+    const targetValues = [];
+    periods.forEach(function (period) {
+      labels.push(period.label);
+      let realSum = 0;
+      let targetSum = 0;
+      selectedUneCodes.forEach(function (uneCode) {
+        const item = period.by_une && period.by_une[uneCode];
+        if (item) {
+          realSum += Number(item.real || 0);
+          targetSum += Number(item.target || 0);
+        }
+      });
+      realValues.push(realSum);
+      targetValues.push(targetSum);
+    });
+    return {
+      labels: labels,
+      realValues: accumulateValues(realValues),
+      targetValues: accumulateValues(targetValues),
+    };
+  }
+
+  function buildExportIncomeTraces(series) {
+    // Real = barras relleno azul #1D284A; Meta = línea casi negra #010202.
+    // Array de color por barra: Plotly no puede caer al colorway por omisión.
+    const realFill = series.labels.map(function () {
+      return EXPORT_COLOR_REAL;
+    });
+    return [
+      {
+        x: series.labels,
+        y: series.realValues,
+        type: "bar",
+        name: "Real",
+        marker: {
+          color: realFill,
+          line: { color: EXPORT_COLOR_REAL, width: 0 },
+          opacity: 1,
+        },
+      },
+      {
+        x: series.labels,
+        y: series.targetValues,
+        type: "scatter",
+        mode: "lines",
+        name: "Meta",
+        line: { color: EXPORT_COLOR_META, width: 3, dash: "dash" },
+        marker: { color: EXPORT_COLOR_META },
+      },
+    ];
+  }
+
+  function buildExportIncomeLayout(title, series, yAxis) {
+    // Ajuste fino v7 a partir del PNG v6:
+    // - subtítulo un poco más abajo (aire vs título)
+    // - leyenda una línea más arriba
+    // - margin.b +120 px → franja blanca inferior ≈155 px limpia
+    return {
+      title: {
+        text: "<b>" + title + "</b>",
+        font: { size: EXPORT_TITLE_SIZE, color: EXPORT_COLOR_TEXT },
+        xref: "paper",
+        yref: "paper",
+        x: 0.5,
+        xanchor: "center",
+        y: 1,
+        yanchor: "top",
+        pad: { t: 18, b: 2, l: 0, r: 0 },
+      },
+      annotations: [
+        {
+          text: EXPORT_SUBTITLE,
+          xref: "paper",
+          yref: "paper",
+          x: 0.5,
+          // v8: 110; +12 px ≈ baja ligeramente el subtítulo
+          y: 1 - 122 / IMAGE_HEIGHT,
+          xanchor: "center",
+          yanchor: "top",
+          showarrow: false,
+          font: { size: EXPORT_SUBTITLE_SIZE, color: EXPORT_COLOR_TEXT },
+        },
+      ],
+      barmode: "group",
+      bargap: 0.28,
+      width: IMAGE_WIDTH,
+      height: IMAGE_HEIGHT,
+      margin: {
+        l: EXPORT_MARGIN_L,
+        r: EXPORT_MARGIN_R,
+        t: EXPORT_MARGIN_T,
+        b: EXPORT_MARGIN_B,
+        pad: 0,
+      },
+      legend: {
+        orientation: "h",
+        xref: "paper",
+        yref: "paper",
+        x: 0.5,
+        xanchor: "center",
+        // v7: -0.055; bajar exactamente 1 letra del mismo font (evita solape con «Período»)
+        y: -0.055 - EXPORT_LEGEND_SIZE / IMAGE_HEIGHT,
+        yanchor: "top",
+        font: { size: EXPORT_LEGEND_SIZE, color: EXPORT_COLOR_TEXT },
+        bgcolor: "rgba(255,255,255,0)",
+        borderwidth: 0,
+        itemsizing: "constant",
+        itemwidth: 60,
+      },
+      xaxis: {
+        title: {
+          text: "Período",
+          font: { size: EXPORT_AXIS_TITLE_SIZE, color: EXPORT_COLOR_TEXT },
+          // v8: 10; menor standoff = «Período» más arriba (más cerca de los meses)
+          standoff: 4,
+        },
+        type: "category",
+        categoryorder: "array",
+        categoryarray: series.labels,
+        tickmode: "array",
+        tickvals: series.labels,
+        ticktext: series.labels,
+        tickfont: { size: EXPORT_TICK_SIZE, color: EXPORT_COLOR_TEXT },
+        ticklen: 8,
+        tickwidth: 1.5,
+        linecolor: EXPORT_COLOR_TEXT,
+        automargin: false,
+        fixedrange: true,
+        mirror: false,
+      },
+      yaxis: {
+        title: {
+          text: yAxis || "Cifras en miles de US$",
+          font: { size: EXPORT_AXIS_TITLE_SIZE, color: EXPORT_COLOR_TEXT },
+          standoff: 10,
+        },
+        rangemode: "tozero",
+        tickfont: { size: EXPORT_TICK_SIZE, color: EXPORT_COLOR_TEXT },
+        ticklen: 8,
+        tickwidth: 1.5,
+        linecolor: EXPORT_COLOR_TEXT,
+        automargin: false,
+        fixedrange: true,
+        zeroline: true,
+        zerolinecolor: EXPORT_COLOR_TEXT,
+        gridcolor: "#e2e8f0",
+        gridwidth: 1,
+      },
+      font: { color: EXPORT_COLOR_TEXT },
+      colorway: [EXPORT_COLOR_REAL, EXPORT_COLOR_META],
+      paper_bgcolor: "#ffffff",
+      plot_bgcolor: "#ffffff",
+      showlegend: true,
+    };
+  }
+
+  function formatExportStamp(date) {
+    const yy = String(date.getFullYear()).slice(-2);
+    const mm = String(date.getMonth() + 1).padStart(2, "0");
+    const hh = String(date.getHours()).padStart(2, "0");
+    const mi = String(date.getMinutes()).padStart(2, "0");
+    return yy + "-" + mm + " " + hh + "-" + mi;
+  }
+
+  function downloadDataUrl(dataUrl, filename) {
+    const a = document.createElement("a");
+    a.href = dataUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
+
+  function getCsrfToken() {
+    const input = document.querySelector("input[name='csrfmiddlewaretoken']");
+    if (input && input.value) return input.value;
+    const match = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
+    return match ? decodeURIComponent(match[1]) : "";
+  }
+
+  async function uploadExportPngToServer(dataUrl, filename) {
+    const res = await fetch(dataUrl);
+    const blob = await res.blob();
+    const form = new FormData();
+    form.append("file", blob, filename);
+    const response = await fetch("{% url 'pgc:tv_charts_upload' %}", {
+      method: "POST",
+      headers: { "X-CSRFToken": getCsrfToken() },
+      body: form,
+      credentials: "same-origin",
+    });
+    const payload = await response.json().catch(function () { return {}; });
+    if (!response.ok || !payload.ok) {
+      throw new Error((payload && payload.error) || ("Error al guardar " + filename + " en el servidor."));
+    }
+  }
+
+  function sleep(ms) {
+    return new Promise(function (resolve) { setTimeout(resolve, ms); });
+  }
+
+  async function exportFourIncomeChartsSvg() {
+    const btnExport = document.getElementById("btn-export-4-charts-svg");
+    if (!btnExport) return;
+
+    if (typeof Plotly === "undefined" || !Plotly.newPlot || !Plotly.toImage) {
+      alert("Plotly no está disponible; no se pueden exportar los PNG.");
+      return;
+    }
+
+    const source = getExportIngresosPeriods();
+    if (!source.periods.length) {
+      alert("No hay datos de INGRESOS para exportar (export_ingresos / chartPayload).");
+      return;
+    }
+
+    const configs = [
+      { fileIndex: 1, title: "FACTORING", uneCodes: ["FACTORING"] },
+      { fileIndex: 2, title: "LEASING", uneCodes: ["LEASING"] },
+      { fileIndex: 3, title: "INSURANCE", uneCodes: ["INSURANCE"] },
+      { fileIndex: 4, title: "GRUPO", uneCodes: ["FACTORING", "LEASING", "INSURANCE"] },
+    ];
+
+    const stamp = formatExportStamp(new Date());
+    const originalText = btnExport.textContent;
+    btnExport.disabled = true;
+    btnExport.textContent = "Generando...";
+
+    const host = document.createElement("div");
+    host.setAttribute("aria-hidden", "true");
+    host.style.cssText =
+      "position:fixed;left:-10000px;top:0;width:" + IMAGE_WIDTH +
+      "px;height:" + IMAGE_HEIGHT + "px;overflow:hidden;pointer-events:none;";
+    document.body.appendChild(host);
+
+    let serverSaved = 0;
+    try {
+      for (let i = 0; i < configs.length; i++) {
+        const cfg = configs[i];
+        const series = buildExportIncomeSeries(source.periods, cfg.uneCodes);
+        if (!series.labels.length) {
+          throw new Error("Serie vacía para " + cfg.title);
+        }
+
+        const gd = document.createElement("div");
+        gd.style.width = IMAGE_WIDTH + "px";
+        gd.style.height = IMAGE_HEIGHT + "px";
+        host.appendChild(gd);
+
+        await Plotly.newPlot(
+          gd,
+          buildExportIncomeTraces(series),
+          buildExportIncomeLayout(cfg.title, series, source.yAxis),
+          {
+            staticPlot: true,
+            displaylogo: false,
+            displayModeBar: false,
+            responsive: false,
+          }
+        );
+
+        const dataUrlPng = await Plotly.toImage(gd, {
+          format: "png",
+          width: IMAGE_WIDTH,
+          height: IMAGE_HEIGHT,
+        });
+        const filename = "wcg-g" + cfg.fileIndex + " " + stamp + ".png";
+        downloadDataUrl(dataUrlPng, filename);
+        await uploadExportPngToServer(dataUrlPng, filename);
+        serverSaved += 1;
+
+        Plotly.purge(gd);
+        gd.remove();
+        await sleep(250);
+      }
+      btnExport.textContent = "Listo (" + serverSaved + " en servidor)";
+      await sleep(900);
+    } catch (err) {
+      console.error(err);
+      alert((err && err.message) || "Error al generar la exportación de 4 charts PNG.");
+    } finally {
+      try {
+        host.querySelectorAll("div").forEach(function (el) {
+          try { Plotly.purge(el); } catch (e) {}
+        });
+      } catch (e) {}
+      host.remove();
+      btnExport.disabled = false;
+      btnExport.textContent = originalText;
+    }
+  }
+
+  const btnFourCharts = document.getElementById("btn-export-4-charts-svg");
+  if (btnFourCharts) {
+    btnFourCharts.setAttribute("data-export-svg-version", EXPORT_SVG_VERSION);
+    btnFourCharts.addEventListener("click", function () {
+      exportFourIncomeChartsSvg();
+    });
+  }
+
+  // --- Generar reportes (modal) ---
+  (function initReportModal() {
+    const btn = document.getElementById("btn-generar-reportes");
+    const modal = document.getElementById("reportes-modal");
+    if (!btn || !modal) return;
+
+    const closeBtns = modal.querySelectorAll("[data-reportes-close]");
+    const form = document.getElementById("reportes-form");
+    const statusEl = document.getElementById("reportes-status");
+    const errEl = document.getElementById("reportes-error");
+    const generateBtn = document.getElementById("reportes-generate");
+    const csrfInput = document.querySelector("#btn-export-4-charts-svg")
+      ? document.querySelector('input[name="csrfmiddlewaretoken"]')
+      : document.querySelector('input[name="csrfmiddlewaretoken"]');
+
+    function openModal() {
+      errEl.textContent = "";
+      statusEl.textContent = "";
+      modal.style.display = "flex";
+      fetch("{% url 'reports:defaults' %}", { credentials: "same-origin" })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          if (!data || !data.defaults) return;
+          Object.keys(data.defaults).forEach(function (key) {
+            const input = form.querySelector('input[name="areas"][value="' + key + '"]');
+            if (input) input.checked = !!data.defaults[key];
+          });
+        })
+        .catch(function () {});
+    }
+
+    function closeModal() {
+      modal.style.display = "none";
+      generateBtn.disabled = false;
+      generateBtn.textContent = "Generar";
+    }
+
+    btn.addEventListener("click", openModal);
+    closeBtns.forEach(function (el) {
+      el.addEventListener("click", closeModal);
+    });
+    modal.addEventListener("click", function (ev) {
+      if (ev.target === modal) closeModal();
+    });
+
+    form.addEventListener("submit", async function (ev) {
+      ev.preventDefault();
+      errEl.textContent = "";
+      const checked = Array.from(form.querySelectorAll('input[name="areas"]:checked')).map(function (i) {
+        return i.value;
+      });
+      if (!checked.length) {
+        errEl.textContent = "Seleccione al menos un área: Administración, PGC, PGO o B. Riesgo.";
+        return;
+      }
+      generateBtn.disabled = true;
+      generateBtn.textContent = "Generando...";
+      statusEl.textContent = "Generando reportes…";
+
+      const csrf = (csrfInput && csrfInput.value) ||
+        (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || "";
+
+      try {
+        const resp = await fetch("{% url 'reports:generate' %}", {
+          method: "POST",
+          credentials: "same-origin",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": csrf
+          },
+          body: JSON.stringify({ areas: checked })
+        });
+        if (!resp.ok) {
+          let msg = "No se pudieron generar los reportes.";
+          try {
+            const j = await resp.json();
+            if (j && j.error) msg = j.error;
+          } catch (e) {}
+          throw new Error(msg);
+        }
+        const blob = await resp.blob();
+        let filename = resp.headers.get("X-Report-Filename") || "reportes_wcg.zip";
+        const cd = resp.headers.get("Content-Disposition") || "";
+        const m = cd.match(/filename=\"([^\"]+)\"/);
+        if (m) filename = m[1];
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        statusEl.textContent = "Descarga iniciada: " + filename;
+        generateBtn.textContent = "Generar";
+        generateBtn.disabled = false;
+      } catch (err) {
+        errEl.textContent = (err && err.message) || "Error al generar.";
+        statusEl.textContent = "";
+        generateBtn.disabled = false;
+        generateBtn.textContent = "Generar";
+      }
+    });
+  })();
+
+});
+</script>
+
+<div id="reportes-modal" style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(15,23,42,0.45); align-items:center; justify-content:center; padding:16px;">
+  <div style="background:#fff; border-radius:12px; max-width:420px; width:100%; box-shadow:0 20px 50px rgba(0,0,0,0.25); padding:22px 24px; border:1px solid #d9e2ec;">
+    <h3 style="margin:0 0 6px; color:#0f3d56;">Generar reportes</h3>
+    <p class="muted" style="margin:0 0 14px; font-size:0.9rem;">Seleccione una o varias áreas. Se descargará .md (+ .xlsx en resultados) o un .zip si hay varios archivos.</p>
+    <form id="reportes-form">
+      <label style="display:flex; gap:10px; align-items:center; margin:8px 0; font-weight:600;">
+        <input type="checkbox" name="areas" value="admin"> Administración
+      </label>
+      <label style="display:flex; gap:10px; align-items:center; margin:8px 0; font-weight:600;">
+        <input type="checkbox" name="areas" value="pgc" checked> PGC
+      </label>
+      <label style="display:flex; gap:10px; align-items:center; margin:8px 0; font-weight:600;">
+        <input type="checkbox" name="areas" value="pgo"> PGO
+      </label>
+      <label style="display:flex; gap:10px; align-items:center; margin:8px 0; font-weight:600;">
+        <input type="checkbox" name="areas" value="risk"> B. Riesgo
+      </label>
+      <p id="reportes-error" style="color:#b91c1c; font-size:0.88rem; min-height:1.2em; margin:10px 0 0;"></p>
+      <p id="reportes-status" class="muted" style="font-size:0.88rem; min-height:1.2em; margin:4px 0 12px;"></p>
+      <div style="display:flex; gap:10px; justify-content:flex-end;">
+        <button type="button" data-reportes-close style="padding:8px 14px; border-radius:8px; border:1px solid #94a3b8; background:#f1f5f9; color:#0f172a; cursor:pointer; font-weight:600;">Cancelar</button>
+        <button type="submit" id="reportes-generate" style="padding:8px 14px; border-radius:8px; border:none; background:#0f766e; color:#fff; cursor:pointer; font-weight:600;">Generar</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

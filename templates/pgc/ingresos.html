@@ -1,0 +1,302 @@
+{% extends "base.html" %}
+{% load l10n %}
+
+{% block title %}Ingresos vs meta{% endblock %}
+
+{% block content %}
+<style>
+  .group_separator td {
+        padding: 0;
+        height: 14px;
+        border-bottom: none;
+        background: #ffffff;
+  }
+  .ingresos-metodo-cell {
+    font-family: "Arial Narrow", Arial, sans-serif;
+    font-size: 0.85rem;
+  }
+  .ingresos-observacion-cell {
+    font-family: "Arial Narrow", Arial, sans-serif;
+    font-size: 0.75rem;
+  }
+  .currency-hint {
+    font-size: 0.85rem;
+    color: #64748b;
+    margin: 0 0 12px;
+  }
+  .amt-usd::before {
+    content: none;
+  }
+  .tc-badge {
+    display: inline-block;
+    font-weight: 700;
+    font-size: 0.78rem;
+    color: #0f766e;
+    background: #ccfbf1;
+    border: 1px solid #99f6e4;
+    border-radius: 4px;
+    padding: 1px 6px;
+    margin-right: 6px;
+    white-space: nowrap;
+  }
+  .gtq-ref {
+    display: block;
+    margin-top: 2px;
+    font-size: 0.72rem;
+    color: #64748b;
+    font-weight: 500;
+  }
+  .usd-official {
+    font-variant-numeric: tabular-nums;
+  }
+  @media (max-width: 720px) {
+    .ingresos-col-full { display: none; }
+  }
+</style>
+<div class="card">
+  <h2 style="margin-top:0;">Ingresos vs meta</h2>
+  <p class="muted">
+    Meta y resultado mensual de ingresos por UNE y periodo.
+  </p>
+  <p class="currency-hint">Montos oficiales en USD (cifras en miles de US$).</p>
+
+  <form method="get" class="filters">
+      <div>
+          <label for="start_year">Año inicial</label><br>
+          <select name="start_year" id="start_year">
+              {% for p in available_periods %}
+                  <option value="{{ p.year }}" {% if report_filter.start_year == p.year and report_filter.start_month == p.month %}selected{% endif %}>
+                      {{ p.year }}
+                  </option>
+              {% endfor %}
+          </select>
+      </div>
+  
+      <div>
+          <label for="start_month">Mes inicial</label><br>
+          <select name="start_month" id="start_month">
+              {% for p in available_periods %}
+                  <option value="{{ p.month }}" {% if report_filter.start_year == p.year and report_filter.start_month == p.month %}selected{% endif %}>
+                      {{ p.month|stringformat:"02d" }}
+                  </option>
+              {% endfor %}
+          </select>
+      </div>
+  
+      <div>
+          <label for="month_count">Cantidad de meses</label><br>
+          <select name="month_count" id="month_count">
+              {% for opt in month_count_options %}
+                  <option value="{{ opt }}" {% if report_filter.month_count == opt %}selected{% endif %}>
+                      {{ opt }}
+                  </option>
+              {% endfor %}
+          </select>
+      </div>
+  
+      <div>
+        <label for="sort">Sort</label><br>
+        <select id="sort">
+          <option value="unes"
+            {% if report_sort.group_mode == "une" %}selected{% endif %}>
+            UNEs
+          </option>
+          <option value="fechas_asc"
+            {% if report_sort.group_mode == "period" and report_sort.date_order == "asc" %}selected{% endif %}>
+            Fechas ascendentes
+          </option>
+          <option value="fechas_desc"
+            {% if report_sort.group_mode == "period" and report_sort.date_order == "desc" %}selected{% endif %}>
+            Fechas descendentes
+          </option>
+        </select>
+        <input type="hidden" name="date_order" id="date_order"
+               value="{% if report_sort.group_mode == 'period' and report_sort.date_order == 'desc' %}desc{% else %}asc{% endif %}">
+        <input type="hidden" name="group_mode" id="group_mode"
+               value="{% if report_sort.group_mode == 'period' %}period{% else %}une{% endif %}">
+      </div>
+  
+      <div style="align-self:end;">
+          <button type="button" id="btn-export-md">.md export</button>
+      </div>
+  </form>
+  
+  <table>
+    <thead>
+      <tr>
+        <th style="text-align:left;">UNE</th>
+        <th>Periodo</th>
+        <th title="Meta en USD">Meta USD</th>
+        <th title="Real en USD (oficial)">Real USD</th>
+        <th title="Diferencia en USD">Dif. USD</th>
+        <th>Cumple</th>
+        <th class="ingresos-col-full">Método de cálculo</th>
+        <th style="text-align:left;">Observación</th>
+      </tr>
+    </thead>
+    <tbody>
+        {% for row in rows %}
+            {% if row.is_separator %}
+                <tr class="group_separator">
+                    <td colspan="8"></td>
+                </tr>
+            {% else %}
+                <tr>
+                    <td style="text-align:left;">{{ row.target.une.name_es|default:row.target.une.name_es }}</td>
+                    <td>{{ row.target.year }}-{{ row.target.month|stringformat:"02d" }}</td>
+                    <td class="usd-official">
+                        {% if row.meta is not None %}
+                            {% if row.target.une.code == "INSURANCE" %}
+                                ${{ row.meta|floatformat:3|unlocalize }}
+                            {% else %}
+                                ${{ row.meta|floatformat:0|unlocalize }}
+                            {% endif %}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                    <td class="usd-official">
+                        {% if row.real is not None %}
+                            {% if row.target.une.code == "INSURANCE" %}
+                                ${{ row.real|floatformat:3|unlocalize }}
+                            {% else %}
+                                ${{ row.real|floatformat:0|unlocalize }}
+                            {% endif %}
+                            {% if row.source_gtq is not None %}
+                            <span class="gtq-ref" title="Captura manual en GTQ (referencia; el score usa USD)">
+                              ref Q{{ row.source_gtq|floatformat:2|unlocalize }}
+                            </span>
+                            {% endif %}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                    <td class="usd-official">
+                        {% if row.diferencia is not None %}
+                            {% if row.target.une.code == "INSURANCE" %}
+                                ${{ row.diferencia|floatformat:3|unlocalize }}
+                            {% else %}
+                                ${{ row.diferencia|floatformat:0|unlocalize }}
+                            {% endif %}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if row.cumple %}
+                            <span class="ok">Sí</span>
+                        {% else %}
+                            <span class="bad">No</span>
+                        {% endif %}
+                    </td>
+                    <td class="ingresos-metodo-cell ingresos-col-full">{{ row.metodo }}</td>
+                    <td class="ingresos-observacion-cell" style="text-align:left">
+                      {% if row.tc_label %}
+                        <span class="tc-badge">{{ row.tc_label }}</span>
+                      {% endif %}
+                      {% if row.observacion_base %}
+                        {{ row.observacion_base }}
+                      {% elif not row.tc_label %}
+                        -
+                      {% endif %}
+                    </td>
+                </tr>
+            {% endif %}
+        {% empty %}
+            <tr>
+                <td colspan="8">No hay datos de ingresos para los filtros seleccionados.</td>
+            </tr>
+        {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const startYear  = document.getElementById("start_year");
+    const startMonth = document.getElementById("start_month");
+    const sort       = document.getElementById("sort");
+    const dateOrder  = document.getElementById("date_order");
+    const groupMode  = document.getElementById("group_mode");
+    const btn        = document.getElementById("btn-export-md");
+
+    function syncSortFields() {
+        if (!sort) return;
+        if (sort.value === "unes") {
+            groupMode.value = "une";
+            dateOrder.value = "asc";
+        } else if (sort.value === "fechas_desc") {
+            groupMode.value = "period";
+            dateOrder.value = "desc";
+        } else {
+            groupMode.value = "period";
+            dateOrder.value = "asc";
+        }
+    }
+
+    const filterForm = document.querySelector("form.filters");
+    function applyFilters() {
+        if (typeof syncSortFields === "function") syncSortFields();
+        if (filterForm) filterForm.submit();
+    }
+
+    if (sort) {
+        sort.addEventListener("change", applyFilters);
+        syncSortFields();
+    }
+
+    ["month_count", "start_year", "start_month"].forEach(function (id) {
+        const el = document.getElementById(id);
+        if (el && el.tagName === "SELECT") {
+            el.addEventListener("change", applyFilters);
+        }
+    });
+
+    if (!btn) return;
+
+    btn.addEventListener("click", async function () {
+        // Aseguramos que los campos ocultos reflejen el sort actual
+        syncSortFields();
+
+        const params = new URLSearchParams({
+            start_year:  startYear?.value  || "",
+            start_month: startMonth?.value || "",
+            month_count: document.getElementById("month_count")?.value || "",
+            date_order:  dateOrder?.value  || "asc",
+            group_mode:  groupMode?.value  || "une"
+        });
+
+        const url = `{% url 'pgc:ingresos_export_md' %}?` + params.toString();
+
+        btn.disabled = true;
+        const originalText = btn.textContent;
+        btn.textContent = "Generando...";
+
+        try {
+            const response = await fetch(url, {
+                method: "GET",
+                headers: { "Accept": "text/markdown, text/plain, */*" },
+            });
+            if (!response.ok) throw new Error("HTTP " + response.status);
+            const blob = await response.blob();
+            const cd = response.headers.get("Content-Disposition") || "";
+            let filename = "pgc-ingresos.md";
+            const m = /filename=\"?([^\";]+)\"?/i.exec(cd);
+            if (m) filename = m[1];
+            const a = document.createElement("a");
+            a.href = URL.createObjectURL(blob);
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(a.href);
+        } catch (err) {
+            alert("No se pudo exportar: " + err.message);
+        } finally {
+            btn.disabled = false;
+            btn.textContent = originalText;
+        }
+    });
+});
+</script>
+{% endblock %}

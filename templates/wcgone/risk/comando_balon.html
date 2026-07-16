@@ -1,0 +1,118 @@
+{% extends "wcgone_base.html" %}
+
+{% block title %}Comando Balón — WCG One{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+  <h1 class="h4 fw-semibold mb-0">Riesgo — Comando Balón</h1>
+  <div class="d-flex gap-1 flex-wrap">
+    <a href="{% url 'wcgone_risk:importar_snapshots' %}" class="btn btn-sm btn-outline-secondary">Importar snapshots</a>
+    <a href="{% url 'wcgone_risk:export_comando_balon' %}{% if export_query %}?{{ export_query }}{% endif %}" class="btn btn-sm btn-outline-primary">Exportar CSV</a>
+    <a href="{% url 'wcgone_risk:cliente_list' %}" class="btn btn-sm btn-outline-secondary">Clientes</a>
+  </div>
+</div>
+
+<div class="row g-2 mb-3">
+  <div class="col-md-3 col-6">
+    <div class="card border-0 shadow-sm"><div class="card-body py-2 text-center">
+      <div class="stat-value" style="font-size:1.35rem;">{{ summary.clientes }}</div>
+      <div class="text-muted small">Clientes con snapshot</div>
+    </div></div>
+  </div>
+  <div class="col-md-3 col-6">
+    <div class="card border-0 shadow-sm"><div class="card-body py-2 text-center">
+      <div class="stat-value" style="font-size:1.35rem;">{{ summary.operaciones }}</div>
+      <div class="text-muted small">Operaciones</div>
+    </div></div>
+  </div>
+  <div class="col-md-3 col-6">
+    <div class="card border-0 shadow-sm"><div class="card-body py-2 text-center">
+      <div class="stat-value text-warning" style="font-size:1.35rem;">{{ summary.con_mora }}</div>
+      <div class="text-muted small">Snapshots con mora</div>
+    </div></div>
+  </div>
+  <div class="col-md-3 col-6">
+    <div class="card border-0 shadow-sm"><div class="card-body py-2 text-center">
+      <div class="stat-value text-danger" style="font-size:1.35rem;">{{ summary.suma_vencido|default:"0" }}</div>
+      <div class="text-muted small">Suma saldos vencidos</div>
+    </div></div>
+  </div>
+</div>
+
+<form method="get" class="row g-2 mb-3">
+  <div class="col-md-4">
+    <input type="search" name="cliente" value="{{ request.GET.cliente }}" class="form-control form-control-sm" placeholder="Filtrar por cliente">
+  </div>
+  <div class="col-md-3">
+    <input type="text" name="estado" value="{{ request.GET.estado }}" class="form-control form-control-sm" placeholder="Estado operación">
+  </div>
+  <div class="col-md-2">
+    <button type="submit" class="btn btn-primary btn-sm w-100">Filtrar</button>
+  </div>
+</form>
+
+{% if not snapshots and not request.GET %}
+{% include "includes/empty_state.html" with title="Sin snapshots operativos" message="Importe un archivo XLSX tipo leasing para ver el Comando Balón con datos de mora y saldos vencidos." import_url="/risk/importar-snapshots/" import_label="Importar snapshots" %}
+{% endif %}
+
+<div class="card border-0 shadow-sm">
+  <div class="card-header bg-white small text-muted">
+    Mostrando hasta 100 registros{% if summary.total_snapshots > 100 %} de {{ summary.total_snapshots }} filtrados{% endif %}.
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover table-wcg mb-0 align-middle small">
+      <thead>
+        <tr>
+          <th>Fecha</th>
+          <th>Cliente</th>
+          <th>Operación</th>
+          <th>Producto</th>
+          <th>Estado</th>
+          <th class="text-end">Saldo capital</th>
+          <th class="text-end">Vencido</th>
+          <th class="text-center">Días atraso</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for snap in snapshots %}
+        <tr>
+          <td>{{ snap.fecha_snapshot|date:"d/m/Y" }}</td>
+          <td>
+            <a href="{% url 'wcgone_risk:cliente_detail' snap.entidad_id %}">{{ snap.entidad.nombre }}</a>
+          </td>
+          <td>{{ snap.operacion.codigo_operacion }}</td>
+          <td>{{ snap.producto_nombre_raw|default:snap.operacion.producto|default:"—" }}</td>
+          <td>{{ snap.estado_operacion|default:"—" }}</td>
+          <td class="text-end">{{ snap.capital_balance|default:"—" }}</td>
+          <td class="text-end">
+            {% if snap.past_due_balance and snap.past_due_balance > 0 %}
+            <span class="text-danger fw-semibold">{{ snap.past_due_balance }}</span>
+            {% else %}
+            {{ snap.past_due_balance|default:"—" }}
+            {% endif %}
+          </td>
+          <td class="text-center">
+            {% if snap.due_days and snap.due_days > 0 %}
+            <span class="badge text-bg-warning">{{ snap.due_days }}</span>
+            {% else %}
+            {{ snap.due_days|default:"0" }}
+            {% endif %}
+          </td>
+          <td class="text-end">
+            <a href="{% url 'wcgone_risk:operacion_detail' snap.operacion_id %}" class="btn btn-sm btn-outline-primary">Detalle</a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="9" class="text-center text-muted py-4">
+            No hay resultados con los filtros actuales.
+            <a href="{% url 'wcgone_risk:importar_snapshots' %}">Importar snapshots</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
