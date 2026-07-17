@@ -12,29 +12,77 @@
   }
 
   /*
-    Filas Clasifica Sí/No:
-    No usar verde/rojo puros (poco distinguibles en daltonismo deuteran/protan).
-    Sí  = cian-azulado claro (tono frío)
-    No  = ámbar-naranja claro (tono cálido)
-    + borde izquierdo más saturado como refuerzo.
+    Clasifica Sí / No — elegante y legible (daltonismo: frío vs cálido + forma).
+    Sí  = verde suave más presente + tipografía casi negra + semibold + sello.
+    No  = rosa muy pálido (mayoría) + gris oscuro, sin gritar.
   */
-  table.pgc-scoreboard tbody tr.row-clasifica-si td {
-    background: #dff6fb;
-  }
   table.pgc-scoreboard tbody tr.row-clasifica-no td {
-    background: #fde8c8;
-  }
-  table.pgc-scoreboard tbody tr.row-clasifica-si td:first-child {
-    box-shadow: inset 5px 0 0 #0284c7;
+    background: #faf6f4;
+    color: #4a535c;
+    font-weight: 400;
   }
   table.pgc-scoreboard tbody tr.row-clasifica-no td:first-child {
-    box-shadow: inset 5px 0 0 #c2410c;
-  }
-  table.pgc-scoreboard tbody tr.row-clasifica-si:hover td {
-    background: #cfeef7;
+    box-shadow: inset 3px 0 0 #e8d5ce;
   }
   table.pgc-scoreboard tbody tr.row-clasifica-no:hover td {
-    background: #fbd9a8;
+    background: #f5efec;
+  }
+  table.pgc-scoreboard tbody tr.row-clasifica-no .clasifica-pill {
+    color: #6b7280;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+  }
+
+  table.pgc-scoreboard tbody tr.row-clasifica-si td {
+    background: #d3ebe0;
+    color: #0c1210;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+  }
+  table.pgc-scoreboard tbody tr.row-clasifica-si td:first-child {
+    box-shadow: inset 5px 0 0 #2f6f55;
+  }
+  table.pgc-scoreboard tbody tr.row-clasifica-si:hover td {
+    background: #c5e4d4;
+  }
+  /* Total un poco más marcado en Sí (forma tipográfica, sin bold 700) */
+  table.pgc-scoreboard tbody tr.row-clasifica-si td strong {
+    font-weight: 600;
+    color: #06100c;
+  }
+  table.pgc-scoreboard tbody tr.row-clasifica-no td strong {
+    font-weight: 500;
+    color: #4a535c;
+  }
+
+  table.pgc-scoreboard .clasifica-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.28rem;
+    padding: 0.18rem 0.55rem;
+    border-radius: 999px;
+    font-size: 0.82rem;
+    line-height: 1.2;
+    border: 1px solid transparent;
+  }
+  table.pgc-scoreboard tbody tr.row-clasifica-si .clasifica-pill {
+    background: rgba(255, 255, 255, 0.55);
+    border-color: rgba(47, 111, 85, 0.35);
+    color: #06100c;
+    font-weight: 600;
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.7);
+  }
+  table.pgc-scoreboard tbody tr.row-clasifica-si .clasifica-pill.ok {
+    color: #06100c;
+    font-weight: 600;
+  }
+  table.pgc-scoreboard tbody tr.row-clasifica-no .clasifica-pill.bad {
+    color: #6b7280;
+    font-weight: 500;
+  }
+  table.pgc-scoreboard tbody tr.row-clasifica-si .clasifica-mark {
+    font-size: 0.72rem;
+    opacity: 0.9;
   }
 </style>
 <div class="card">
@@ -148,9 +196,9 @@
 
                 <td>
                   {% if row.scorecard.is_month_qualified %}
-                    <span class="ok">Sí</span>
+                    <span class="clasifica-pill ok"><span class="clasifica-mark" aria-hidden="true">✓</span> Sí</span>
                   {% else %}
-                    <span class="bad">No</span>
+                    <span class="clasifica-pill bad">No</span>
                   {% endif %}
                 </td>
               </tr>
