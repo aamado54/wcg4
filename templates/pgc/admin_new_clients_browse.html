@@ -81,7 +81,7 @@
                                 <select name="row_{{ row.id }}_currency">
                                     <option value="">—</option>
                                     {% for cur in currencies %}
-                                    <option value="{{ cur.id }}" {% if row.currency_id == cur.id %}selected{% endif %}>{{ cur.code }}</option>
+                                    <option value="{{ cur.id }}" {% if row.currency_id == cur.id %}selected{% endif %}>{{ cur.code }}{% if cur.symbol %} ({{ cur.symbol }}){% endif %}</option>
                                     {% endfor %}
                                 </select>
                             </td>
@@ -123,7 +123,7 @@
                                 <select name="new_currency">
                                     <option value="">—</option>
                                     {% for cur in currencies %}
-                                    <option value="{{ cur.id }}">{{ cur.code }}</option>
+                                    <option value="{{ cur.id }}">{{ cur.code }}{% if cur.symbol %} ({{ cur.symbol }}){% endif %}</option>
                                     {% endfor %}
                                 </select>
                             </td>

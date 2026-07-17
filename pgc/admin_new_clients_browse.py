@@ -15,6 +15,22 @@ from pgc.admin_utils import AdminPeriod, apply_period_range, parse_decimal_or_no
 from pgc.models import AdminManualEditLog
 
 
+BASE_CURRENCIES = (
+    ("GTQ", "Quetzal guatemalteco", "Q"),
+    ("USD", "Dólar estadounidense", "$"),
+)
+
+
+def ensure_base_currencies() -> list[Currency]:
+    """Garantiza GTQ/USD activos (catálogo usado por el browse de clientes)."""
+    for code, name, symbol in BASE_CURRENCIES:
+        Currency.objects.update_or_create(
+            code=code,
+            defaults={"name": name, "symbol": symbol, "is_active": True},
+        )
+    return list(Currency.objects.filter(is_active=True).order_by("code"))
+
+
 ALLOWED_UNE_CODES = (
     UNE.CODE_FACTORING,
     UNE.CODE_LEASING,
@@ -85,10 +101,11 @@ def browse_context(period: AdminPeriod) -> dict:
         .select_related("une", "currency", "header")
         .order_by("year", "month", "une__sort_order", "client_name", "operation_code", "id")
     )
+    currencies = ensure_base_currencies()
     return {
         "rows": rows,
         "unes": une_options_for_template(),
-        "currencies": list(Currency.objects.filter(is_active=True).order_by("code")),
+        "currencies": currencies,
         "header": NewClientImportHeader.objects.filter(
             year=period.year, month=period.month
         ).first(),

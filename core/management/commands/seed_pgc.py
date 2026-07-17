@@ -2,7 +2,7 @@ from decimal import Decimal
 from django.core.management.base import BaseCommand
 from django.db import transaction
 
-from core.models import UNE, MetricDefinition
+from core.models import UNE, MetricDefinition, Currency
 from pgc.models import PGCPlan, MonthlyTarget
 
 
@@ -13,6 +13,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         self.stdout.write(self.style.WARNING("Iniciando seed PGC 2026..."))
 
+        self._seed_currencies()
         une_map = self._seed_unes()
         metric_map = self._seed_metrics()
         plan = self._seed_plan()
@@ -20,9 +21,21 @@ class Command(BaseCommand):
 
         self.stdout.write(self.style.SUCCESS("Seed PGC 2026 completado."))
 
-    def _seed_unes(self):
+    def _seed_currencies(self):
         data = [
-            {"code": "FACTORING", "name_es": "Factoraje", "sort_order": 1},
+            {"code": "USD", "name": "Dólar estadounidense", "symbol": "$"},
+            {"code": "GTQ", "name": "Quetzal guatemalteco", "symbol": "Q"},
+        ]
+        for item in data:
+            obj, _ = Currency.objects.update_or_create(
+                code=item["code"],
+                defaults={
+                    "name": item["name"],
+                    "symbol": item["symbol"],
+                    "is_active": True,
+                },
+            )
+            self.stdout.write(f"Currency OK: {obj.code}")
             {"code": "LEASING", "name_es": "Leasing", "sort_order": 2},
             {"code": "INSURANCE", "name_es": "Insurance", "sort_order": 3},
             {"code": "INVESTMENT", "name_es": "Inversiones", "sort_order": 4},
