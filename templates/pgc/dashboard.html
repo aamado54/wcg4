@@ -38,7 +38,7 @@
   }
 </style>
 <div class="card">
-    <h2 style="margin-top:0;">Tablero principal de puntos - {{ selected_mode|default:"modo1" }}</h2>
+    <h2 style="margin-top:0;">Tablero principal de puntos — {{ selected_mode_label|default:selected_mode }}</h2>
   
     <p class="muted">
         Resumen mensual de puntos por UNE y periodo.
@@ -77,9 +77,9 @@
         <div>
             <label for="mode">Modalidad</label><br>
             <select name="mode" id="mode">
-                {% for opt in mode_options %}
-                    <option value="{{ opt }}" {% if selected_mode == opt %}selected{% endif %}>
-                        {{ opt }}
+                {% for value, label in mode_choices %}
+                    <option value="{{ value }}" {% if selected_mode == value %}selected{% endif %}>
+                        {{ label }}
                     </option>
                 {% endfor %}
             </select>

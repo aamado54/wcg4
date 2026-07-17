@@ -29,7 +29,7 @@ from imports.models import NewClientImportRow, CrossSaleImportRow
 
 
 DEFAULT_MONTH_COUNT = 4
-MAX_MONTH_COUNT = 24
+MAX_MONTH_COUNT = 12
 
 REPORT_DATE_ORDER_OPTIONS = ("asc", "desc")
 REPORT_GROUP_MODE_OPTIONS = ("une", "period")
@@ -50,6 +50,10 @@ report_une_order = {
 PGC_MODE_KEY = "pgc.mode"
 PGC_DEFAULT_MODE = "modo1"
 PGC_MODE_OPTIONS = ("modo1", "modo2")
+PGC_MODE_LABELS = {
+    "modo1": "1.Absolutos",
+    "modo2": "2.Proporción",
+}
 DEFAULT_PGC_MODE = "modo1"
 
 
@@ -92,24 +96,22 @@ def set_pgc_mode(mode: str):
     )
 
 
-def get_default_month_count():
-    fallback = DEFAULT_MONTH_COUNT
+def get_default_month_count(now=None):
+    """Meses incluidos por defecto: enero → mes inmediato anterior al actual."""
+    now = now or datetime.now()
+    count = now.month - 1
+    if count < 1:
+        # En enero no hay mes previo del año en curso; mostrar al menos 1.
+        count = 1
+    if count > MAX_MONTH_COUNT:
+        count = MAX_MONTH_COUNT
+    return count
 
-    setting = SystemSetting.objects.filter(key="pgc.default_month_count").first()
-    if not setting or setting.value_text in (None, ""):
-        return fallback
 
-    try:
-        value = int(str(setting.value_text).strip())
-    except (TypeError, ValueError):
-        return fallback
-
-    if value < 1:
-        return fallback
-    if value > MAX_MONTH_COUNT:
-        return MAX_MONTH_COUNT
-
-    return value
+def get_default_report_start(now=None):
+    """Desde por defecto: enero del año en curso."""
+    now = now or datetime.now()
+    return now.year, 1
 
 
 def get_active_pgc_plan():
@@ -496,25 +498,36 @@ def _build_period_q(periods):
 
 def _get_available_periods(mode=None):
     active_plan = _get_active_pgc_plan()
-    if not active_plan:
-        return []
+    periods = []
 
-    periods = list(
-        MonthlyModeScorecard.objects
-        .filter(plan=active_plan, mode=mode or DEFAULT_PGC_MODE)
-        .order_by("-year", "-month")
-        .values_list("year", "month")
-        .distinct()
-    )
-
-    if not periods:
+    if active_plan:
         periods = list(
-            MonthlyScorecard.objects
-            .filter(plan=active_plan)
+            MonthlyModeScorecard.objects
+            .filter(plan=active_plan, mode=mode or DEFAULT_PGC_MODE)
             .order_by("-year", "-month")
             .values_list("year", "month")
             .distinct()
         )
+
+        if not periods:
+            periods = list(
+                MonthlyScorecard.objects
+                .filter(plan=active_plan)
+                .order_by("-year", "-month")
+                .values_list("year", "month")
+                .distinct()
+            )
+
+    # Asegurar que el año en curso (ene–dic) siempre esté en el selector "Desde".
+    now = datetime.now()
+    seen = set(periods)
+    for month in range(1, 13):
+        key = (now.year, month)
+        if key not in seen:
+            periods.append(key)
+            seen.add(key)
+
+    periods.sort(key=lambda ym: (ym[0], ym[1]), reverse=True)
 
     return [
         {
@@ -526,7 +539,7 @@ def _get_available_periods(mode=None):
     ]
 
 
-MONTH_COUNT_OPTIONS = [2, 3, 4, 6, 9, 12]
+MONTH_COUNT_OPTIONS = list(range(1, 13))
 
 
 def shift_month(year, month, delta):
@@ -538,6 +551,7 @@ def shift_month(year, month, delta):
 
 def _get_report_filter(request, mode=DEFAULT_PGC_MODE):
     dynamic_default_month_count = get_default_month_count()
+    default_start_year, default_start_month = get_default_report_start()
 
     get_start_year = _safe_int(request.GET.get("start_year"))
     get_start_month = _safe_int(request.GET.get("start_month"))
@@ -547,56 +561,33 @@ def _get_report_filter(request, mode=DEFAULT_PGC_MODE):
     session_start_month = _safe_int(request.session.get("pgc_report_start_month"))
     session_month_count = _safe_int(request.session.get("pgc_report_month_count"))
 
-    month_count = get_month_count or session_month_count or dynamic_default_month_count
+    # Preferir GET; si no, defaults YTD (ene → mes anterior). Session solo si ya hay GET parcial.
+    has_get_filter = any(
+        request.GET.get(k) not in (None, "")
+        for k in ("start_year", "start_month", "month_count")
+    )
+
+    if get_month_count:
+        month_count = get_month_count
+    elif has_get_filter and session_month_count:
+        month_count = session_month_count
+    else:
+        month_count = dynamic_default_month_count
+
     if month_count < 1:
         month_count = dynamic_default_month_count
     if month_count > MAX_MONTH_COUNT:
         month_count = MAX_MONTH_COUNT
 
-    start_year = get_start_year or session_start_year
-    start_month = get_start_month or session_start_month
+    if get_start_year and get_start_month:
+        start_year, start_month = get_start_year, get_start_month
+    elif has_get_filter and session_start_year and session_start_month:
+        start_year, start_month = session_start_year, session_start_month
+    else:
+        start_year, start_month = default_start_year, default_start_month
 
-    if not start_year or not start_month or start_month < 1 or start_month > 12:
-        active_plan = _get_active_pgc_plan()
-
-        if active_plan:
-            latest_period = (
-                MonthlyModeScorecard.objects
-                .filter(plan=active_plan, mode=mode)
-                .order_by("-year", "-month")
-                .values("year", "month")
-                .first()
-            )
-
-            if not latest_period:
-                latest_period = (
-                    MonthlyScorecard.objects
-                    .filter(plan=active_plan)
-                    .order_by("-year", "-month")
-                    .values("year", "month")
-                    .first()
-                )
-
-            if latest_period:
-                start_year, start_month = shift_month(
-                    latest_period["year"],
-                    latest_period["month"],
-                    -(month_count - 1),
-                )
-            else:
-                now = datetime.now()
-                start_year, start_month = shift_month(
-                    now.year,
-                    now.month,
-                    -(month_count - 1),
-                )
-        else:
-            now = datetime.now()
-            start_year, start_month = shift_month(
-                now.year,
-                now.month,
-                -(month_count - 1),
-            )
+    if start_month < 1 or start_month > 12:
+        start_year, start_month = default_start_year, default_start_month
 
     request.session["pgc_report_start_year"] = start_year
     request.session["pgc_report_start_month"] = start_month
@@ -711,7 +702,9 @@ def pgc_dashboard(request):
         "report_filter": report_filter,
         "report_sort": report_sort,
         "selected_mode": selected_mode,
+        "selected_mode_label": PGC_MODE_LABELS.get(selected_mode, selected_mode),
         "mode_options": PGC_MODE_OPTIONS,
+        "mode_choices": [(m, PGC_MODE_LABELS[m]) for m in PGC_MODE_OPTIONS],
         "available_periods": _get_available_periods(mode=selected_mode),
         "month_count_options": MONTH_COUNT_OPTIONS,
         "chart_payload_json": json.dumps(chart_payload, ensure_ascii=False),
@@ -875,7 +868,7 @@ def _build_dashboard_markdown(rows, report_filter, selected_mode="modo1"):
         f"Generado: {generated_at}",
         "",
         "Filtros",
-        f"- Modalidad: {selected_mode}",
+        f"- Modalidad: {PGC_MODE_LABELS.get(selected_mode, selected_mode)}",
         f"- Desde: {start_year}-{start_month:02d}",
         f"- Hasta: {end_year}-{end_month:02d}",
         f"- Meses incluidos: {month_count}",
