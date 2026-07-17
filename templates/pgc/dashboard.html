@@ -86,7 +86,7 @@
   }
 </style>
 <div class="card">
-    <h2 style="margin-top:0;">Tablero principal de puntos — {{ selected_mode_label|default:selected_mode }}</h2>
+    <h2 style="margin-top:0;">{% include "includes/module_mark.html" with module="pgc" %}Tablero principal de puntos — {{ selected_mode_label|default:selected_mode }}</h2>
   
     <p class="muted">
         Resumen mensual de puntos por UNE y periodo.

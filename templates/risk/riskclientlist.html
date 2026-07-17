@@ -2,7 +2,7 @@
 {% block title %}Clientes riesgo — WCG{% endblock %}
 {% block content %}
 <div class="d-flex justify-content-between mb-3 mt-2">
-  <h1 class="h4 fw-semibold mb-0">Riesgo — Clientes con operaciones</h1>
+  <h1 class="h4 fw-semibold mb-0">{% include "includes/module_mark.html" with module="risk" %}Riesgo — Clientes con operaciones</h1>
   <a href="{% url 'risk:comando_balon' %}" class="btn btn-sm btn-outline-secondary">← Comando Balón</a>
 </div>
 <div class="card border-0 shadow-sm">

@@ -2,7 +2,7 @@
 {% block title %}PGO — Resultados{% endblock %}
 {% block content %}
 <div class="d-flex justify-content-between mb-3 mt-2">
-  <h1 class="h4 fw-semibold mb-0">PGO — Resultados por período</h1>
+  <h1 class="h4 fw-semibold mb-0">{% include "includes/module_mark.html" with module="pgo" %}PGO — Resultados por período</h1>
   <a href="{% url 'pgo:dashboard' %}" class="btn btn-sm btn-outline-secondary">← Dashboard</a>
 </div>
 <div class="card border-0 shadow-sm">
