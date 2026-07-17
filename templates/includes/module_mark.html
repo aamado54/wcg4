@@ -1,10 +1,10 @@
-{# Marcador de módulo en títulos: poco espacio, aria-hidden. Uso: {% include "includes/module_mark.html" with module="pgc" %} #}
+{# Marcador de módulo: va a la derecha del título dentro de .wcg-report-head #}
 {% if module == "pgc" %}
-<span class="wcg-title-ico" aria-hidden="true">📊</span>
+<span class="wcg-title-ico" aria-hidden="true" title="PGC">📊</span>
 {% elif module == "pgo" %}
-<span class="wcg-title-ico" aria-hidden="true">⚙️</span>
+<span class="wcg-title-ico" aria-hidden="true" title="PGO">⚙️</span>
 {% elif module == "crm" %}
-<span class="wcg-title-ico" aria-hidden="true">👥</span>
+<span class="wcg-title-ico" aria-hidden="true" title="CRM">👥</span>
 {% elif module == "risk" %}
-<span class="wcg-title-ico" aria-hidden="true">⚽</span>
+<span class="wcg-title-ico" aria-hidden="true" title="Balón de Riesgo">⚽</span>
 {% endif %}

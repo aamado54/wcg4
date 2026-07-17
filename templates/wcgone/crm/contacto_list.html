@@ -3,8 +3,11 @@
 {% block title %}Contactos — CRM — WCG One{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-  <h1 class="h4 fw-semibold mb-0">{% include "includes/module_mark.html" with module="crm" %}CRM — Contactos</h1>
+<div class="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2">
+  <div class="wcg-report-head">
+    <h1 class="h4 fw-semibold mb-0">CRM — Contactos</h1>
+    {% include "includes/module_mark.html" with module="crm" %}
+  </div>
   <div class="d-flex gap-1">
     <a href="{% url 'wcgone_crm:entidad_list' %}" class="btn btn-sm btn-outline-secondary">← Clientes</a>
     <a href="{% url 'wcgone_crm:tarea_list' %}" class="btn btn-sm btn-outline-secondary">Tareas</a>

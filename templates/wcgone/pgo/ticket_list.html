@@ -3,8 +3,11 @@
 {% block title %}Tickets — PGO — WCG One{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-  <h1 class="h4 fw-semibold mb-0">{% include "includes/module_mark.html" with module="pgo" %}PGO — Tickets</h1>
+<div class="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2">
+  <div class="wcg-report-head">
+    <h1 class="h4 fw-semibold mb-0">PGO — Tickets</h1>
+    {% include "includes/module_mark.html" with module="pgo" %}
+  </div>
   <div class="d-flex gap-1 flex-wrap">
     <a href="{% url 'wcgone_pgo:export_tickets' %}{% if export_query %}?{{ export_query }}{% endif %}" class="btn btn-sm btn-outline-primary">Exportar CSV</a>
     <a href="{% url 'wcgone_pgo:dashboard' %}" class="btn btn-sm btn-outline-secondary">Dashboard</a>

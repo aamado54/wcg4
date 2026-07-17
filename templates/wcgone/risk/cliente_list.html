@@ -4,7 +4,10 @@
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3">
-  <h1 class="h4 fw-semibold mb-0">{% include "includes/module_mark.html" with module="risk" %}Clientes en riesgo</h1>
+  <div class="wcg-report-head">
+    <h1 class="h4 fw-semibold mb-0">Clientes en riesgo</h1>
+    {% include "includes/module_mark.html" with module="risk" %}
+  </div>
   <a href="{% url 'wcgone_risk:comando_balon' %}" class="btn btn-sm btn-outline-secondary">Comando Balón</a>
 </div>
 

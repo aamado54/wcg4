@@ -56,18 +56,18 @@
             color: #3a4a5c;
             text-decoration: none;
             padding: 8px 12px;
-            border-radius: 6px;
-            background: #ffffff;
-            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            background: #dce8f2;
+            border: 1px solid #c5d4e2;
             font-weight: 500;
         }
 
         .top-nav a:hover {
-            background: #e8f0f6;
-            border-color: #c9d9e6;
+            background: #cfdce8;
+            border-color: #b7c9d8;
         }
 
-        /* Destacado: volver al menú principal WCG */
+        /* Destacado: volver al menú principal WCG (siempre claro) */
         .top-nav a.nav-menu-principal {
             background: #ffffff;
             color: #3d5a73;
@@ -77,7 +77,7 @@
         }
 
         .top-nav a.nav-menu-principal:hover {
-            background: #e8f0f6;
+            background: #ffffff;
             color: #2a3441;
         }
 
@@ -101,9 +101,9 @@
         .gear-btn {
             width: 42px;
             height: 42px;
-            border-radius: 8px;
-            border: 1px solid #e2e8f0;
-            background: #ffffff;
+            border-radius: 10px;
+            border: 1px solid #c5d4e2;
+            background: #dce8f2;
             color: #3d5a73;
             cursor: pointer;
             font-size: 1.2rem;
@@ -111,7 +111,7 @@
         }
 
         .gear-btn:hover {
-            background: #e8f0f6;
+            background: #cfdce8;
         }
 
         .gear-menu {
@@ -189,17 +189,22 @@
         }
 
         select, button {
-            padding: 8px 10px;
-            border: 1px solid #cbd5e1;
-            border-radius: 6px;
+            padding: 8px 12px;
+            border: 1px solid #c5d4e2;
+            border-radius: 10px;
             font-size: 0.95rem;
         }
 
         button {
-            background: #0f766e;
-            color: white;
-            border: none;
+            background: #d7e4ef;
+            color: #2a3441;
+            border: 1px solid #c5d4e2;
             cursor: pointer;
+            border-radius: 10px;
+        }
+
+        button:hover {
+            background: #c9dae8;
         }
 
         table {
@@ -239,15 +244,35 @@
             color: #64748b;
         }
 
-        /* Emoji de módulo en títulos: inline, sin robar altura */
+        /* Cabecera de reporte: título izquierda, emoji derecha (sin empujar abajo) */
+        .wcg-report-head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 0.75rem;
+            margin: 0 0 0.35rem;
+        }
+        .wcg-report-head > h1,
+        .wcg-report-head > h2,
+        .wcg-report-head > .h4 {
+            margin: 0;
+            flex: 1 1 auto;
+            min-width: 0;
+            line-height: 1.25;
+        }
         .wcg-title-ico {
-            display: inline-block;
-            font-size: 0.92em;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex: 0 0 auto;
+            font-size: 1.85em;
             line-height: 1;
-            margin-right: 0.38em;
-            vertical-align: -0.08em;
-            opacity: 0.88;
-            filter: saturate(1.05);
+            margin: 0;
+            padding: 0.1rem 0.15rem;
+            opacity: 0.92;
+            filter: saturate(1.12);
+            user-select: none;
+            pointer-events: none;
         }
 
         tbody tr:hover {

@@ -18,7 +18,10 @@
 </style>
 
 <div class="d-flex justify-content-between align-items-center mb-3">
-  <h1 class="h4 fw-semibold mb-0">{% include "includes/module_mark.html" with module="pgo" %}Resultados por período</h1>
+  <div class="wcg-report-head">
+    <h1 class="h4 fw-semibold mb-0">Resultados por período</h1>
+    {% include "includes/module_mark.html" with module="pgo" %}
+  </div>
   <a href="{% url 'wcgone_pgo:dashboard' %}" class="btn btn-sm btn-outline-secondary">Dashboard</a>
 </div>
 

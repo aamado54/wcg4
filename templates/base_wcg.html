@@ -22,7 +22,7 @@
           --wcg-accent-ink: #3d5a73;
           --wcg-nav-bg: #eef3f7;
           --wcg-nav-ink: #3a4a5c;
-          --wcg-radius: 6px;
+          --wcg-radius: 10px;
           --wcg-shadow: 0 1px 2px rgba(42, 52, 65, 0.04), 0 4px 12px rgba(42, 52, 65, 0.04);
         }
         * { box-sizing: border-box; }
@@ -58,8 +58,8 @@
           gap: 0.35rem;
           padding: 0.4rem 0.85rem;
           border-radius: var(--wcg-radius);
-          background: var(--wcg-surface);
-          border: 1px solid var(--wcg-line);
+          background: #ffffff;
+          border: 1px solid #b7c9d8;
           color: var(--wcg-accent-ink) !important;
           font-weight: 600;
           font-size: 0.82rem;
@@ -68,8 +68,8 @@
           white-space: nowrap;
         }
         .wcg-home-link:hover {
-          background: var(--wcg-accent-soft);
-          border-color: #c9d9e6;
+          background: #ffffff;
+          border-color: #b7c9d8;
           color: var(--wcg-ink) !important;
         }
         .wcg-nav-primary {
@@ -184,37 +184,40 @@
           letter-spacing: -0.02em;
         }
         .btn {
-          border-radius: var(--wcg-radius);
+          border-radius: 10px;
           font-weight: 500;
         }
         .btn-primary {
-          background: var(--wcg-accent-ink);
-          border-color: var(--wcg-accent-ink);
+          background: #5a7a94;
+          border-color: #5a7a94;
+          color: #fff;
         }
         .btn-primary:hover {
-          background: #324a60;
-          border-color: #324a60;
+          background: #4d6b84;
+          border-color: #4d6b84;
         }
         .btn-outline-primary {
-          color: var(--wcg-accent-ink);
-          border-color: #b7c9d8;
+          color: #3d5a73;
+          background: #e4eef6;
+          border-color: #c5d4e2;
         }
         .btn-outline-primary:hover {
-          background: var(--wcg-accent-soft);
-          color: var(--wcg-accent-ink);
-          border-color: #9bb4c8;
+          background: #d5e4f0;
+          color: #2a3441;
+          border-color: #b7c9d8;
         }
         .btn-outline-secondary {
-          color: var(--wcg-muted);
-          border-color: var(--wcg-line);
+          color: #4a5562;
+          background: #e8edf2;
+          border-color: #d0d8e0;
         }
         .btn-outline-secondary:hover {
-          background: #f8fafc;
-          color: var(--wcg-ink);
+          background: #dde4eb;
+          color: #2a3441;
           border-color: #c5d0dc;
         }
         .form-control, .form-select {
-          border-radius: var(--wcg-radius);
+          border-radius: 10px;
           border-color: var(--wcg-line);
         }
         .form-control:focus, .form-select:focus {
@@ -238,15 +241,47 @@
           margin-bottom: 1.25rem;
         }
         .page-toolbar h1 { margin: 0; }
-        /* Emoji de módulo en títulos: inline, sin robar altura */
+        /* Cabecera de reporte: título izq, emoji der */
+        .wcg-report-head {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 0.75rem;
+          flex: 1 1 auto;
+          min-width: 0;
+          margin: 0;
+        }
+        .wcg-report-head > h1,
+        .wcg-report-head > h2,
+        .wcg-report-head > .h4 {
+          margin: 0;
+          flex: 1 1 auto;
+          min-width: 0;
+          line-height: 1.25;
+        }
         .wcg-title-ico {
-          display: inline-block;
-          font-size: 0.95em;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          flex: 0 0 auto;
+          font-size: 1.9em;
           line-height: 1;
-          margin-right: 0.4em;
-          vertical-align: -0.06em;
-          opacity: 0.9;
-          filter: saturate(1.08);
+          margin: 0;
+          padding: 0.05rem 0.1rem;
+          opacity: 0.92;
+          filter: saturate(1.12);
+          user-select: none;
+          pointer-events: none;
+        }
+        /* Menú principal: siempre claro */
+        .wcg-home-link {
+          background: #ffffff !important;
+          border-color: #b7c9d8 !important;
+          color: var(--wcg-accent-ink) !important;
+        }
+        .wcg-home-link:hover {
+          background: #ffffff !important;
+          color: var(--wcg-ink) !important;
         }
         footer.wcg-footer {
           border-top: 1px solid var(--wcg-line);

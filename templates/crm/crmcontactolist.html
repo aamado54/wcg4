@@ -2,7 +2,10 @@
 {% block title %}Contactos — CRM{% endblock %}
 {% block content %}
 <div class="d-flex justify-content-between mb-3 mt-2">
-  <h1 class="h4 fw-semibold mb-0">{% include "includes/module_mark.html" with module="crm" %}CRM — Contactos</h1>
+  <div class="wcg-report-head">
+    <h1 class="h4 fw-semibold mb-0">CRM — Contactos</h1>
+    {% include "includes/module_mark.html" with module="crm" %}
+  </div>
   <a href="{% url 'crm:entidad_list' %}" class="btn btn-sm btn-outline-secondary">← Entidades</a>
 </div>
 <form method="get" class="mb-3">

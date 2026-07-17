@@ -13,7 +13,10 @@
   }
 </style>
 <div class="card">
-    <h2 style="margin-top:0;">{% include "includes/module_mark.html" with module="pgc" %}Venta cruzada vs meta</h2>
+    <div class="wcg-report-head" style="margin-top:0;">
+      <h2 style="margin:0;">Venta cruzada vs meta</h2>
+      {% include "includes/module_mark.html" with module="pgc" %}
+    </div>
     <p class="muted">
         Meta y resultado mensual de venta cruzada por UNE y periodo.
     </p>
