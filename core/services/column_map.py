@@ -13,7 +13,10 @@ from .import_base import cell_str
 def _norm_header(name: str) -> str:
     s = unicodedata.normalize("NFKD", str(name))
     s = "".join(c for c in s if not unicodedata.combining(c))
-    s = s.strip().lower()
+    s = s.replace("\ufeff", "").strip()
+    # NombreCliente / Client Name → snake_case usable por aliases
+    s = re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", s)
+    s = s.lower()
     s = re.sub(r"[^\w]+", "_", s)
     return s.strip("_")
 

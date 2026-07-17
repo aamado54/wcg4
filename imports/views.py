@@ -5,11 +5,15 @@ from pathlib import Path
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.core.management import call_command
-from django.shortcuts import get_object_or_404, redirect
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 
+from core.wcg_models import DataImportBatch
 from pgc.admin_utils import parse_period
 
+from .detection import ALL_IMPORTABLE, TYPE_LABELS, TYPE_UNKNOWN, detect_file
+from .dispatch import run_import
+from .forms import GeneralImportForm
 from .models import FileUpload
 
 
@@ -22,10 +26,55 @@ def _redirect_imports_to_admin(request, block: str | None = None):
 
 
 @login_required
-@user_passes_test(lambda u: u.is_superuser)
 def import_hub(request):
-    """Flujo legado: redirige al tablero mensual de Administración."""
-    return _redirect_imports_to_admin(request)
+    """Importación General de Datos — punto único para CRM, PGO, Risk y PGC."""
+    result = None
+    detection_preview = None
+    form = GeneralImportForm()
+
+    if request.method == "POST":
+        action = request.POST.get("action", "import")
+        form = GeneralImportForm(request.POST, request.FILES)
+        if form.is_valid():
+            uploaded = form.cleaned_data["archivo"]
+            tipo_forzado = form.cleaned_data.get("tipo_forzado") or None
+            if action == "detect":
+                detection_preview = detect_file(uploaded)
+                uploaded.seek(0)
+                form = GeneralImportForm(
+                    initial={"tipo_forzado": detection_preview.tipo if detection_preview.tipo != TYPE_UNKNOWN else ""}
+                )
+                # Re-bind file is lost on re-render; user must re-select — show detection only
+                messages.info(
+                    request,
+                    f"Detección: {detection_preview.label} "
+                    f"({int(detection_preview.confidence * 100)}% confianza). "
+                    f"Vuelva a seleccionar el archivo y confirme la importación.",
+                )
+            else:
+                result = run_import(request.user, uploaded, tipo_forzado=tipo_forzado or None)
+                if result.ok:
+                    messages.success(request, result.message)
+                else:
+                    messages.warning(request, result.message or "Importación incompleta.")
+                form = GeneralImportForm()
+
+    batches = DataImportBatch.objects.select_related("uploaded_by").order_by("-created_at")[:25]
+    uploads = FileUpload.objects.order_by("-created_at")[:15]
+
+    return render(
+        request,
+        "imports/general_hub.html",
+        {
+            "form": form,
+            "result": result,
+            "detection_preview": detection_preview,
+            "batches": batches,
+            "uploads": uploads,
+            "type_labels": TYPE_LABELS,
+            "importable_types": [(t, TYPE_LABELS[t]) for t in ALL_IMPORTABLE],
+        },
+    )
 
 
 @login_required

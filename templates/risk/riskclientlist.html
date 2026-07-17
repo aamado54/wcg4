@@ -1,0 +1,25 @@
+{% extends "base_wcg.html" %}
+{% block title %}Clientes riesgo — WCG{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between mb-3 mt-2">
+  <h1 class="h4 fw-semibold mb-0">Riesgo — Clientes con operaciones</h1>
+  <a href="{% url 'risk:comando_balon' %}" class="btn btn-sm btn-outline-secondary">← Comando Balón</a>
+</div>
+<div class="card border-0 shadow-sm">
+  <table class="table table-hover table-wcg mb-0">
+    <thead><tr><th>Cliente</th><th>Código</th><th>Unidad</th><th></th></tr></thead>
+    <tbody>
+      {% for c in clientes %}
+      <tr>
+        <td>{{ c.nombre }}</td>
+        <td>{{ c.codigo }}</td>
+        <td>{{ c.unidad_negocio.nombre|default:"—" }}</td>
+        <td><a href="{% url 'risk:cliente_detail' c.codigo %}" class="btn btn-sm btn-outline-primary">Ver</a></td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="4" class="text-muted text-center py-4">Sin clientes de riesgo.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

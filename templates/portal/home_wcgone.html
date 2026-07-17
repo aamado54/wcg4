@@ -81,8 +81,8 @@
           Maestro único de clientes y prospectos: entidades, contactos, productos y seguimiento comercial.
         </p>
         <div class="d-flex gap-1 flex-wrap">
-          <a href="{% url 'wcgone_crm:entidad_list' %}" class="btn btn-outline-primary btn-sm">Ver clientes</a>
-          <a href="{% url 'wcgone_crm:importar' %}" class="btn btn-outline-secondary btn-sm">Importar</a>
+          <a href="{% url 'crm:entidad_list' %}" class="btn btn-outline-primary btn-sm">Ver clientes</a>
+          <a href="{% url 'imports:import_hub' %}" class="btn btn-outline-secondary btn-sm">Importación</a>
         </div>
       </div>
     </div>
@@ -95,8 +95,8 @@
           Cuadro de alerta operativa: mora, saldos vencidos y evolución por operación (snapshots leasing).
         </p>
         <div class="d-flex gap-1 flex-wrap">
-          <a href="{% url 'wcgone_risk:comando_balon' %}" class="btn btn-outline-primary btn-sm">Comando Balón</a>
-          <a href="{% url 'wcgone_risk:importar_snapshots' %}" class="btn btn-outline-secondary btn-sm">Importar</a>
+          <a href="{% url 'risk:comando_balon' %}" class="btn btn-outline-primary btn-sm">Comando Balón</a>
+          <a href="{% url 'imports:import_hub' %}" class="btn btn-outline-secondary btn-sm">Importación</a>
         </div>
       </div>
     </div>
@@ -109,8 +109,8 @@
           Indicadores de operación interna: tickets de helpdesk, tiempos de atención y cumplimiento de SLA.
         </p>
         <div class="d-flex gap-1 flex-wrap">
-          <a href="{% url 'wcgone_pgo:dashboard' %}" class="btn btn-outline-primary btn-sm">Dashboard</a>
-          <a href="{% url 'wcgone_pgo:importar_tickets' %}" class="btn btn-outline-secondary btn-sm">Importar</a>
+          <a href="{% url 'pgo:dashboard' %}" class="btn btn-outline-primary btn-sm">Dashboard</a>
+          <a href="{% url 'imports:import_hub' %}" class="btn btn-outline-secondary btn-sm">Importación</a>
         </div>
       </div>
     </div>

@@ -1,0 +1,27 @@
+{% extends "base_wcg.html" %}
+{% block title %}PGO — Resultados{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between mb-3 mt-2">
+  <h1 class="h4 fw-semibold mb-0">PGO — Resultados por período</h1>
+  <a href="{% url 'pgo:dashboard' %}" class="btn btn-sm btn-outline-secondary">← Dashboard</a>
+</div>
+<div class="card border-0 shadow-sm">
+  <table class="table table-hover table-wcg mb-0">
+    <thead><tr><th>Período</th><th>Unidad</th><th>Cerrados</th><th>Abiertos</th><th>T. promedio (h)</th><th>SLA %</th></tr></thead>
+    <tbody>
+      {% for r in resultados %}
+      <tr>
+        <td>{{ r.periodo }}</td>
+        <td>{{ r.unidad_negocio.nombre }}</td>
+        <td>{{ r.tickets_cerrados }}</td>
+        <td>{{ r.tickets_abiertos }}</td>
+        <td>{{ r.tiempo_promedio_horas }}</td>
+        <td>{{ r.cumplimiento_sla_pct }}%</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="6" class="text-muted text-center py-4">Sin resultados. Importe tickets y se recalcularán.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

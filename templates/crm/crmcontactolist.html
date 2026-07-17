@@ -1,0 +1,31 @@
+{% extends "base_wcg.html" %}
+{% block title %}Contactos — CRM{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between mb-3 mt-2">
+  <h1 class="h4 fw-semibold mb-0">CRM — Contactos</h1>
+  <a href="{% url 'crm:entidad_list' %}" class="btn btn-sm btn-outline-secondary">← Entidades</a>
+</div>
+<form method="get" class="mb-3">
+  <input type="search" name="q" value="{{ request.GET.q }}" class="form-control form-control-sm" placeholder="Buscar contacto, email o cliente" style="max-width:360px">
+</form>
+<div class="card border-0 shadow-sm">
+  <div class="table-responsive">
+    <table class="table table-hover table-wcg mb-0 small">
+      <thead><tr><th>Contacto</th><th>Email</th><th>Teléfono</th><th>Entidad</th><th></th></tr></thead>
+      <tbody>
+        {% for c in contactos %}
+        <tr>
+          <td>{{ c.nombre }}{% if c.es_principal %} <span class="badge text-bg-info">Principal</span>{% endif %}</td>
+          <td>{{ c.email|default:"—" }}</td>
+          <td>{{ c.telefono|default:"—" }}</td>
+          <td>{{ c.entidad.nombre }}</td>
+          <td><a href="{% url 'crm:entidad_detail' c.entidad.codigo %}" class="btn btn-sm btn-outline-primary">Ver</a></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" class="text-muted text-center py-4">Sin contactos.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

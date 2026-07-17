@@ -1,28 +1,119 @@
 {% extends "base_wcg.html" %}
-{% block title %}Operación {{ snapshot.referencia_operacion }}{% endblock %}
+{% block title %}Operación {{ snapshot.referencia_operacion }} — Balón de Riesgo{% endblock %}
 {% block content %}
-<h1>Operación {{ snapshot.referencia_operacion }}</h1>
-<p class="text-muted">
+<div class="mb-3 mt-1">
+  <h1 class="h4 fw-semibold mb-1">Operación {{ snapshot.referencia_operacion }}</h1>
+  <p class="text-muted small mb-0">
+    Cliente:
     <a href="{% url 'risk:cliente_detail' snapshot.entidad.codigo %}">{{ snapshot.entidad.nombre }}</a>
-    · {{ snapshot.fecha_snapshot }}
-</p>
-<dl class="row">
-    <dt class="col-sm-3">Unidad</dt><dd class="col-sm-9">{{ snapshot.entidad.unidad_negocio|default:"—" }}</dd>
-    <dt class="col-sm-3">Nivel riesgo</dt><dd class="col-sm-9">{{ snapshot.get_nivel_riesgo_display }}</dd>
-    <dt class="col-sm-3">Días mora</dt><dd class="col-sm-9">{{ snapshot.dias_mora }}</dd>
-    <dt class="col-sm-3">Saldo</dt><dd class="col-sm-9">Q{{ snapshot.saldo }}</dd>
-    <dt class="col-sm-3">Monto exigible</dt><dd class="col-sm-9">Q{{ snapshot.monto_exigible }}</dd>
-    <dt class="col-sm-3">Alerta</dt><dd class="col-sm-9">{% if snapshot.alerta %}Sí{% else %}No{% endif %}</dd>
-</dl>
-{% if snapshot.detalle %}<p>{{ snapshot.detalle }}</p>{% endif %}
-<h5>Historial de snapshots</h5>
-<table class="table table-sm bg-white">
-<thead><tr><th>Fecha</th><th>Mora</th><th>Saldo</th><th>Exigible</th><th>Nivel</th></tr></thead>
-<tbody>
-{% for h in historial %}
-<tr><td>{{ h.fecha_snapshot }}</td><td>{{ h.dias_mora }}</td><td>{{ h.saldo }}</td><td>{{ h.monto_exigible }}</td><td>{{ h.get_nivel_riesgo_display }}</td></tr>
-{% endfor %}
-</tbody>
-</table>
-<p><a href="{% url 'risk:comando_balon' %}">← Comando Balón</a></p>
+  </p>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-md-3">
+    <div class="card border-0 shadow-sm"><div class="card-body small">
+      <div class="text-muted">Producto</div>
+      <div class="fw-semibold">{{ snapshot.producto.nombre|default:"—" }}</div>
+    </div></div>
+  </div>
+  <div class="col-md-3">
+    <div class="card border-0 shadow-sm"><div class="card-body small">
+      <div class="text-muted">Unidad</div>
+      <div class="fw-semibold">{{ snapshot.entidad.unidad_negocio.nombre|default:"—" }}</div>
+    </div></div>
+  </div>
+  <div class="col-md-3">
+    <div class="card border-0 shadow-sm"><div class="card-body small">
+      <div class="text-muted">Nivel riesgo</div>
+      <div class="fw-semibold">{{ snapshot.get_nivel_riesgo_display }}</div>
+    </div></div>
+  </div>
+  <div class="col-md-3">
+    <div class="card border-0 shadow-sm"><div class="card-body small">
+      <div class="text-muted">Alerta</div>
+      <div class="fw-semibold">{% if snapshot.alerta %}Sí{% else %}No{% endif %}</div>
+    </div></div>
+  </div>
+</div>
+
+<div class="card border-0 shadow-sm mb-3">
+  <div class="card-header bg-white fw-semibold">Historial de snapshots</div>
+  <div class="table-responsive">
+    <table class="table table-sm table-hover mb-0">
+      <thead>
+        <tr>
+          <th>Fecha</th>
+          <th>Nivel</th>
+          <th class="text-end">Capital</th>
+          <th class="text-end">Vencido</th>
+          <th class="text-center">Días</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for h in historial %}
+        <tr>
+          <td>{{ h.fecha_snapshot|date:"d/m/Y" }}</td>
+          <td>{{ h.get_nivel_riesgo_display }}</td>
+          <td class="text-end">{{ h.saldo }}</td>
+          <td class="text-end{% if h.monto_exigible > 0 %} text-danger fw-semibold{% endif %}">{{ h.monto_exigible }}</td>
+          <td class="text-center">
+            {% if h.dias_mora > 0 %}<span class="badge text-bg-warning">{{ h.dias_mora }}</span>{% else %}0{% endif %}
+          </td>
+          <td class="text-end"><a href="{% url 'risk:operacion_detail' h.pk %}" class="btn btn-sm btn-outline-primary">Ver</a></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" class="text-muted text-center py-3">Sin snapshots para esta operación.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-md-6">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-white fw-semibold">Pagos programados</div>
+      <div class="table-responsive">
+        <table class="table table-sm mb-0">
+          <thead><tr><th>Fecha</th><th>Ref.</th><th class="text-end">Monto</th></tr></thead>
+          <tbody>
+            {% for p in pagos_programados %}
+            <tr>
+              <td>{{ p.fecha_programada|date:"d/m/Y" }}</td>
+              <td class="small">{{ p.referencia }}</td>
+              <td class="text-end">{{ p.monto }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="3" class="text-muted py-3">Sin pagos programados.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-white fw-semibold">Pagos realizados</div>
+      <div class="table-responsive">
+        <table class="table table-sm mb-0">
+          <thead><tr><th>Fecha</th><th>Ref.</th><th class="text-end">Monto</th></tr></thead>
+          <tbody>
+            {% for p in pagos_realizados %}
+            <tr>
+              <td>{{ p.fecha_pago|date:"d/m/Y" }}</td>
+              <td class="small">{{ p.referencia }}</td>
+              <td class="text-end">{{ p.monto }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="3" class="text-muted py-3">Sin pagos realizados.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<p class="mt-3"><a href="{% url 'risk:comando_balon' %}">← Comando Balón</a></p>
 {% endblock %}

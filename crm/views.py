@@ -1,14 +1,16 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.db.models import Q
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.generic import DetailView, ListView
 
-from core.wcg_models import Entidad, UnidadNegocio
+from core.wcg_models import Contacto, Entidad, UnidadNegocio
+from crm.models import Tarea
+from crm.selectors import entidad_list_queryset, entidad_summary
 
-from .forms import ImportFileForm, InteraccionForm, TareaForm
-from .models import Interaccion, Tarea
-from . import services
+from .forms import InteraccionForm, TareaForm
 
 
 class EntidadListView(LoginRequiredMixin, ListView):
@@ -18,22 +20,17 @@ class EntidadListView(LoginRequiredMixin, ListView):
     paginate_by = 50
 
     def get_queryset(self):
-        qs = Entidad.objects.select_related("unidad_negocio").filter(activa=True)
-        q = self.request.GET.get("q", "").strip()
-        tipo = self.request.GET.get("tipo", "").strip()
-        unidad = self.request.GET.get("unidad", "").strip()
-        if q:
-            qs = qs.filter(nombre__icontains=q) | qs.filter(codigo__icontains=q) | qs.filter(nit__icontains=q)
-        if tipo:
-            qs = qs.filter(tipo=tipo)
-        if unidad:
-            qs = qs.filter(unidad_negocio_id=unidad)
-        return qs.order_by("nombre")
+        return entidad_list_queryset(self.request)
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         ctx["unidades"] = UnidadNegocio.objects.filter(activa=True).order_by("nombre")
         ctx["tipos"] = Entidad.TIPO_CHOICES
+        ctx["summary"] = entidad_summary(Entidad.objects.all())
+        ctx["breadcrumbs"] = [
+            {"label": "Panel principal", "url": "/panel/"},
+            {"label": "CRM — Clientes"},
+        ]
         return ctx
 
 
@@ -47,11 +44,57 @@ class EntidadDetailView(LoginRequiredMixin, DetailView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         entidad = self.object
+        contactos = list(entidad.contactos.filter(activo=True))
         ctx["interacciones"] = entidad.interacciones.select_related("usuario")[:20]
-        ctx["tareas"] = entidad.tareas.select_related("asignado_a")[:20]
-        ctx["contactos"] = entidad.contactos.filter(activo=True)
-        ctx["productos"] = entidad.productos_relacionados.select_related("producto")
+        ctx["tareas"] = entidad.tareas.exclude(estado=Tarea.ESTADO_HECHA).exclude(
+            estado=Tarea.ESTADO_CANCELADA
+        ).select_related("asignado_a")[:20]
+        ctx["contactos"] = contactos
+        ctx["productos"] = entidad.productos_relacionados.select_related(
+            "producto", "producto__unidad_negocio"
+        )
+        ctx["contacto_principal"] = next(
+            (c for c in contactos if c.es_principal),
+            contactos[0] if contactos else None,
+        )
+        ctx["breadcrumbs"] = [
+            {"label": "Panel principal", "url": "/panel/"},
+            {"label": "CRM — Clientes", "url": "/crm/"},
+            {"label": entidad.nombre},
+        ]
         return ctx
+
+
+class ContactoListView(LoginRequiredMixin, ListView):
+    model = Contacto
+    template_name = "crm/crmcontactolist.html"
+    context_object_name = "contactos"
+    paginate_by = 50
+
+    def get_queryset(self):
+        qs = Contacto.objects.select_related("entidad").filter(activo=True).order_by(
+            "entidad__nombre", "nombre"
+        )
+        q = self.request.GET.get("q", "").strip()
+        if q:
+            qs = qs.filter(
+                Q(nombre__icontains=q)
+                | Q(email__icontains=q)
+                | Q(entidad__nombre__icontains=q)
+            )
+        return qs
+
+
+class TareaListView(LoginRequiredMixin, ListView):
+    model = Tarea
+    template_name = "crm/crmtarealist.html"
+    context_object_name = "tareas"
+    paginate_by = 50
+
+    def get_queryset(self):
+        return Tarea.objects.select_related("entidad", "asignado_a").order_by(
+            "-fecha_vencimiento"
+        )
 
 
 @login_required
@@ -90,28 +133,28 @@ def nueva_tarea(request, codigo):
 
 
 @login_required
-def importar(request, tipo):
-    tipos = {
-        "entidades": ("Importar entidades", services.import_entidades),
-        "contactos": ("Importar contactos", services.import_contactos),
-    }
-    if tipo not in tipos:
-        return redirect("crm:entidad_list")
-    titulo, importer = tipos[tipo]
-    batch = None
-    if request.method == "POST":
-        form = ImportFileForm(request.POST, request.FILES)
-        if form.is_valid():
-            batch = importer(request.user, form.cleaned_data["archivo"])
-            messages.info(
-                request,
-                f"Importación finalizada: {batch.creados} creados, "
-                f"{batch.actualizados} actualizados, {batch.errores} errores.",
-            )
-    else:
-        form = ImportFileForm()
-    return render(
-        request,
-        "crm/crmimportform.html",
-        {"form": form, "titulo": titulo, "tipo": tipo, "batch": batch},
-    )
+def importar(request, tipo=None):
+    return redirect("imports:import_hub")
+
+
+@login_required
+def export_entidades(request):
+    import csv
+
+    qs = entidad_list_queryset(request)
+    response = HttpResponse(content_type="text/csv")
+    response["Content-Disposition"] = 'attachment; filename="crm_entidades.csv"'
+    writer = csv.writer(response)
+    writer.writerow(["codigo", "nombre", "nit", "tipo", "unidad", "activa"])
+    for e in qs:
+        writer.writerow(
+            [
+                e.codigo,
+                e.nombre,
+                e.nit,
+                e.tipo,
+                e.unidad_negocio.code if e.unidad_negocio else "",
+                "1" if e.activa else "0",
+            ]
+        )
+    return response

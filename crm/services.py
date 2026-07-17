@@ -2,15 +2,9 @@
 Importadores CRM ajustados a archivos reales WCG.
 
 Archivo referencia: `crm datos - InfoClientesWCG para CRM.csv`
-Columnas mínimas (cualquier alias listado):
-  - codigo: Codigo, CodigoCliente, ID_Cliente (o NIT como fallback)
-  - nombre: Nombre, RazonSocial, Cliente, NombreCliente
-  - nit: NIT, Nit (opcional si hay codigo)
-  - unidad_negocio: UNE, UnidadNegocio, Unidad
-  - contacto_nombre: Contacto, ContactoNombre, NombreContacto
-  - email, telefono, cargo: opcionales
+Columnas: NIT, NombreCliente, Teléfono, Correo, WCF, WCL, WCI
 
-Clave natural Entidad: `codigo`
+Clave natural Entidad: `codigo` (NIT normalizado)
 Clave natural Contacto: (`entidad`, `email`) o (`entidad`, `nombre`)
 """
 
@@ -22,7 +16,7 @@ import pandas as pd
 
 from core.services.column_map import normalize_columns, pick, require_any
 from core.services.import_base import cell_str, run_import_batch
-from core.wcg_models import Contacto, DataImportBatch, Entidad, UnidadNegocio
+from core.wcg_models import Contacto, DataImportBatch, Entidad, Producto, RelacionEntidadProducto, UnidadNegocio
 
 
 def _slug_codigo(value: str) -> str:
@@ -37,7 +31,6 @@ def _resolve_unidad(code_or_name: str) -> UnidadNegocio | None:
     raw_upper = raw.upper()
     raw_lower = raw.lower()
 
-    # Si dice Investment/Inversión, es Inversiones (no Factoraje/Leasing).
     if any(
         token in raw_lower
         for token in ("investment", "investments", "invest", "inversiones", "inversion", "inversión")
@@ -50,13 +43,18 @@ def _resolve_unidad(code_or_name: str) -> UnidadNegocio | None:
             "LEASING": "LEASING",
             "INSURANCE": "INSURANCE",
             "INVESTMENT": "INVESTMENT",
+            "WCF": "FACTORING",
+            "WCL": "LEASING",
+            "WCI": "INVESTMENT",
+            "TI": "TI",
+            "TECNOLOGIA": "TI",
+            "TECNOLOGÍA": "TI",
         }
         code = mapping.get(raw_upper, raw_upper.replace(" ", "_")[:30])
 
     un = UnidadNegocio.objects.filter(code__iexact=code).first()
     if un:
         return un
-    # TODO negocio: confirmar catálogo oficial de códigos UNE → UnidadNegocio
     return UnidadNegocio.objects.filter(nombre__icontains=raw[:20]).first()
 
 
@@ -71,15 +69,39 @@ def _entidad_codigo_from_row(row: pd.Series) -> str:
     return _slug_codigo(nombre[:20]) if nombre else ""
 
 
+def _flag_activo(raw: str) -> bool:
+    s = (raw or "").strip().lower()
+    if not s:
+        return False
+    if any(x in s for x in ("✅", "si", "sí", "yes", "true", "1", "x")):
+        return True
+    if any(x in s for x in ("❌", "no", "false", "0")):
+        return False
+    return False
+
+
+def _ensure_producto(code: str, nombre: str, unidad_code: str) -> Producto:
+    unidad = UnidadNegocio.objects.filter(code=unidad_code).first()
+    prod, _ = Producto.objects.update_or_create(
+        codigo=code,
+        defaults={"nombre": nombre, "unidad_negocio": unidad, "activo": True},
+    )
+    return prod
+
+
 def import_infoclientes_wcg(user, uploaded_file) -> DataImportBatch:
     from core.services.import_base import read_dataframe
 
     df = normalize_columns(read_dataframe(uploaded_file))
     require_any(
         df,
-        [["codigo", "codigo_cliente", "nit", "nombre", "cliente", "razon_social"]],
+        [["codigo", "codigo_cliente", "nit", "nombre", "cliente", "razon_social", "nombre_cliente"]],
     )
     uploaded_file.seek(0)
+
+    prod_wcf = _ensure_producto("WCF", "Working Capital Factoring", "FACTORING")
+    prod_wcl = _ensure_producto("WCL", "Working Capital Leasing", "LEASING")
+    prod_wci = _ensure_producto("WCI", "Working Capital Investment", "INVESTMENT")
 
     def handler(row: pd.Series, errors: list[str]):
         codigo = _entidad_codigo_from_row(row)
@@ -87,11 +109,32 @@ def import_infoclientes_wcg(user, uploaded_file) -> DataImportBatch:
         if not codigo or not nombre:
             errors.append("falta identificador o nombre de entidad")
             return None
+
+        # Unidad principal según flags WCF/WCL/WCI (prioridad Leasing > Factoring > Investment)
+        flags = {
+            "LEASING": _flag_activo(pick(row, "wcl")),
+            "FACTORING": _flag_activo(pick(row, "wcf")),
+            "INVESTMENT": _flag_activo(pick(row, "wci")),
+        }
         unidad = _resolve_unidad(pick(row, "une", "unidad_negocio", "unidad", "une_origen"))
+        if not unidad:
+            for code in ("LEASING", "FACTORING", "INVESTMENT"):
+                if flags[code]:
+                    unidad = UnidadNegocio.objects.filter(code=code).first()
+                    break
+
         tipo_raw = pick(row, "tipo", "tipo_entidad", "tipo_cliente").upper()
         tipo = Entidad.TIPO_CLIENTE
         if "PROSPECT" in tipo_raw:
             tipo = Entidad.TIPO_PROSPECTO
+
+        notas_parts = []
+        for label, active in (("WCF", flags["FACTORING"]), ("WCL", flags["LEASING"]), ("WCI", flags["INVESTMENT"])):
+            notas_parts.append(f"{label}={'Sí' if active else 'No'}")
+        notas = pick(row, "notas", "observaciones")
+        if notas_parts:
+            notas = (notas + " | " if notas else "") + ", ".join(notas_parts)
+
         entidad, created_e = Entidad.objects.update_or_create(
             codigo=codigo,
             defaults={
@@ -100,30 +143,66 @@ def import_infoclientes_wcg(user, uploaded_file) -> DataImportBatch:
                 "tipo": tipo,
                 "unidad_negocio": unidad,
                 "activa": True,
-                "notas": pick(row, "notas", "observaciones"),
+                "notas": notas,
             },
         )
+
+        created_any = created_e
+        updated_any = not created_e
+
+        # Relaciones producto por flags
+        for flag_key, prod in (
+            ("FACTORING", prod_wcf),
+            ("LEASING", prod_wcl),
+            ("INVESTMENT", prod_wci),
+        ):
+            if flags[flag_key]:
+                _, created_r = RelacionEntidadProducto.objects.update_or_create(
+                    entidad=entidad,
+                    producto=prod,
+                    defaults={"estado": RelacionEntidadProducto.ESTADO_ACTIVO},
+                )
+                created_any = created_any or created_r
+                updated_any = updated_any or (not created_r)
+
+        # Contacto desde correo/teléfono del archivo InfoClientes
+        email_raw = pick(row, "email", "correo", "correo_electronico")
+        telefono = pick(row, "telefono", "tel", "celular")
         contacto_nombre = pick(row, "contacto", "contacto_nombre", "nombre_contacto")
+        if not contacto_nombre and (email_raw or telefono):
+            # Primer correo como etiqueta de contacto
+            contacto_nombre = (email_raw.split(",")[0].strip().split("@")[0] if email_raw else "Contacto")[:120]
+
         if contacto_nombre:
-            email = pick(row, "email", "correo", "correo_electronico")
+            # Tomar primer email si vienen varios
+            email = email_raw.split(",")[0].strip() if email_raw else ""
+            if email and "@" not in email:
+                email = ""
+            tel = telefono.split(",")[0].strip()[:40] if telefono else ""
             defaults = {
-                "nombre": contacto_nombre,
-                "email": email,
-                "telefono": pick(row, "telefono", "tel", "celular"),
+                "nombre": contacto_nombre[:120],
+                "email": email[:254] if email else "",
+                "telefono": tel,
                 "cargo": pick(row, "cargo", "puesto"),
                 "es_principal": True,
                 "activo": True,
             }
-            if email:
-                _, created_c = Contacto.objects.update_or_create(
-                    entidad=entidad, email=email, defaults=defaults
-                )
-            else:
-                _, created_c = Contacto.objects.update_or_create(
-                    entidad=entidad, nombre=contacto_nombre, defaults=defaults
-                )
-            return created_e or created_c, not (created_e or created_c)
-        return created_e, not created_e
+            try:
+                if email:
+                    _, created_c = Contacto.objects.update_or_create(
+                        entidad=entidad, email=email, defaults=defaults
+                    )
+                else:
+                    _, created_c = Contacto.objects.update_or_create(
+                        entidad=entidad, nombre=contacto_nombre[:120], defaults=defaults
+                    )
+                created_any = created_any or created_c
+                updated_any = updated_any or (not created_c)
+            except Exception as exc:
+                errors.append(f"contacto: {exc}")
+                return None
+
+        return created_any, updated_any and not created_any
 
     return run_import_batch(
         user=user,

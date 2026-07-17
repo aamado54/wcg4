@@ -47,15 +47,34 @@ def _parse_date(value: str) -> date | None:
 
 
 def _ensure_entidad_from_row(row: pd.Series, errors: list[str]) -> Entidad | None:
-    nombre = pick(row, "cliente", "nombre", "razon_social", "nombre_cliente")
+    nombre = pick(
+        row,
+        "cliente",
+        "nombre",
+        "razon_social",
+        "nombre_cliente",
+        "client_name",
+    )
     nit = pick(row, "nit", "nit_cliente")
-    codigo = pick(row, "entidad_codigo", "codigo_cliente") or _entidad_codigo_from_row(row)
+    client_id = pick(row, "client_id", "cliente_id")
+    codigo = (
+        pick(row, "entidad_codigo", "codigo_cliente")
+        or (f"CLI{client_id}" if client_id else "")
+        or _entidad_codigo_from_row(row)
+    )
     if not nombre and not codigo:
         errors.append("falta cliente o identificador")
         return None
     if not nombre:
         nombre = codigo
-    unidad = _resolve_unidad(pick(row, "unidad", "une", "unidad_negocio") or "LEASING")
+    if not codigo:
+        codigo = _slug_codigo(nombre[:20])
+    unidad = _resolve_unidad(
+        pick(row, "unidad", "une", "unidad_negocio", "owning_business_unit", "financial_entity")
+        or "LEASING"
+    )
+    if unidad is None:
+        unidad = UnidadNegocio.objects.filter(code="LEASING").first()
     entidad, _ = Entidad.objects.update_or_create(
         codigo=codigo,
         defaults={"nombre": nombre, "nit": nit, "unidad_negocio": unidad, "activa": True},
@@ -80,8 +99,15 @@ def import_leasing_database(user, uploaded_file) -> DataImportBatch:
     require_any(
         df,
         [
-            ["cliente", "nombre", "razon_social"],
-            ["operacion", "referencia_operacion", "contrato", "no_operacion"],
+            ["cliente", "nombre", "razon_social", "client_name", "nombre_cliente"],
+            [
+                "operacion",
+                "referencia_operacion",
+                "contrato",
+                "no_operacion",
+                "contract_number",
+                "no_contrato",
+            ],
         ],
     )
     uploaded_file.seek(0)
@@ -90,28 +116,76 @@ def import_leasing_database(user, uploaded_file) -> DataImportBatch:
         entidad = _ensure_entidad_from_row(row, errors)
         if not entidad:
             return None
-        referencia = pick(row, "operacion", "referencia_operacion", "contrato", "no_operacion", "no_contrato")
+        referencia = pick(
+            row,
+            "operacion",
+            "referencia_operacion",
+            "contrato",
+            "no_operacion",
+            "no_contrato",
+            "contract_number",
+        )
         if not referencia:
             errors.append("falta referencia de operación")
             return None
-        fecha_raw = pick(row, "fecha_snapshot", "fecha_corte", "al_31_mayo", "fecha", "corte")
-        fecha = _parse_date(fecha_raw) or date(2026, 5, 31)
-        dias = pick_int(row, "dias_mora", "dias_atraso", "dias_de_mora", "mora_dias")
-        saldo = pick_decimal(row, "saldo", "saldo_total", "saldo_operacion")
-        exigible = pick_decimal(row, "monto_exigible", "exigible", "monto_vencido", "vencido")
+        fecha_raw = pick(
+            row,
+            "fecha_snapshot",
+            "fecha_corte",
+            "al_31_mayo",
+            "fecha",
+            "corte",
+            "balance_until",
+            "final_validity",
+        )
+        fecha = _parse_date(fecha_raw) or date(2026, 6, 30)
+        dias = pick_int(
+            row,
+            "dias_mora",
+            "dias_atraso",
+            "dias_de_mora",
+            "mora_dias",
+            "duedays",
+            "due_days",
+        )
+        saldo = pick_decimal(
+            row,
+            "saldo",
+            "saldo_total",
+            "saldo_operacion",
+            "capital_balance",
+            "total_capital",
+        )
+        exigible = pick_decimal(
+            row,
+            "monto_exigible",
+            "exigible",
+            "monto_vencido",
+            "vencido",
+            "past_due_balance",
+        )
         if exigible == 0 and saldo > 0 and dias > 0:
-            # TODO negocio: regla oficial de monto exigible vs saldo total
             exigible = saldo
         nivel = pick(row, "nivel_riesgo", "categoria_riesgo").upper() or _nivel_from_mora(dias)
         if nivel not in dict(RiskOperationSnapshot.NIVEL_CHOICES):
             nivel = _nivel_from_mora(dias)
-        alerta_raw = pick(row, "alerta", "en_alerta")
-        alerta = dias >= 30 or alerta_raw.lower() in ("1", "si", "sí", "true", "yes")
-        prod_code = pick(row, "producto", "producto_codigo") or "LEASING"
+        alerta_raw = pick(row, "alerta", "en_alerta", "status")
+        alerta = dias >= 30 or alerta_raw.lower() in ("1", "si", "sí", "true", "yes", "vencido", "mora")
+        prod_raw = pick(row, "producto", "producto_codigo") or "LEASING"
+        prod_code = _slug_codigo(prod_raw)[:50] or "LEASING"
         producto, _ = Producto.objects.get_or_create(
-            codigo=_slug_codigo(prod_code),
-            defaults={"nombre": "Leasing", "activo": True},
+            codigo=prod_code,
+            defaults={"nombre": prod_raw[:200] or "Leasing", "activo": True},
         )
+        detalle_parts = [
+            pick(row, "detalle", "observaciones", "notas"),
+            f"Status={pick(row, 'status')}" if pick(row, "status") else "",
+            f"Advisor={pick(row, 'advisor_name')}" if pick(row, "advisor_name") else "",
+            f"Cuotas pend.={pick(row, 'outstanding_installments')}"
+            if pick(row, "outstanding_installments")
+            else "",
+        ]
+        detalle = " | ".join(p for p in detalle_parts if p)
         _, created = RiskOperationSnapshot.objects.update_or_create(
             entidad=entidad,
             referencia_operacion=referencia,
@@ -123,10 +197,9 @@ def import_leasing_database(user, uploaded_file) -> DataImportBatch:
                 "saldo": saldo,
                 "monto_exigible": exigible,
                 "alerta": alerta,
-                "detalle": pick(row, "detalle", "observaciones", "notas"),
+                "detalle": detalle,
             },
         )
-        # Estado financiero agregado por período del snapshot
         periodo = fecha.strftime("%Y-%m")
         EstadoFinanciero.objects.update_or_create(
             entidad=entidad,
@@ -144,6 +217,91 @@ def import_leasing_database(user, uploaded_file) -> DataImportBatch:
         user=user,
         modulo=DataImportBatch.MODULO_RISK,
         tipo_importacion="leasing_database",
+        uploaded_file=uploaded_file,
+        required_columns=[],
+        row_handler=handler,
+    )
+
+
+def import_leasing_rentas(user, uploaded_file) -> DataImportBatch:
+    """
+    Enriquecimiento Balón: cuotas/rentas por contrato.
+    Archivo: LeasingRentasYYYY-MM-DD.csv
+    Matching: NoContrato → Entidad vía RiskOperationSnapshot.referencia_operacion
+              o creación de ProgramacionPago / PagoRealizado.
+    """
+    df = normalize_columns(read_dataframe(uploaded_file))
+    require_any(
+        df,
+        [
+            ["no_contrato", "contrato", "contract_number", "referencia"],
+            ["vencimiento", "fecha_programada", "fecha_vencimiento"],
+        ],
+    )
+    uploaded_file.seek(0)
+
+    def handler(row: pd.Series, errors: list[str]):
+        contrato = pick(row, "no_contrato", "contrato", "contract_number", "referencia", "operacion")
+        if not contrato:
+            errors.append("falta NoContrato")
+            return None
+        snap = (
+            RiskOperationSnapshot.objects.filter(referencia_operacion__iexact=contrato)
+            .select_related("entidad")
+            .order_by("-fecha_snapshot")
+            .first()
+        )
+        if snap:
+            entidad = snap.entidad
+        else:
+            # Crear entidad mínima si el contrato aún no está en snapshots
+            entidad, _ = Entidad.objects.get_or_create(
+                codigo=_slug_codigo(contrato),
+                defaults={
+                    "nombre": f"Contrato {contrato}",
+                    "unidad_negocio": UnidadNegocio.objects.filter(code="LEASING").first(),
+                    "activa": True,
+                    "tipo": Entidad.TIPO_CLIENTE,
+                },
+            )
+        nro = pick(row, "no", "numero", "cuota", "nro") or "0"
+        referencia = f"{contrato}-C{nro}"
+        fecha = _parse_date(pick(row, "vencimiento", "fecha_programada", "fecha_vencimiento"))
+        if not fecha:
+            errors.append("falta fecha vencimiento")
+            return None
+        monto = pick_decimal(row, "renta_total", "valor_renta_con_mora", "valor_renta", "monto")
+        estado = pick(row, "estado", "status").lower()
+        _, created_prog = ProgramacionPago.objects.update_or_create(
+            entidad=entidad,
+            referencia=referencia,
+            defaults={
+                "fecha_programada": fecha,
+                "monto": monto,
+                "moneda": "GTQ",
+            },
+        )
+        created = created_prog
+        updated = not created_prog
+        fecha_pago = _parse_date(pick(row, "fecha_pago"))
+        if fecha_pago or estado in ("pagada", "pagado", "paid"):
+            _, created_pago = PagoRealizado.objects.update_or_create(
+                entidad=entidad,
+                referencia=referencia,
+                defaults={
+                    "fecha_pago": fecha_pago or fecha,
+                    "monto": monto,
+                    "moneda": "GTQ",
+                },
+            )
+            created = created or created_pago
+            updated = updated or (not created_pago)
+        return created, updated and not created
+
+    return run_import_batch(
+        user=user,
+        modulo=DataImportBatch.MODULO_RISK,
+        tipo_importacion="leasing_rentas",
         uploaded_file=uploaded_file,
         required_columns=[],
         row_handler=handler,

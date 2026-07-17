@@ -1,13 +1,54 @@
 {% extends "base_wcg.html" %}
 {% block title %}PGO — Tickets{% endblock %}
 {% block content %}
-<div class="d-flex justify-content-between mb-3"><h1>Tickets</h1>
-<a href="{% url 'pgo:importar' %}" class="btn btn-sm btn-outline-primary">Importar</a></div>
-<table class="table table-sm table-hover bg-white">
-<thead><tr><th>Código</th><th>Título</th><th>Estado</th><th>Prioridad</th><th>Unidad</th><th></th></tr></thead>
-<tbody>{% for t in tickets %}<tr>
-<td>{{ t.codigo }}</td><td>{{ t.titulo }}</td><td>{{ t.get_estado_display }}</td>
-<td>{{ t.get_prioridad_display }}</td><td>{{ t.unidad_negocio|default:"—" }}</td>
-<td><a href="{% url 'pgo:ticket_detail' t.codigo %}">Ver</a></td>
-</tr>{% empty %}<tr><td colspan="6" class="text-muted">Sin tickets</td></tr>{% endfor %}</tbody></table>
+<div class="d-flex justify-content-between mb-3 mt-2 flex-wrap gap-2">
+  <h1 class="h4 fw-semibold mb-0">Tickets</h1>
+  <div class="d-flex gap-1">
+    <a href="{% url 'pgo:dashboard' %}" class="btn btn-sm btn-outline-secondary">Dashboard</a>
+    <a href="{% url 'pgo:export_tickets' %}" class="btn btn-sm btn-outline-primary">Exportar</a>
+    <a href="{% url 'imports:import_hub' %}" class="btn btn-sm btn-outline-secondary">Importar</a>
+  </div>
+</div>
+<form method="get" class="row g-2 mb-3">
+  <div class="col-md-3">
+    <select name="estado" class="form-select form-select-sm">
+      <option value="">Todos los estados</option>
+      {% for v,l in estados %}<option value="{{ v }}"{% if request.GET.estado == v %} selected{% endif %}>{{ l }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="col-md-3">
+    <select name="prioridad" class="form-select form-select-sm">
+      <option value="">Todas las prioridades</option>
+      {% for v,l in prioridades %}<option value="{{ v }}"{% if request.GET.prioridad == v %} selected{% endif %}>{{ l }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="col-md-2"><button class="btn btn-primary btn-sm w-100" type="submit">Filtrar</button></div>
+</form>
+<div class="card border-0 shadow-sm">
+<table class="table table-hover table-wcg mb-0 small">
+<thead><tr><th>Código</th><th>Título</th><th>Estado</th><th>Prioridad</th><th>Unidad</th><th>Apertura</th><th></th></tr></thead>
+<tbody>
+{% for t in tickets %}
+<tr>
+  <td>{{ t.codigo }}</td>
+  <td>{{ t.titulo|truncatechars:60 }}</td>
+  <td>{{ t.get_estado_display }}</td>
+  <td>{{ t.get_prioridad_display }}</td>
+  <td>{{ t.unidad_negocio.nombre|default:"—" }}</td>
+  <td>{{ t.fecha_apertura|date:"d/m/Y" }}</td>
+  <td><a href="{% url 'pgo:ticket_detail' t.codigo %}" class="btn btn-sm btn-outline-primary">Ver</a></td>
+</tr>
+{% empty %}
+<tr><td colspan="7" class="text-muted text-center py-4">Sin tickets</td></tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
+{% if is_paginated %}
+<nav class="mt-3"><ul class="pagination pagination-sm justify-content-center">
+{% if page_obj.has_previous %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}&estado={{ request.GET.estado }}&prioridad={{ request.GET.prioridad }}">Anterior</a></li>{% endif %}
+<li class="page-item disabled"><span class="page-link">{{ page_obj.number }}/{{ page_obj.paginator.num_pages }}</span></li>
+{% if page_obj.has_next %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}&estado={{ request.GET.estado }}&prioridad={{ request.GET.prioridad }}">Siguiente</a></li>{% endif %}
+</ul></nav>
+{% endif %}
 {% endblock %}

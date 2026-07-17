@@ -7,6 +7,7 @@ from django.db import transaction
 from imports.models import CrossSaleImportHeader, CrossSaleImportRow
 from pathlib import Path
 from pgc.models import PGCPlan, MonthlyTarget, MonthlyMetricResult
+import csv
 
 
 class Command(BaseCommand):
@@ -138,9 +139,34 @@ class Command(BaseCommand):
                         year=year, month=month
                     ).first()
                     if header is None:
-                        raise CommandError(
-                            f"No existe CrossSaleImportHeader para {year}-{month:02d}. "
-                            "Sube primero el archivo vía FileUpload para que se cree el encabezado."
+                        from imports.models import FileUpload, guess_file_format
+
+                        upload = FileUpload.objects.filter(
+                            file_type_detected=FileUpload.TYPE_CROSS_SALE,
+                            detected_year=year,
+                            detected_month=month,
+                        ).order_by("-id").first()
+                        if upload is None:
+                            upload = FileUpload.objects.create(
+                                original_filename=path.name,
+                                file_format=guess_file_format(path.name),
+                                file_type_detected=FileUpload.TYPE_CROSS_SALE,
+                                detected_year=year,
+                                detected_month=month,
+                                status=FileUpload.STATUS_UPLOADED,
+                            )
+                            # Adjuntar archivo existente si la ruta es local
+                            try:
+                                from django.core.files import File as DjFile
+
+                                with path.open("rb") as fh:
+                                    upload.stored_file.save(path.name, DjFile(fh), save=True)
+                            except Exception:
+                                upload.save()
+                        header = CrossSaleImportHeader.objects.create(
+                            file_upload=upload,
+                            year=year,
+                            month=month,
                         )
                     headers_cache[header_key] = header
 

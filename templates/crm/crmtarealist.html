@@ -1,0 +1,28 @@
+{% extends "base_wcg.html" %}
+{% block title %}Tareas — CRM{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between mb-3 mt-2">
+  <h1 class="h4 fw-semibold mb-0">CRM — Tareas</h1>
+  <a href="{% url 'crm:entidad_list' %}" class="btn btn-sm btn-outline-secondary">← Entidades</a>
+</div>
+<div class="card border-0 shadow-sm">
+  <div class="table-responsive">
+    <table class="table table-hover table-wcg mb-0 small">
+      <thead><tr><th>Título</th><th>Entidad</th><th>Estado</th><th>Vence</th><th>Asignado</th></tr></thead>
+      <tbody>
+        {% for t in tareas %}
+        <tr>
+          <td><a href="{% url 'crm:entidad_detail' t.entidad.codigo %}">{{ t.titulo }}</a></td>
+          <td>{{ t.entidad.nombre }}</td>
+          <td>{{ t.get_estado_display }}</td>
+          <td>{{ t.fecha_vencimiento|date:"d/m/Y"|default:"—" }}</td>
+          <td>{{ t.asignado_a|default:"—" }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" class="text-muted text-center py-4">Sin tareas.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

@@ -1,28 +1,19 @@
-from django.contrib import messages
-from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Count, Q
+from django.http import HttpResponse
 from django.shortcuts import redirect, render
 from django.views.generic import DetailView, ListView
 
-from core.wcg_models import UnidadNegocio
-
-from .forms import ImportFileForm
 from .models import PgoResultadoPeriodo, Ticket
 from .periodo import recalculate_pgo_periodos
-from . import services
-
-User = get_user_model()
+from .selectors import ticket_dashboard_summary, ticket_list_queryset
 
 
 @login_required
 def dashboard(request):
     recalculate_pgo_periodos()
-    abiertos = Ticket.objects.filter(estado__in=[Ticket.ESTADO_ABIERTO, Ticket.ESTADO_EN_PROCESO]).count()
-    cerrados = Ticket.objects.filter(estado=Ticket.ESTADO_CERRADO).count()
-    recibidos = Ticket.objects.count()
-    resultados = PgoResultadoPeriodo.objects.select_related("unidad_negocio").order_by("-periodo")[:12]
+    summary = ticket_dashboard_summary()
     por_unidad = (
         Ticket.objects.values("unidad_negocio__nombre")
         .annotate(total=Count("id"))
@@ -32,11 +23,15 @@ def dashboard(request):
         request,
         "pgo/pgodashboard.html",
         {
-            "abiertos": abiertos,
-            "cerrados": cerrados,
-            "recibidos": recibidos,
-            "resultados": resultados,
+            **summary,
+            "abiertos": summary["tickets_abiertos"],
+            "cerrados": summary["tickets_cerrados"],
+            "recibidos": summary["total_tickets"],
             "por_unidad": por_unidad,
+            "breadcrumbs": [
+                {"label": "Panel principal", "url": "/panel/"},
+                {"label": "PGO — Operación"},
+            ],
         },
     )
 
@@ -48,11 +43,13 @@ class TicketListView(LoginRequiredMixin, ListView):
     paginate_by = 50
 
     def get_queryset(self):
-        qs = Ticket.objects.select_related("entidad", "unidad_negocio", "asignado_a")
-        estado = self.request.GET.get("estado")
-        if estado:
-            qs = qs.filter(estado=estado)
-        return qs.order_by("-fecha_apertura")
+        return ticket_list_queryset(self.request)
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["estados"] = Ticket.ESTADO_CHOICES
+        ctx["prioridades"] = Ticket.PRIORIDAD_CHOICES
+        return ctx
 
 
 class TicketDetailView(LoginRequiredMixin, DetailView):
@@ -70,20 +67,7 @@ class TicketDetailView(LoginRequiredMixin, DetailView):
 
 @login_required
 def importar(request):
-    batch = None
-    if request.method == "POST":
-        form = ImportFileForm(request.POST, request.FILES)
-        if form.is_valid():
-            batch = services.import_tickets(request.user, form.cleaned_data["archivo"])
-            recalculate_pgo_periodos()
-            messages.info(
-                request,
-                f"Importación: {batch.creados} creados, "
-                f"{batch.actualizados} actualizados, {batch.errores} errores.",
-            )
-    else:
-        form = ImportFileForm()
-    return render(request, "pgo/pgoimportform.html", {"form": form, "batch": batch})
+    return redirect("imports:import_hub")
 
 
 @login_required
@@ -104,3 +88,34 @@ def resumen_unidad(request):
         .order_by("-total")
     )
     return render(request, "pgo/pgoresumenunidad.html", {"data": data})
+
+
+@login_required
+def resultados(request):
+    recalculate_pgo_periodos()
+    rows = PgoResultadoPeriodo.objects.select_related("unidad_negocio").order_by("-periodo")
+    return render(request, "pgo/pgoresultados.html", {"resultados": rows})
+
+
+@login_required
+def export_tickets(request):
+    import csv
+
+    qs = ticket_list_queryset(request)
+    response = HttpResponse(content_type="text/csv")
+    response["Content-Disposition"] = 'attachment; filename="pgo_tickets.csv"'
+    writer = csv.writer(response)
+    writer.writerow(["codigo", "titulo", "estado", "prioridad", "unidad", "apertura", "cierre"])
+    for t in qs:
+        writer.writerow(
+            [
+                t.codigo,
+                t.titulo,
+                t.estado,
+                t.prioridad,
+                t.unidad_negocio.code if t.unidad_negocio else "",
+                t.fecha_apertura,
+                t.fecha_cierre or "",
+            ]
+        )
+    return response

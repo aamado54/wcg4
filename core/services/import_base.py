@@ -15,13 +15,27 @@ class ImportValidationError(Exception):
     pass
 
 
-def read_dataframe(uploaded_file, sheet_name=0) -> pd.DataFrame:
+def read_dataframe(uploaded_file, sheet_name=0, all_data_sheets: bool = False) -> pd.DataFrame:
     name = (uploaded_file.name or "").lower()
     raw = uploaded_file.read()
     uploaded_file.seek(0)
     if name.endswith((".xlsx", ".xls")):
+        xls = pd.ExcelFile(io.BytesIO(raw))
+        if all_data_sheets or sheet_name == "__all_data__":
+            frames = []
+            for candidate in xls.sheet_names:
+                low = candidate.lower()
+                if low.startswith("soporte") or "pivot" in low or "resumen" in low:
+                    continue
+                part = pd.read_excel(xls, sheet_name=candidate)
+                if part.empty or len(part.columns) < 3:
+                    continue
+                part["_hoja_origen"] = candidate
+                frames.append(part)
+            if not frames:
+                raise ImportValidationError("No se encontraron hojas de datos en el Excel.")
+            return pd.concat(frames, ignore_index=True)
         if sheet_name is None:
-            xls = pd.ExcelFile(io.BytesIO(raw))
             sheet_name = xls.sheet_names[0]
             for candidate in xls.sheet_names:
                 low = candidate.lower()
@@ -29,9 +43,10 @@ def read_dataframe(uploaded_file, sheet_name=0) -> pd.DataFrame:
                     sheet_name = candidate
                     break
             return pd.read_excel(xls, sheet_name=sheet_name)
-        return pd.read_excel(io.BytesIO(raw), sheet_name=sheet_name)
+        return pd.read_excel(xls, sheet_name=sheet_name)
     if name.endswith((".csv", ".tsv", ".txt")):
-        return pd.read_csv(io.BytesIO(raw))
+        sep = "\t" if name.endswith(".tsv") else ","
+        return pd.read_csv(io.BytesIO(raw), sep=sep)
     raise ImportValidationError("Formato no soportado. Use CSV o XLSX.")
 
 
