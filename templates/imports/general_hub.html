@@ -1,23 +1,51 @@
 {% extends "base_wcg.html" %}
-{% block title %}Importación General de Datos{% endblock %}
+{% block title %}Importación General — Administración — WCG{% endblock %}
 {% block content %}
-<div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+<div class="page-toolbar">
   <div>
+    <p class="text-muted small mb-1 text-uppercase" style="letter-spacing:0.04em;font-weight:600;">Administración · Configuración</p>
     <h1 class="h3 mb-1">Importación General de Datos</h1>
-    <p class="text-muted mb-0">
-      Punto único para cargar CRM, PGO, Balón de Riesgo, clientes nuevos y ventas cruzadas.
-      El tipo se detecta por nombre de archivo y estructura de columnas.
+    <p class="text-muted mb-0" style="max-width:40rem;">
+      Punto único para cargar clientes nuevos, ventas cruzadas, CRM, PGO y Balón de Riesgo.
+      El tipo se detecta por nombre, estructura de columnas y contenido de muestra.
     </p>
   </div>
-  <a class="btn btn-outline-secondary btn-sm" href="{% url 'pgc:admin_monthly' %}">Admin PGC (período)</a>
+  <a class="wcg-home-link" href="{% url 'portal:home' %}">← Menú principal</a>
 </div>
+
+{% if detection_preview %}
+<div class="alert {% if detection_preview.ambiguous or not detection_preview.can_auto_import %}alert-warning{% else %}alert-info{% endif %} mb-4">
+  <div class="fw-semibold mb-1">
+    Detección: {{ detection_preview.label }}
+    · {% widthratio detection_preview.confidence 1 100 %}% confianza
+    · capa {{ detection_preview.layer }}
+  </div>
+  {% if detection_preview.reasons %}
+  <ul class="small mb-2 mb-0">
+    {% for r in detection_preview.reasons %}
+    <li>{{ r }}</li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+  {% if detection_preview.ambiguous or not detection_preview.can_auto_import %}
+  <p class="small mb-0 mt-2">
+    Hay ambigüedad o confianza insuficiente. Elija el tipo en el selector y vuelva a subir el archivo.
+  </p>
+  {% endif %}
+  {% if detection_preview.suggestions %}
+  <p class="small mb-0 mt-2">Otras opciones:
+    {% for t, lab in detection_preview.suggestions %}{{ lab }}{% if not forloop.last %}; {% endif %}{% endfor %}
+  </p>
+  {% endif %}
+</div>
+{% endif %}
 
 <div class="row g-4">
   <div class="col-lg-5">
-    <div class="card border-0 shadow-sm">
+    <div class="card border-0">
       <div class="card-body">
-        <h2 class="h5">Subir archivo</h2>
-        <form method="post" enctype="multipart/form-data" class="mt-3">
+        <h2 class="h5 mb-3">Subir archivo</h2>
+        <form method="post" enctype="multipart/form-data">
           {% csrf_token %}
           <div class="mb-3">
             <label class="form-label" for="id_archivo">{{ form.archivo.label }}</label>
@@ -31,6 +59,7 @@
           </div>
           <div class="d-flex flex-wrap gap-2">
             <button type="submit" name="action" value="import" class="btn btn-primary">Importar y procesar</button>
+            <button type="submit" name="action" value="detect" class="btn btn-outline-secondary">Solo detectar</button>
           </div>
         </form>
 
@@ -38,12 +67,10 @@
         <div class="alert {% if result.ok %}alert-success{% else %}alert-warning{% endif %} mt-3 mb-0">
           <strong>{{ result.label }}</strong><br>
           {{ result.message }}
-          {% if result.detection and result.detection.confidence %}
-          <div class="small mt-1">Confianza detección: {% widthratio result.detection.confidence 1 100 %}%</div>
-          {% endif %}
-          {% if result.detection.suggestions %}
-          <div class="small mt-2">Otras opciones posibles:
-            {% for t, lab in result.detection.suggestions %}{{ lab }}{% if not forloop.last %}; {% endif %}{% endfor %}
+          {% if result.detection %}
+          <div class="small mt-2 text-muted">
+            {{ result.detection.rule_summary }}
+            {% if result.forced %} · tipo forzado{% endif %}
           </div>
           {% endif %}
           {% if result.ok and result.redirect_hint %}
@@ -54,10 +81,10 @@
       </div>
     </div>
 
-    <div class="card border-0 shadow-sm mt-3">
+    <div class="card border-0 mt-3">
       <div class="card-body">
         <h2 class="h6">Tipos soportados</h2>
-        <ul class="small mb-0">
+        <ul class="small mb-0 text-muted">
           {% for t, lab in importable_types %}
           <li>{{ lab }}</li>
           {% endfor %}
@@ -67,11 +94,12 @@
   </div>
 
   <div class="col-lg-7">
-    <div class="card border-0 shadow-sm">
+    <div class="card border-0">
       <div class="card-body">
-        <h2 class="h5">Últimos lotes WCG (CRM / Risk / PGO)</h2>
+        <h2 class="h5">Bitácora — lotes recientes (CRM / Risk / PGO)</h2>
+        <p class="small text-muted">Cada lote registra tipo detectado, capa/regla e importador usado.</p>
         <div class="table-responsive">
-          <table class="table table-sm align-middle mb-0">
+          <table class="table table-sm align-middle mb-0 table-wcg">
             <thead>
               <tr>
                 <th>Archivo</th>
@@ -103,11 +131,11 @@
       </div>
     </div>
 
-    <div class="card border-0 shadow-sm mt-3">
+    <div class="card border-0 mt-3">
       <div class="card-body">
         <h2 class="h5">Uploads PGC recientes</h2>
         <div class="table-responsive">
-          <table class="table table-sm mb-0">
+          <table class="table table-sm mb-0 table-wcg">
             <thead><tr><th>Archivo</th><th>Tipo</th><th>Estado</th></tr></thead>
             <tbody>
               {% for u in uploads %}

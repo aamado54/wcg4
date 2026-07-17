@@ -4,14 +4,14 @@
 
 {% block content %}
 <div class="mb-4">
-  <h1 class="h3 fw-semibold text-dark mb-1">WCG One</h1>
+  <h1 class="h3 fw-semibold mb-1">WCG One</h1>
   <p class="text-muted mb-0">
-    Panel gerencial de Working Capital Group: clientes (CRM), riesgo operativo (Balón),
-    eficiencia de tickets (PGO) e integración progresiva con PGC.
+    Panel gerencial de Working Capital Group: PGC, operación (PGO), clientes (CRM)
+    y riesgo operativo (Balón).
   </p>
   <p class="small mt-2 mb-0">
     <a href="{% url 'portal:ayuda' %}">Guía de demo</a>
-    · Datos de ejemplo: <code>python manage.py seed_wcg_demo</code>
+    · Cargas en <a href="{% url 'imports:import_hub' %}">Administración → Importación</a>
   </p>
 </div>
 
@@ -28,18 +28,18 @@
   <div class="col-md-2 col-6">
     <div class="card border-0 shadow-sm h-100">
       <div class="card-body text-center py-3">
-        <div class="stat-value">{{ stats.operaciones_riesgo }}</div>
-        <div class="text-muted small">Operaciones riesgo</div>
-        <div class="text-muted small">({{ stats.snapshots }} snapshots)</div>
+        <div class="stat-value">{{ stats.tickets_total }}</div>
+        <div class="text-muted small">Tickets PGO</div>
+        <div class="text-muted small">({{ stats.tickets_abiertos }} abiertos)</div>
       </div>
     </div>
   </div>
   <div class="col-md-2 col-6">
     <div class="card border-0 shadow-sm h-100">
       <div class="card-body text-center py-3">
-        <div class="stat-value">{{ stats.tickets_total }}</div>
-        <div class="text-muted small">Tickets PGO</div>
-        <div class="text-muted small">({{ stats.tickets_abiertos }} abiertos)</div>
+        <div class="stat-value">{{ stats.operaciones_riesgo }}</div>
+        <div class="text-muted small">Operaciones riesgo</div>
+        <div class="text-muted small">({{ stats.snapshots }} snapshots)</div>
       </div>
     </div>
   </div>
@@ -75,15 +75,23 @@
   </div>
   <div class="col-md-6 col-lg-3">
     <div class="card card-module shadow-sm h-100">
+      <div class="card-header">PGO</div>
+      <div class="card-body d-flex flex-column">
+        <p class="text-muted small flex-grow-1">
+          Indicadores de operación interna: tickets de helpdesk, tiempos de atención y cumplimiento de SLA.
+        </p>
+        <a href="{% url 'pgo:dashboard' %}" class="btn btn-outline-primary btn-sm">Dashboard</a>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6 col-lg-3">
+    <div class="card card-module shadow-sm h-100">
       <div class="card-header">CRM</div>
       <div class="card-body d-flex flex-column">
         <p class="text-muted small flex-grow-1">
           Maestro único de clientes y prospectos: entidades, contactos, productos y seguimiento comercial.
         </p>
-        <div class="d-flex gap-1 flex-wrap">
-          <a href="{% url 'crm:entidad_list' %}" class="btn btn-outline-primary btn-sm">Ver clientes</a>
-          <a href="{% url 'imports:import_hub' %}" class="btn btn-outline-secondary btn-sm">Importación</a>
-        </div>
+        <a href="{% url 'crm:entidad_list' %}" class="btn btn-outline-primary btn-sm">Ver clientes</a>
       </div>
     </div>
   </div>
@@ -94,31 +102,17 @@
         <p class="text-muted small flex-grow-1">
           Cuadro de alerta operativa: mora, saldos vencidos y evolución por operación (snapshots leasing).
         </p>
-        <div class="d-flex gap-1 flex-wrap">
-          <a href="{% url 'risk:comando_balon' %}" class="btn btn-outline-primary btn-sm">Comando Balón</a>
-          <a href="{% url 'imports:import_hub' %}" class="btn btn-outline-secondary btn-sm">Importación</a>
-        </div>
-      </div>
-    </div>
-  </div>
-  <div class="col-md-6 col-lg-3">
-    <div class="card card-module shadow-sm h-100">
-      <div class="card-header">PGO</div>
-      <div class="card-body d-flex flex-column">
-        <p class="text-muted small flex-grow-1">
-          Indicadores de operación interna: tickets de helpdesk, tiempos de atención y cumplimiento de SLA.
-        </p>
-        <div class="d-flex gap-1 flex-wrap">
-          <a href="{% url 'pgo:dashboard' %}" class="btn btn-outline-primary btn-sm">Dashboard</a>
-          <a href="{% url 'imports:import_hub' %}" class="btn btn-outline-secondary btn-sm">Importación</a>
-        </div>
+        <a href="{% url 'risk:comando_balon' %}" class="btn btn-outline-primary btn-sm">Comando Balón</a>
       </div>
     </div>
   </div>
 </div>
 
 <div class="card border-0 shadow-sm mt-4">
-  <div class="card-header bg-white fw-semibold">Importaciones recientes</div>
+  <div class="card-header bg-white fw-semibold d-flex justify-content-between">
+    <span>Importaciones recientes</span>
+    <a href="{% url 'imports:import_hub' %}" class="small">Administración → Importación</a>
+  </div>
   <div class="table-responsive">
     <table class="table table-sm table-hover mb-0">
       <thead>
@@ -145,7 +139,7 @@
         <tr>
           <td colspan="5" class="text-center py-3">
             <div class="alert alert-info mb-0 small">
-              Aún no hay importaciones. Use los enlaces <strong>Importar</strong> en cada módulo para cargar datos de demo.
+              Aún no hay importaciones. Use <strong>Administración → Importación General</strong>.
             </div>
           </td>
         </tr>

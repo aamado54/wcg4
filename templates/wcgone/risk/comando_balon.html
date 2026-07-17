@@ -6,7 +6,6 @@
 <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
   <h1 class="h4 fw-semibold mb-0">Riesgo — Comando Balón</h1>
   <div class="d-flex gap-1 flex-wrap">
-    <a href="{% url 'wcgone_risk:importar_snapshots' %}" class="btn btn-sm btn-outline-secondary">Importar snapshots</a>
     <a href="{% url 'wcgone_risk:export_comando_balon' %}{% if export_query %}?{{ export_query }}{% endif %}" class="btn btn-sm btn-outline-primary">Exportar CSV</a>
     <a href="{% url 'wcgone_risk:cliente_list' %}" class="btn btn-sm btn-outline-secondary">Clientes</a>
   </div>
@@ -52,7 +51,7 @@
 </form>
 
 {% if not snapshots and not request.GET %}
-{% include "includes/empty_state.html" with title="Sin snapshots operativos" message="Importe un archivo XLSX tipo leasing para ver el Comando Balón con datos de mora y saldos vencidos." import_url="/risk/importar-snapshots/" import_label="Importar snapshots" %}
+{% include "includes/empty_state.html" with title="Sin snapshots operativos" message="Cargue BaseLeasing desde Administración → Importación General." %}
 {% endif %}
 
 <div class="card border-0 shadow-sm">
@@ -107,7 +106,6 @@
         <tr>
           <td colspan="9" class="text-center text-muted py-4">
             No hay resultados con los filtros actuales.
-            <a href="{% url 'wcgone_risk:importar_snapshots' %}">Importar snapshots</a>
           </td>
         </tr>
         {% endfor %}

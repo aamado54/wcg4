@@ -1,149 +1,241 @@
 {% extends "base_wcg.html" %}
 {% load static %}
-{% block title %}Panel principal — WCG{% endblock %}
+{% block title %}Menú principal — WCG{% endblock %}
+{% block extra_css %}
+.menu-page {
+  --ink: #2a3441;
+  --muted: #6b7a8d;
+  --accent: #3d5a73;
+  --soft: #e8f0f6;
+  --panel: #ffffff;
+  --shadow: #c5d0dc;
+  font-family: "DM Sans", system-ui, sans-serif;
+  color: var(--ink);
+  position: relative;
+  min-height: calc(100vh - 140px);
+  margin: -8px -12px 0;
+  padding: 28px 20px 40px;
+  overflow: hidden;
+}
+
+.menu-bg { display: none; }
+
+.menu-shell {
+  position: relative;
+  z-index: 1;
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.menu-brand {
+  font-size: clamp(1.75rem, 3vw, 2.35rem);
+  font-weight: 700;
+  margin: 0 0 6px;
+  color: var(--accent);
+  letter-spacing: -0.03em;
+}
+
+.menu-lead {
+  color: var(--muted);
+  margin: 0 0 28px;
+  font-size: 1.02rem;
+  max-width: 28rem;
+  line-height: 1.45;
+}
+
+.menu-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.menu-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-decoration: none;
+  color: inherit;
+  background: var(--panel);
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 22px 20px 18px;
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.9) inset,
+    0 6px 0 var(--shadow),
+    0 12px 28px rgba(42, 52, 65, 0.08);
+  transform: translateY(0);
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.12s ease,
+    border-color 0.12s ease,
+    background 0.12s ease;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+.menu-card:hover {
+  transform: translateY(-3px);
+  border-color: #b7c9d8;
+  background: #fafcfd;
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.95) inset,
+    0 8px 0 var(--shadow),
+    0 18px 36px rgba(42, 52, 65, 0.1);
+  color: inherit;
+}
+
+.menu-card:active {
+  transform: translateY(5px);
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.6) inset,
+    0 1px 0 #a8b8c8,
+    0 4px 12px rgba(42, 52, 65, 0.08);
+}
+
+.menu-emoji {
+  font-size: 2.75rem;
+  line-height: 1;
+  margin-bottom: 12px;
+  filter: drop-shadow(0 2px 0 rgba(42, 52, 65, 0.06));
+}
+
+.menu-card h2 {
+  margin: 0 0 6px;
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: -0.02em;
+}
+
+.menu-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.4;
+  flex-grow: 1;
+}
+
+.menu-card .go {
+  display: inline-block;
+  margin-top: 14px;
+  font-weight: 600;
+  color: var(--accent);
+  font-size: 0.88rem;
+  opacity: 0.85;
+}
+
+.menu-foot {
+  margin-top: 32px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.menu-status-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.9rem;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+  background: rgba(255,255,255,0.7);
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+
+.menu-status-btn:hover {
+  background: var(--soft);
+  color: var(--accent);
+  border-color: #c9d9e6;
+}
+
+/* Desktop: imagen vertical a la izquierda, crop leve + esquinas redondeadas */
+@media (min-width: 900px) {
+  .menu-page {
+    display: grid;
+    grid-template-columns: minmax(240px, 34%) 1fr;
+    gap: 36px;
+    align-items: center;
+    padding: 36px 32px 56px;
+    margin: -8px -16px 0;
+  }
+  .menu-bg {
+    display: block;
+    position: relative;
+    border-radius: 18px;
+    overflow: hidden;
+    min-height: 560px;
+    max-height: calc(100vh - 160px);
+    aspect-ratio: 3 / 5;
+    box-shadow: 0 14px 36px rgba(42, 52, 65, 0.1);
+    background: var(--soft);
+  }
+  .menu-bg img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center center;
+    /* Crop leve en ambas dimensiones (≈ splash vertical + milímetros) */
+    transform: scale(1.06);
+    transform-origin: center center;
+    display: block;
+  }
+  .menu-shell { padding-top: 8px; max-width: none; }
+}
+
+@media (max-width: 899px) {
+  .menu-grid { grid-template-columns: 1fr; max-width: 420px; }
+  .menu-card { border-radius: 12px; }
+  .menu-emoji { font-size: 2.4rem; }
+}
+{% endblock %}
+
 {% block content %}
-<div class="mb-4 mt-2">
-  <h1 class="h3 fw-semibold text-dark mb-1">WCG One</h1>
-  <p class="text-muted mb-0">
-    Panel gerencial de Working Capital Group: clientes (CRM), riesgo operativo (Balón),
-    eficiencia de tickets (PGO) e integración con PGC.
-  </p>
-  <p class="small mt-2 mb-0">
-    <a href="{% url 'portal:ayuda' %}">Guía de demo</a>
-    · <a href="{% url 'imports:import_hub' %}">Importación General</a>
-  </p>
-</div>
+<div class="menu-page">
+  <aside class="menu-bg" aria-hidden="true">
+    <img src="{% static 'img/splashv.jpg' %}" alt="">
+  </aside>
 
-<div class="row g-3 mb-4">
-  <div class="col-md-2 col-6">
-    <div class="card border-0 shadow-sm h-100">
-      <div class="card-body text-center py-3">
-        <div class="stat-value">{{ stats.entidades_total }}</div>
-        <div class="text-muted small">Entidades CRM</div>
-        <div class="text-muted small">({{ stats.entidades_activas }} activas)</div>
-      </div>
-    </div>
-  </div>
-  <div class="col-md-2 col-6">
-    <div class="card border-0 shadow-sm h-100">
-      <div class="card-body text-center py-3">
-        <div class="stat-value">{{ stats.operaciones_riesgo }}</div>
-        <div class="text-muted small">Operaciones riesgo</div>
-        <div class="text-muted small">({{ stats.alertas_riesgo }} alertas)</div>
-      </div>
-    </div>
-  </div>
-  <div class="col-md-2 col-6">
-    <div class="card border-0 shadow-sm h-100">
-      <div class="card-body text-center py-3">
-        <div class="stat-value">{{ stats.tickets_total }}</div>
-        <div class="text-muted small">Tickets PGO</div>
-        <div class="text-muted small">({{ stats.tickets_abiertos }} abiertos)</div>
-      </div>
-    </div>
-  </div>
-  <div class="col-md-2 col-6">
-    <div class="card border-0 shadow-sm h-100">
-      <div class="card-body text-center py-3">
-        <div class="stat-value">{{ stats.tareas_pendientes }}</div>
-        <div class="text-muted small">Tareas CRM pendientes</div>
-      </div>
-    </div>
-  </div>
-  <div class="col-md-2 col-6">
-    <div class="card border-0 shadow-sm h-100">
-      <div class="card-body text-center py-3">
-        <div class="stat-value">{{ stats.lotes_importacion }}</div>
-        <div class="text-muted small">Lotes de importación</div>
-      </div>
-    </div>
-  </div>
-  <div class="col-md-2 col-6">
-    <div class="card border-0 shadow-sm h-100">
-      <div class="card-body text-center py-3">
-        <div class="stat-value">{{ stats.snapshots }}</div>
-        <div class="text-muted small">Snapshots riesgo</div>
-      </div>
-    </div>
-  </div>
-</div>
+  <div class="menu-shell">
+    <h1 class="menu-brand">Working Capital Group</h1>
+    <p class="menu-lead">Elija un módulo para continuar.</p>
 
-<div class="row g-4">
-  <div class="col-md-6 col-lg-3">
-    <div class="card card-module shadow-sm h-100">
-      <div class="card-header">PGC</div>
-      <div class="card-body d-flex flex-column">
-        <p class="text-muted small flex-grow-1">Plan de gestión comercial, clientes nuevos y venta cruzada.</p>
-        <a href="{% url 'pgc:dashboard' %}" class="btn btn-outline-primary btn-sm">Ir a PGC</a>
-      </div>
+    <div class="menu-grid">
+      <a class="menu-card" href="{% url 'pgc:dashboard' %}">
+        <span class="menu-emoji" aria-hidden="true">📊</span>
+        <h2>PGC</h2>
+        <p>Planeación comercial, metas, clientes nuevos y venta cruzada.</p>
+        <span class="go">Entrar →</span>
+      </a>
+      <a class="menu-card" href="{% url 'pgo:dashboard' %}">
+        <span class="menu-emoji" aria-hidden="true">⚙️</span>
+        <h2>PGO</h2>
+        <p>Tickets helpdesk, tiempos de atención y cumplimiento de SLA.</p>
+        <span class="go">Entrar →</span>
+      </a>
+      <a class="menu-card" href="{% url 'crm:entidad_list' %}">
+        <span class="menu-emoji" aria-hidden="true">👥</span>
+        <h2>CRM</h2>
+        <p>Clientes, contactos, productos y seguimiento comercial.</p>
+        <span class="go">Entrar →</span>
+      </a>
+      <a class="menu-card" href="{% url 'risk:comando_balon' %}">
+        <span class="menu-emoji" aria-hidden="true">⚽</span>
+        <h2>Balón de Riesgo</h2>
+        <p>Mora, saldos vencidos y alertas por operación leasing.</p>
+        <span class="go">Entrar →</span>
+      </a>
     </div>
-  </div>
-  <div class="col-md-6 col-lg-3">
-    <div class="card card-module shadow-sm h-100">
-      <div class="card-header">CRM</div>
-      <div class="card-body d-flex flex-column">
-        <p class="text-muted small flex-grow-1">Clientes, contactos, productos WCF/WCL/WCI y seguimiento.</p>
-        <div class="d-flex gap-1 flex-wrap">
-          <a href="{% url 'crm:entidad_list' %}" class="btn btn-outline-primary btn-sm">Ver clientes</a>
-          <a href="{% url 'imports:import_hub' %}" class="btn btn-outline-secondary btn-sm">Importar</a>
-        </div>
-      </div>
-    </div>
-  </div>
-  <div class="col-md-6 col-lg-3">
-    <div class="card card-module shadow-sm h-100">
-      <div class="card-header">Balón de Riesgo</div>
-      <div class="card-body d-flex flex-column">
-        <p class="text-muted small flex-grow-1">Mora, saldos vencidos y alertas por operación leasing.</p>
-        <div class="d-flex gap-1 flex-wrap">
-          <a href="{% url 'risk:comando_balon' %}" class="btn btn-outline-primary btn-sm">Comando Balón</a>
-          <a href="{% url 'imports:import_hub' %}" class="btn btn-outline-secondary btn-sm">Importar</a>
-        </div>
-      </div>
-    </div>
-  </div>
-  <div class="col-md-6 col-lg-3">
-    <div class="card card-module shadow-sm h-100">
-      <div class="card-header">PGO</div>
-      <div class="card-body d-flex flex-column">
-        <p class="text-muted small flex-grow-1">Tickets helpdesk, tiempos y cumplimiento de SLA.</p>
-        <div class="d-flex gap-1 flex-wrap">
-          <a href="{% url 'pgo:dashboard' %}" class="btn btn-outline-primary btn-sm">Dashboard</a>
-          <a href="{% url 'imports:import_hub' %}" class="btn btn-outline-secondary btn-sm">Importar</a>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
 
-<div class="card border-0 shadow-sm mt-4">
-  <div class="card-header bg-white fw-semibold d-flex justify-content-between">
-    <span>Importaciones recientes</span>
-    <a href="{% url 'imports:import_hub' %}" class="small">Ver hub →</a>
-  </div>
-  <div class="table-responsive">
-    <table class="table table-sm table-hover mb-0">
-      <thead>
-        <tr><th>Fecha</th><th>Módulo</th><th>Archivo</th><th>Estado</th><th>C/A/E</th></tr>
-      </thead>
-      <tbody>
-        {% for batch in stats.importaciones_recientes %}
-        <tr>
-          <td>{{ batch.created_at|date:"d/m/Y H:i" }}</td>
-          <td>{{ batch.modulo }}</td>
-          <td class="small">{{ batch.archivo_nombre|truncatechars:48 }}</td>
-          <td><span class="badge text-bg-secondary">{{ batch.status }}</span></td>
-          <td class="small">{{ batch.creados }}/{{ batch.actualizados }}/{{ batch.errores }}</td>
-        </tr>
-        {% empty %}
-        <tr>
-          <td colspan="5" class="text-center py-3 text-muted">
-            Aún no hay lotes. Use <a href="{% url 'imports:import_hub' %}">Importación General</a>.
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+    <div class="menu-foot">
+      <a class="menu-status-btn" href="{% url 'portal:estado' %}">📋 Estado del sistema</a>
+    </div>
   </div>
 </div>
 {% endblock %}

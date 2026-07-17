@@ -1,0 +1,97 @@
+{% extends "base_wcg.html" %}
+{% block title %}Estado del sistema — WCG{% endblock %}
+{% block content %}
+<div class="page-toolbar">
+  <div>
+    <p class="text-muted small mb-1 text-uppercase" style="letter-spacing:0.04em;font-weight:600;">Información</p>
+    <h1 class="h3 mb-1">Estado del sistema</h1>
+    <p class="text-muted mb-0">Resumen operativo e importaciones recientes. Las cargas de datos se hacen en Administración.</p>
+  </div>
+  <a class="wcg-home-link" href="{% url 'portal:home' %}">← Menú principal</a>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-md-2 col-6">
+    <div class="card border-0 h-100">
+      <div class="card-body text-center py-3">
+        <div class="stat-value">{{ stats.entidades_total }}</div>
+        <div class="text-muted small">Entidades CRM</div>
+        <div class="text-muted small">({{ stats.entidades_activas }} activas)</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-2 col-6">
+    <div class="card border-0 h-100">
+      <div class="card-body text-center py-3">
+        <div class="stat-value">{{ stats.tickets_total }}</div>
+        <div class="text-muted small">Tickets PGO</div>
+        <div class="text-muted small">({{ stats.tickets_abiertos }} abiertos)</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-2 col-6">
+    <div class="card border-0 h-100">
+      <div class="card-body text-center py-3">
+        <div class="stat-value">{{ stats.operaciones_riesgo }}</div>
+        <div class="text-muted small">Operaciones riesgo</div>
+        <div class="text-muted small">({{ stats.alertas_riesgo }} alertas)</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-2 col-6">
+    <div class="card border-0 h-100">
+      <div class="card-body text-center py-3">
+        <div class="stat-value">{{ stats.tareas_pendientes }}</div>
+        <div class="text-muted small">Tareas CRM pendientes</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-2 col-6">
+    <div class="card border-0 h-100">
+      <div class="card-body text-center py-3">
+        <div class="stat-value">{{ stats.lotes_importacion }}</div>
+        <div class="text-muted small">Lotes de importación</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-2 col-6">
+    <div class="card border-0 h-100">
+      <div class="card-body text-center py-3">
+        <div class="stat-value">{{ stats.snapshots }}</div>
+        <div class="text-muted small">Snapshots riesgo</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card border-0">
+  <div class="card-header bg-white fw-semibold d-flex justify-content-between align-items-center">
+    <span>Importaciones recientes</span>
+    <a href="{% url 'imports:import_hub' %}" class="small">Administración → Importación</a>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-sm table-hover mb-0">
+      <thead>
+        <tr><th>Fecha</th><th>Módulo</th><th>Archivo</th><th>Estado</th><th>C/A/E</th></tr>
+      </thead>
+      <tbody>
+        {% for batch in stats.importaciones_recientes %}
+        <tr>
+          <td>{{ batch.created_at|date:"d/m/Y H:i" }}</td>
+          <td>{{ batch.modulo }}</td>
+          <td class="small">{{ batch.archivo_nombre|truncatechars:48 }}</td>
+          <td><span class="badge text-bg-secondary">{{ batch.status }}</span></td>
+          <td class="small">{{ batch.creados }}/{{ batch.actualizados }}/{{ batch.errores }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="5" class="text-center py-3 text-muted">
+            Aún no hay lotes. Use Administración → Importación General.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

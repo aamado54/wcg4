@@ -4,7 +4,6 @@
 <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2 mt-2">
   <h1 class="h4 fw-semibold mb-0">PGO — Operación y tickets</h1>
   <div class="d-flex gap-1 flex-wrap">
-    <a href="{% url 'imports:import_hub' %}" class="btn btn-sm btn-outline-secondary">Importar</a>
     <a href="{% url 'pgo:export_tickets' %}" class="btn btn-sm btn-outline-primary">Exportar CSV</a>
     <a href="{% url 'pgo:ticket_list' %}" class="btn btn-sm btn-outline-primary">Ver todos</a>
     <a href="{% url 'pgo:resultados' %}" class="btn btn-sm btn-outline-secondary">Resultados</a>
@@ -89,7 +88,7 @@
 </div>
 
 {% if total_tickets == 0 %}
-{% include "includes/empty_state.html" with title="Sin tickets PGO" message="Importe el control de tickets desde Importación General." import_url="/importaciones/" import_label="Importar" %}
+{% include "includes/empty_state.html" with title="Sin tickets PGO" message="Cargue el control de tickets desde Administración → Importación General." %}
 {% endif %}
 
 <div class="card border-0 shadow-sm mb-4">

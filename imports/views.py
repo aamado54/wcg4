@@ -27,7 +27,7 @@ def _redirect_imports_to_admin(request, block: str | None = None):
 
 @login_required
 def import_hub(request):
-    """Importación General de Datos — punto único para CRM, PGO, Risk y PGC."""
+    """Administración → Importación General (punto único CRM / PGO / Risk / PGC)."""
     result = None
     detection_preview = None
     form = GeneralImportForm()
@@ -42,22 +42,43 @@ def import_hub(request):
                 detection_preview = detect_file(uploaded)
                 uploaded.seek(0)
                 form = GeneralImportForm(
-                    initial={"tipo_forzado": detection_preview.tipo if detection_preview.tipo != TYPE_UNKNOWN else ""}
+                    initial={
+                        "tipo_forzado": (
+                            detection_preview.tipo
+                            if detection_preview.tipo != TYPE_UNKNOWN
+                            else ""
+                        )
+                    }
                 )
-                # Re-bind file is lost on re-render; user must re-select — show detection only
-                messages.info(
+                level = messages.WARNING if detection_preview.ambiguous else messages.INFO
+                messages.add_message(
                     request,
+                    level,
                     f"Detección: {detection_preview.label} "
-                    f"({int(detection_preview.confidence * 100)}% confianza). "
+                    f"({int(detection_preview.confidence * 100)}% · capa {detection_preview.layer}). "
+                    f"{'Seleccione el tipo manualmente — hay ambigüedad. ' if detection_preview.ambiguous else ''}"
                     f"Vuelva a seleccionar el archivo y confirme la importación.",
                 )
             else:
                 result = run_import(request.user, uploaded, tipo_forzado=tipo_forzado or None)
                 if result.ok:
                     messages.success(request, result.message)
+                    form = GeneralImportForm()
+                elif result.needs_manual:
+                    messages.warning(request, result.message)
+                    detection_preview = result.detection
+                    form = GeneralImportForm(
+                        initial={
+                            "tipo_forzado": (
+                                result.detection.tipo
+                                if result.detection.tipo != TYPE_UNKNOWN
+                                else ""
+                            )
+                        }
+                    )
                 else:
                     messages.warning(request, result.message or "Importación incompleta.")
-                form = GeneralImportForm()
+                    form = GeneralImportForm()
 
     batches = DataImportBatch.objects.select_related("uploaded_by").order_by("-created_at")[:25]
     uploads = FileUpload.objects.order_by("-created_at")[:15]
@@ -73,6 +94,11 @@ def import_hub(request):
             "uploads": uploads,
             "type_labels": TYPE_LABELS,
             "importable_types": [(t, TYPE_LABELS[t]) for t in ALL_IMPORTABLE],
+            "breadcrumbs": [
+                {"label": "Inicio", "url": reverse("portal:home")},
+                {"label": "Administración"},
+                {"label": "Importación General"},
+            ],
         },
     )
 

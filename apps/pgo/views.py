@@ -129,30 +129,4 @@ def export_tickets_csv(request):
 
 @login_required
 def importar_tickets(request):
-    if request.method == "POST":
-        form = ImportFileForm(request.POST, request.FILES)
-        if form.is_valid():
-            batch = import_tickets(request.user, form.cleaned_data["archivo"])
-            messages.success(
-                request,
-                f"Importación PGO finalizada ({batch.get_estado_display()}): "
-                f"{batch.filas_validas} filas válidas, {batch.filas_error} con error.",
-            )
-            return redirect("core:import_batch_detail", pk=batch.pk)
-    else:
-        form = ImportFileForm()
-    return render(
-        request,
-        "imports/upload.html",
-        {
-            "form": form,
-            "titulo": "Importar tickets PGO",
-            "descripcion": "Carga CSV o XLSX con tickets operativos de helpdesk.",
-            "columnas_ejemplo": "ID Ticket, Título, Estado, Prioridad, Fecha apertura, Fecha cierre, Departamento",
-            "breadcrumbs": [
-                {"label": "Panel principal", "url": "/panel/"},
-                {"label": "PGO — Operación", "url": "/wcgone/pgo/"},
-                {"label": "Importar tickets"},
-            ],
-        },
-    )
+    return redirect("imports:import_hub")

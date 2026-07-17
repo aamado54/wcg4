@@ -46,7 +46,13 @@ def _panel_stats():
 
 @login_required
 def dashboard_home(request):
-    return render(request, "dashboard/dashboardhome.html", _panel_stats())
+    return render(request, "dashboard/dashboardhome.html")
+
+
+@login_required
+def estado(request):
+    """KPIs e importaciones recientes — acceso secundario desde el menú."""
+    return render(request, "portal/estado.html", _panel_stats())
 
 
 @login_required

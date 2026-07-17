@@ -6,7 +6,6 @@
 <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
   <h1 class="h4 fw-semibold mb-0">PGO — Tickets</h1>
   <div class="d-flex gap-1 flex-wrap">
-    <a href="{% url 'wcgone_pgo:importar_tickets' %}" class="btn btn-sm btn-outline-secondary">Importar</a>
     <a href="{% url 'wcgone_pgo:export_tickets' %}{% if export_query %}?{{ export_query }}{% endif %}" class="btn btn-sm btn-outline-primary">Exportar CSV</a>
     <a href="{% url 'wcgone_pgo:dashboard' %}" class="btn btn-sm btn-outline-secondary">Dashboard</a>
   </div>
@@ -28,7 +27,7 @@
 </form>
 
 {% if not tickets and not request.GET %}
-{% include "includes/empty_state.html" with title="Sin tickets" message="Cargue tickets desde un archivo CSV/XLSX para listar, filtrar y exportar operación de helpdesk." import_url="/pgo/importar-tickets/" import_label="Importar tickets" %}
+{% include "includes/empty_state.html" with title="Sin tickets" message="Cargue tickets desde Administración → Importación General." %}
 {% endif %}
 
 <div class="card border-0 shadow-sm">
@@ -69,7 +68,6 @@
         {% empty %}
         <tr><td colspan="8" class="text-center text-muted py-4">
           No hay resultados con los filtros actuales.
-          <a href="{% url 'wcgone_pgo:importar_tickets' %}">Importar tickets</a>
         </td></tr>
         {% endfor %}
       </tbody>

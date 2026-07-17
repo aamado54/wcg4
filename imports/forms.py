@@ -10,11 +10,13 @@ class FileUploadForm(forms.Form):
 class GeneralImportForm(forms.Form):
     archivo = forms.FileField(
         label="Archivo",
-        help_text="CSV, TSV o Excel (.xlsx). El sistema detecta el tipo por nombre y columnas.",
+        help_text="CSV, TSV o Excel (.xlsx). Detección por nombre, estructura y contenido.",
+        widget=forms.ClearableFileInput(attrs={"class": "form-control"}),
     )
     tipo_forzado = forms.ChoiceField(
-        label="Tipo (opcional)",
+        label="Tipo de importación",
         required=False,
         choices=[("", "— Autodetectar —")] + [(t, TYPE_LABELS[t]) for t in ALL_IMPORTABLE],
-        help_text="Use solo si la autodetección no es confiable.",
+        help_text="Obligatorio si la detección es ambigua o de baja confianza.",
+        widget=forms.Select(attrs={"class": "form-select"}),
     )

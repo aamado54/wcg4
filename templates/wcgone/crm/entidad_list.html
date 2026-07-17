@@ -6,7 +6,6 @@
 <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
   <h1 class="h4 fw-semibold mb-0">CRM — Clientes y entidades</h1>
   <div class="d-flex gap-1 flex-wrap">
-    <a href="{% url 'wcgone_crm:importar' %}" class="btn btn-sm btn-outline-secondary">Importar</a>
     <a href="{% url 'wcgone_crm:export_entidades' %}{% if export_query %}?{{ export_query }}{% endif %}" class="btn btn-sm btn-outline-primary">Exportar CSV</a>
     <a href="{% url 'wcgone_crm:contacto_list' %}" class="btn btn-sm btn-outline-secondary">Contactos</a>
     <a href="{% url 'wcgone_crm:tarea_list' %}" class="btn btn-sm btn-outline-secondary">Tareas</a>
@@ -58,7 +57,7 @@
 </form>
 
 {% if not entidades and not request.GET %}
-{% include "includes/empty_state.html" with title="Sin clientes registrados" message="Importe un archivo CSV/XLSX con entidades o clientes para poblar el CRM y usar esta vista en demo gerencial." import_url="/crm/importar/" import_label="Importar entidades" %}
+{% include "includes/empty_state.html" with title="Sin clientes registrados" message="Cargue entidades desde Administración → Importación General." %}
 {% endif %}
 
 <div class="card border-0 shadow-sm">
@@ -100,7 +99,6 @@
         <tr>
           <td colspan="8" class="text-center text-muted py-4">
             No hay resultados con los filtros actuales.
-            <a href="{% url 'wcgone_crm:importar' %}">Importar entidades</a>
           </td>
         </tr>
         {% endfor %}

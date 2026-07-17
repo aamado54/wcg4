@@ -5,31 +5,134 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}WCG One{% endblock %}</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet">
   <style>
     :root {
-      --wcg-navy: #1a2b4a;
-      --wcg-accent: #2c6e9b;
-      --wcg-light: #f4f6f9;
+      --wcg-bg: #f3f6f9;
+      --wcg-surface: #ffffff;
+      --wcg-ink: #2a3441;
+      --wcg-muted: #6b7a8d;
+      --wcg-line: #e2e8f0;
+      --wcg-accent: #7a9bb8;
+      --wcg-accent-soft: #e8f0f6;
+      --wcg-accent-ink: #3d5a73;
+      --wcg-nav-bg: #eef3f7;
+      --wcg-nav-ink: #3a4a5c;
+      --wcg-radius: 6px;
+      --wcg-shadow: 0 1px 2px rgba(42, 52, 65, 0.04), 0 4px 12px rgba(42, 52, 65, 0.04);
     }
-    body { background-color: var(--wcg-light); min-height: 100vh; }
-    .navbar-wcg { background-color: var(--wcg-navy) !important; }
-    .navbar-wcg .navbar-brand,
-    .navbar-wcg .nav-link { color: rgba(255,255,255,.9) !important; }
-    .navbar-wcg .nav-link:hover,
-    .navbar-wcg .nav-link.active { color: #fff !important; }
-    .card-module { transition: box-shadow .15s ease; border: none; }
-    .card-module:hover { box-shadow: 0 .5rem 1rem rgba(0,0,0,.1); }
-    .card-module .card-header { background: var(--wcg-navy); color: #fff; font-weight: 600; }
-    .table-wcg thead { background: var(--wcg-navy); color: #fff; }
-    .table-wcg thead th { font-weight: 500; font-size: .875rem; border: none; }
-    .stat-value { font-size: 1.75rem; font-weight: 700; color: var(--wcg-navy); }
+    body {
+      font-family: "DM Sans", system-ui, sans-serif;
+      background:
+        radial-gradient(1200px 500px at 10% -10%, #e8f1f7 0%, transparent 55%),
+        radial-gradient(900px 400px at 100% 0%, #edf2f6 0%, transparent 50%),
+        var(--wcg-bg);
+      color: var(--wcg-ink);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .wcg-topbar {
+      background: var(--wcg-nav-bg);
+      border-bottom: 1px solid var(--wcg-line);
+    }
+    .wcg-brand {
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--wcg-accent-ink) !important;
+      font-size: 1.05rem;
+      margin-right: 1.25rem;
+    }
+    .wcg-home-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.4rem 0.85rem;
+      border-radius: var(--wcg-radius);
+      background: var(--wcg-surface);
+      border: 1px solid var(--wcg-line);
+      color: var(--wcg-accent-ink) !important;
+      font-weight: 600;
+      font-size: 0.82rem;
+      text-decoration: none;
+      margin-right: 1rem;
+      white-space: nowrap;
+    }
+    .wcg-home-link:hover {
+      background: var(--wcg-accent-soft);
+      color: var(--wcg-ink) !important;
+    }
+    .wcg-nav-primary { gap: 0.35rem; }
+    .wcg-nav-primary .nav-link {
+      color: var(--wcg-nav-ink) !important;
+      font-weight: 500;
+      font-size: 0.9rem;
+      padding: 0.45rem 0.9rem !important;
+      border-radius: var(--wcg-radius);
+      border: 1px solid transparent;
+    }
+    .wcg-nav-primary .nav-link:hover { background: rgba(255,255,255,0.7); }
+    .wcg-nav-primary .nav-link.active {
+      background: var(--wcg-surface);
+      border-color: var(--wcg-line);
+      color: var(--wcg-accent-ink) !important;
+      box-shadow: var(--wcg-shadow);
+    }
+    .wcg-mod-ico {
+      font-size: 1.05em;
+      margin-right: 0.15rem;
+      line-height: 1;
+    }
+    .wcg-nav-secondary .nav-link,
+    .wcg-nav-secondary .btn-link {
+      color: var(--wcg-muted) !important;
+      font-size: 0.85rem;
+      font-weight: 500;
+      text-decoration: none;
+    }
+    .wcg-nav-secondary .dropdown-menu {
+      border: 1px solid var(--wcg-line);
+      border-radius: var(--wcg-radius);
+      box-shadow: var(--wcg-shadow);
+      padding: 0.35rem;
+    }
+    .wcg-nav-secondary .dropdown-item {
+      border-radius: 4px;
+      font-size: 0.88rem;
+      padding: 0.45rem 0.75rem;
+    }
+    .wcg-nav-secondary .dropdown-item:hover { background: var(--wcg-accent-soft); }
+    .card-module { transition: box-shadow .15s ease; border: 1px solid var(--wcg-line) !important; border-radius: var(--wcg-radius) !important; box-shadow: var(--wcg-shadow); }
+    .card-module .card-header {
+      background: var(--wcg-accent-soft);
+      color: var(--wcg-accent-ink);
+      font-weight: 600;
+      border-bottom: 1px solid var(--wcg-line);
+    }
+    .table-wcg thead { background: #f0f4f8; color: var(--wcg-accent-ink); }
+    .table-wcg thead th { font-weight: 600; font-size: .78rem; border: none; text-transform: uppercase; letter-spacing: 0.03em; }
+    .stat-value { font-size: 1.65rem; font-weight: 700; color: var(--wcg-accent-ink); }
     .breadcrumb { background: transparent; padding-left: 0; margin-bottom: 1rem; }
-    main { padding-bottom: 3rem; }
+    main { padding-bottom: 3rem; flex: 1; }
+    .btn { border-radius: var(--wcg-radius); font-weight: 500; }
+    .btn-primary { background: var(--wcg-accent-ink); border-color: var(--wcg-accent-ink); }
+    .btn-outline-primary { color: var(--wcg-accent-ink); border-color: #b7c9d8; }
+    footer.wcg-footer {
+      border-top: 1px solid var(--wcg-line);
+      background: rgba(255,255,255,0.65);
+      padding: 0.85rem 0;
+      color: var(--wcg-muted);
+      font-size: 0.8rem;
+    }
   </style>
   {% block extra_css %}{% endblock %}
 </head>
 <body>
-  {% include "includes/navbar.html" %}
+  <header class="wcg-topbar sticky-top">
+    {% include "includes/navbar.html" %}
+  </header>
 
   <main class="container py-4">
     {% include "includes/messages.html" %}
@@ -38,8 +141,8 @@
     {% block content %}{% endblock %}
   </main>
 
-  <footer class="border-top bg-white py-3 mt-auto">
-    <div class="container text-muted small">
+  <footer class="wcg-footer mt-auto">
+    <div class="container">
       WCG One — Working Capital Group
     </div>
   </footer>

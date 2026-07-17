@@ -1,7 +1,7 @@
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Count, Max, Q
-from django.shortcuts import render
+from django.shortcuts import redirect, render
 from django.utils import timezone
 from django.views.generic import DetailView, ListView
 
@@ -146,75 +146,11 @@ class OperacionDetailView(LoginRequiredMixin, DetailView):
 from django.contrib import messages  # noqa: E402
 from django.shortcuts import redirect, render  # noqa: E402
 
-from .forms import RiskSnapshotImportForm  # noqa: E402
-from .imports.estados_financieros import import_estados_financieros  # noqa: E402
-from .imports.snapshots import import_snapshots_leasing  # noqa: E402
-
-
 @login_required
 def importar_snapshots(request):
-    if request.method == "POST":
-        form = RiskSnapshotImportForm(request.POST, request.FILES)
-        if form.is_valid():
-            fecha = form.cleaned_data.get("fecha_snapshot")
-            batch = import_snapshots_leasing(
-                request.user,
-                form.cleaned_data["archivo"],
-                fecha_snapshot_param=fecha.isoformat() if fecha else None,
-            )
-            messages.success(
-                request,
-                f"Importación Risk finalizada ({batch.get_estado_display()}): "
-                f"{batch.filas_validas} filas válidas, {batch.filas_error} con error.",
-            )
-            return redirect("core:import_batch_detail", pk=batch.pk)
-    else:
-        form = RiskSnapshotImportForm()
-    return render(
-        request,
-        "imports/upload.html",
-        {
-            "form": form,
-            "titulo": "Importar snapshots leasing",
-            "descripcion": "Carga XLSX de operaciones leasing con snapshots operativos.",
-            "columnas_ejemplo": "Cliente, Operación, Fecha corte, Saldo capital, Saldo vencido, Días atraso",
-            "breadcrumbs": [
-                {"label": "Panel principal", "url": "/panel/"},
-                {"label": "Balón de Riesgo", "url": "/wcgone/risk/comando-balon/"},
-                {"label": "Importar snapshots"},
-            ],
-        },
-    )
+    return redirect("imports:import_hub")
 
 
 @login_required
 def importar_eeff(request):
-    from apps.core.forms import ImportFileForm
-
-    if request.method == "POST":
-        form = ImportFileForm(request.POST, request.FILES)
-        if form.is_valid():
-            batch = import_estados_financieros(request.user, form.cleaned_data["archivo"])
-            messages.success(
-                request,
-                f"Importación EEFF finalizada ({batch.get_estado_display()}): "
-                f"{batch.filas_validas} filas válidas, {batch.filas_error} con error.",
-            )
-            return redirect("core:import_batch_detail", pk=batch.pk)
-    else:
-        form = ImportFileForm()
-    return render(
-        request,
-        "imports/upload.html",
-        {
-            "form": form,
-            "titulo": "Importar estados financieros",
-            "descripcion": "Carga CSV o XLSX con estados financieros básicos por entidad y fecha de corte.",
-            "columnas_ejemplo": "NIT, Cliente, Fecha corte, Ventas, Utilidad neta, Patrimonio, EBITDA",
-            "breadcrumbs": [
-                {"label": "Panel principal", "url": "/panel/"},
-                {"label": "Balón de Riesgo", "url": "/wcgone/risk/comando-balon/"},
-                {"label": "Importar EEFF"},
-            ],
-        },
-    )
+    return redirect("imports:import_hub")

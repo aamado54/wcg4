@@ -1,31 +1,53 @@
-<nav class="navbar navbar-expand-lg navbar-dark navbar-wcg shadow-sm">
+<nav class="navbar navbar-expand-lg">
   <div class="container">
-    <a class="navbar-brand fw-semibold" href="{% url 'portal:home' %}">WCG One</a>
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#wcgNav">
-      <span class="navbar-toggler-icon"></span>
+    <a class="navbar-brand wcg-brand mb-0" href="{% url 'portal:home' %}">WCG One</a>
+    <a class="wcg-home-link d-none d-md-inline-flex" href="{% url 'portal:home' %}" title="Volver al menú principal">
+      ← Menú principal
+    </a>
+    <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#wcgNav" aria-controls="wcgNav" aria-expanded="false" aria-label="Menú">
+      <span class="navbar-toggler-icon" style="filter: invert(0.45);"></span>
     </button>
     <div class="collapse navbar-collapse" id="wcgNav">
-      <ul class="navbar-nav me-auto">
+      <ul class="navbar-nav wcg-nav-primary me-auto mb-2 mb-lg-0 mt-2 mt-lg-0">
+        {% if user.is_authenticated %}
+        <li class="nav-item d-md-none">
+          <a class="nav-link fw-semibold" href="{% url 'portal:home' %}">← Menú principal</a>
+        </li>
+        {% endif %}
         <li class="nav-item">
-          <a class="nav-link{% if '/tablero/' in request.path or '/pgc/' in request.path %} active{% endif %}" href="{% url 'pgc:dashboard' %}">PGC</a>
+          <a class="nav-link{% if '/tablero/' in request.path or '/pgc/' in request.path %} active{% endif %}" href="{% url 'pgc:dashboard' %}"><span class="wcg-mod-ico" aria-hidden="true">📊</span> PGC</a>
         </li>
         <li class="nav-item">
-          <a class="nav-link{% if '/crm/' in request.path %} active{% endif %}" href="{% url 'wcgone_crm:entidad_list' %}">CRM</a>
+          <a class="nav-link{% if '/pgo/' in request.path %} active{% endif %}" href="{% url 'wcgone_pgo:dashboard' %}"><span class="wcg-mod-ico" aria-hidden="true">⚙️</span> PGO</a>
         </li>
         <li class="nav-item">
-          <a class="nav-link{% if '/risk/' in request.path %} active{% endif %}" href="{% url 'wcgone_risk:comando_balon' %}">Balón de Riesgo</a>
+          <a class="nav-link{% if '/crm/' in request.path %} active{% endif %}" href="{% url 'wcgone_crm:entidad_list' %}"><span class="wcg-mod-ico" aria-hidden="true">👥</span> CRM</a>
         </li>
         <li class="nav-item">
-          <a class="nav-link{% if '/pgo/' in request.path %} active{% endif %}" href="{% url 'wcgone_pgo:dashboard' %}">PGO</a>
+          <a class="nav-link{% if '/risk/' in request.path %} active{% endif %}" href="{% url 'wcgone_risk:comando_balon' %}"><span class="wcg-mod-ico" aria-hidden="true">⚽</span> Balón de Riesgo</a>
         </li>
       </ul>
-      <ul class="navbar-nav">
+      <ul class="navbar-nav wcg-nav-secondary align-items-lg-center">
         {% if user.is_authenticated %}
-        <li class="nav-item">
-          <a class="nav-link" href="/admin/" target="_blank" rel="noopener">Admin</a>
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle{% if '/importaciones/' in request.path or '/panel/estado' in request.path %} active{% endif %}" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+            Administración
+          </a>
+          <ul class="dropdown-menu dropdown-menu-end">
+            <li><h6 class="dropdown-header">Configuración del sistema</h6></li>
+            <li>
+              <a class="dropdown-item" href="{% url 'imports:import_hub' %}">Importación General</a>
+            </li>
+            <li><a class="dropdown-item" href="{% url 'portal:estado' %}">Estado del sistema</a></li>
+            <li><a class="dropdown-item" href="{% url 'portal:ayuda' %}">Guía de uso</a></li>
+            {% if user.is_superuser %}
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="/admin/" target="_blank" rel="noopener">Admin Django</a></li>
+            {% endif %}
+          </ul>
         </li>
         <li class="nav-item">
-          <span class="nav-link disabled text-white-50">{{ user.get_username }}</span>
+          <span class="nav-link disabled" style="opacity:0.7;">{{ user.get_username }}</span>
         </li>
         <li class="nav-item">
           <form method="post" action="{% url 'logout' %}" class="d-inline">

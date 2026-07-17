@@ -27,11 +27,13 @@
     <div class="card border-0 shadow-sm mb-3">
       <div class="card-header bg-white fw-semibold">Ruta sugerida para demo (15–20 min)</div>
       <ol class="list-group list-group-flush small">
-        <li class="list-group-item"><strong>1.</strong> <a href="{% url 'portal:home' %}">Panel principal</a> — KPIs e importaciones recientes.</li>
-        <li class="list-group-item"><strong>2.</strong> <a href="{% url 'crm:entidad_list' %}">CRM</a> — listado, filtros, detalle, export CSV.</li>
-        <li class="list-group-item"><strong>3.</strong> <a href="{% url 'risk:comando_balon' %}">Comando Balón</a> — mora, alertas, historial.</li>
-        <li class="list-group-item"><strong>4.</strong> <a href="{% url 'pgo:dashboard' %}">PGO</a> — tickets y SLA.</li>
-        <li class="list-group-item"><strong>5.</strong> <a href="{% url 'imports:import_hub' %}">Importación General</a> — carga unificada.</li>
+        <li class="list-group-item"><strong>1.</strong> <a href="{% url 'portal:home' %}">Menú principal</a> — las cuatro opciones del producto.</li>
+        <li class="list-group-item"><strong>2.</strong> <a href="{% url 'pgc:dashboard' %}">📊 PGC</a> — plan comercial.</li>
+        <li class="list-group-item"><strong>3.</strong> <a href="{% url 'pgo:dashboard' %}">⚙️ PGO</a> — tickets y SLA.</li>
+        <li class="list-group-item"><strong>4.</strong> <a href="{% url 'crm:entidad_list' %}">👥 CRM</a> — listado, filtros, detalle, export CSV.</li>
+        <li class="list-group-item"><strong>5.</strong> <a href="{% url 'risk:comando_balon' %}">⚽ Comando Balón</a> — mora, alertas, historial.</li>
+        <li class="list-group-item"><strong>6.</strong> <a href="{% url 'portal:estado' %}">Estado del sistema</a> — KPIs e importaciones recientes.</li>
+        <li class="list-group-item"><strong>7.</strong> <a href="{% url 'imports:import_hub' %}">Administración → Importación</a> — carga unificada.</li>
       </ol>
     </div>
   </div>
@@ -40,7 +42,7 @@
       <div class="card-header bg-white fw-semibold">Carga de datos</div>
       <div class="card-body small">
         <p>En producción: <code>python manage.py bootstrap_wcg_demo</code></p>
-        <p class="mb-0">O suba archivos en <a href="{% url 'imports:import_hub' %}">Importación General</a>.</p>
+        <p class="mb-0">O suba archivos en <a href="{% url 'imports:import_hub' %}">Administración → Importación General</a>.</p>
       </div>
     </div>
   </div>

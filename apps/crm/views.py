@@ -154,30 +154,4 @@ def export_entidades_csv(request):
 
 @login_required
 def importar_entidades(request):
-    if request.method == "POST":
-        form = ImportFileForm(request.POST, request.FILES)
-        if form.is_valid():
-            batch = import_entidades_clientes(request.user, form.cleaned_data["archivo"])
-            messages.success(
-                request,
-                f"Importación CRM finalizada ({batch.get_estado_display()}): "
-                f"{batch.filas_validas} filas válidas, {batch.filas_error} con error.",
-            )
-            return redirect("core:import_batch_detail", pk=batch.pk)
-    else:
-        form = ImportFileForm()
-    return render(
-        request,
-        "imports/upload.html",
-        {
-            "form": form,
-            "titulo": "Importar entidades / clientes CRM",
-            "descripcion": "Carga CSV o XLSX con columnas mínimas: NIT o Nombre.",
-            "columnas_ejemplo": "NIT, Nombre, UNE, Tipo, Teléfono, Email, Contacto, Cargo",
-            "breadcrumbs": [
-                {"label": "Panel principal", "url": "/panel/"},
-                {"label": "CRM — Clientes", "url": "/wcgone/crm/entidades/"},
-                {"label": "Importar entidades"},
-            ],
-        },
-    )
+    return redirect("imports:import_hub")
