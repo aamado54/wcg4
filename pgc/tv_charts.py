@@ -28,8 +28,9 @@ from pgc.admin_utils import admin_period_context, parse_admin_period
 
 LIVE_SLOT_COUNT = 4
 LIVE_NAMES = {n: f"wcg-g{n}.png" for n in range(1, LIVE_SLOT_COUNT + 1)}
+# Soporta sello nuevo YY-MM-DD HH-MM y legado YY-MM HH-MM
 ARCHIVE_NAME_RE = re.compile(
-    r"^wcg-g([1-4]) (\d{2}-\d{2} \d{2}-\d{2})\.png$"
+    r"^wcg-g([1-4]) (\d{2}-\d{2}(?:-\d{2})? \d{2}-\d{2})\.png$"
 )
 
 
@@ -136,15 +137,39 @@ def live_status() -> list[dict]:
     return rows
 
 
-def save_archive_upload(filename: str, raw: bytes) -> str:
+def save_archive_upload(filename: str, raw: bytes, *, activate_live: bool = True) -> dict:
+    """
+    Guarda PNG con sello en archive/.
+    Si activate_live=True, también copia/actualiza media/tv/live/wcg-gN.png.
+    """
     parsed = parse_archive_name(filename)
     if not parsed:
         raise ValueError(
-            "Nombre inválido. Use: wcg-gN YY-MM HH-MM.png (N=1..4)."
+            "Nombre inválido. Use: wcg-gN YY-MM HH-MM.png (N=1..4; también acepta YY-MM-DD)."
         )
+    slot, stamp = parsed
     dest = archive_dir() / filename
     dest.write_bytes(raw)
-    return filename
+    live_name = None
+    if activate_live:
+        live_dest = live_path(slot)
+        live_dest.write_bytes(raw)
+        live_name = LIVE_NAMES[slot]
+    return {
+        "filename": filename,
+        "slot": slot,
+        "stamp": stamp,
+        "live": live_name,
+    }
+
+
+def promote_latest_complete_set() -> list[str] | None:
+    """Si hay un set g1–g4 completo, copia el más reciente a live. None si no hay."""
+    for aset in group_archive_sets():
+        if aset.complete:
+            names = [aset.files[n].name for n in range(1, LIVE_SLOT_COUNT + 1)]
+            return copy_archives_to_live(names)
+    return None
 
 
 def copy_archives_to_live(filenames: list[str]) -> list[str]:
@@ -211,19 +236,26 @@ def tv_archive_png(request, name: str):
 
 
 @login_required
-@user_passes_test(_superuser)
 @require_POST
 def tv_charts_upload(request):
-    """Recibe PNG archivados desde la exportación del tablero."""
+    """Recibe PNG desde Exportación 4 charts → archive/ + live/."""
     uploaded = request.FILES.get("file") or request.FILES.get("png")
     if not uploaded:
         return JsonResponse({"ok": False, "error": "Falta archivo."}, status=400)
     filename = (uploaded.name or "").strip()
+    # Algunos navegadores envían solo el basename; normalizar espacios.
+    filename = Path(filename).name
+    activate = (request.POST.get("activate") or "1").strip() != "0"
     try:
-        saved = save_archive_upload(filename, uploaded.read())
+        result = save_archive_upload(filename, uploaded.read(), activate_live=activate)
     except ValueError as exc:
         return JsonResponse({"ok": False, "error": str(exc)}, status=400)
-    return JsonResponse({"ok": True, "filename": saved})
+    except OSError as exc:
+        return JsonResponse(
+            {"ok": False, "error": f"No se pudo escribir en media/tv/: {exc}"},
+            status=500,
+        )
+    return JsonResponse({"ok": True, **result})
 
 
 @login_required
@@ -318,6 +350,7 @@ def admin_tv_charts(request):
     context = {
         **admin_period_context(period),
         "live_slots": live_status(),
+        "live_all_empty": not any(s["exists"] for s in live_status()),
         "archive_sets": archive_sets,
         "supports_month_range": False,
     }

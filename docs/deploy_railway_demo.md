@@ -17,7 +17,7 @@ wcg4/dashboard
 | Variable | Valor recomendado | Notas |
 |----------|-------------------|--------|
 | `SECRET_KEY` | cadena larga aleatoria | **Obligatoria** si `DEBUG=False`. Sin ella la app no arranca. |
-| `DEBUG` | `False` | Default del código es `False`. No uses `True` en Railway. |
+| `DEBUG` | `False` en Railway | Si no se define: **True en local**, **False en Railway**. |
 | `ALLOWED_HOSTS` | host del servicio, p.ej. `xxx.up.railway.app` | Separar varios hosts con comas. |
 | `CSRF_TRUSTED_ORIGINS` | `https://xxx.up.railway.app` | Debe incluir esquema `https://`. Comas si hay varios. |
 | `DATABASE_URL` | (auto) | La provee el plugin PostgreSQL de Railway. |

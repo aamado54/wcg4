@@ -7,7 +7,19 @@ from django.core.exceptions import ImproperlyConfigured
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-DEBUG = os.environ.get("DEBUG", "False").lower() == "true"
+# Si DEBUG no está en el entorno:
+# - Local (sin Railway) → True
+# - Railway / con RAILWAY_* → False (producción segura por defecto)
+_raw_debug = os.environ.get("DEBUG")
+if _raw_debug is None:
+    _on_railway = bool(
+        os.environ.get("RAILWAY_ENVIRONMENT")
+        or os.environ.get("RAILWAY_PROJECT_ID")
+        or os.environ.get("RAILWAY_STATIC_URL")
+    )
+    DEBUG = not _on_railway
+else:
+    DEBUG = _raw_debug.lower() == "true"
 
 _secret = os.environ.get("SECRET_KEY")
 if _secret:

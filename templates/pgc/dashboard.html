@@ -906,16 +906,26 @@ document.addEventListener("DOMContentLoaded", function () {
     const blob = await res.blob();
     const form = new FormData();
     form.append("file", blob, filename);
+    form.append("activate", "1");
     const response = await fetch("{% url 'pgc:tv_charts_upload' %}", {
       method: "POST",
       headers: { "X-CSRFToken": getCsrfToken() },
       body: form,
       credentials: "same-origin",
     });
-    const payload = await response.json().catch(function () { return {}; });
-    if (!response.ok || !payload.ok) {
-      throw new Error((payload && payload.error) || ("Error al guardar " + filename + " en el servidor."));
+    let payload = {};
+    try {
+      payload = await response.json();
+    } catch (e) {
+      payload = {};
     }
+    if (response.status === 403 || response.status === 401) {
+      throw new Error("Sin permiso para guardar en el servidor (inicie sesión). La descarga local sí se hizo.");
+    }
+    if (!response.ok || !payload.ok) {
+      throw new Error((payload && payload.error) || ("Error al guardar " + filename + " en el servidor (HTTP " + response.status + ")."));
+    }
+    return payload;
   }
 
   function sleep(ms) {
@@ -996,8 +1006,8 @@ document.addEventListener("DOMContentLoaded", function () {
         gd.remove();
         await sleep(250);
       }
-      btnExport.textContent = "Listo (" + serverSaved + " en servidor)";
-      await sleep(900);
+      btnExport.textContent = "Listo (" + serverSaved + " en TV)";
+      await sleep(1200);
     } catch (err) {
       console.error(err);
       alert((err && err.message) || "Error al generar la exportación de 4 charts PNG.");
