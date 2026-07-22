@@ -668,28 +668,57 @@ document.addEventListener("DOMContentLoaded", function () {
   renderAllCharts();
 
   // --- Exportación 4 charts: PNG 1920×1080 (TV). ---
-  // EXPORT_SVG_VERSION=v11-bars-navy-blue-png
+  // EXPORT_SVG_VERSION=v16-legend-yaxis-nudge
   // No modifica charts visibles (buildLayout / renderChart).
   // Los 4 charts (FACTORING, LEASING, INSURANCE, GRUPO) usan el MISMO layout.
+  //
+  // Configuración base (v11, antes del ensayo de fuentes/márgenes v12):
+  //   MARGIN T/B/L/R = 155 / 275 / 100 / 80
+  //   TITLE / SUBTITLE / AXIS / TICK / LEGEND = 72 / 22 / 24 / 20 / 24
+  // Si el ensayo queda mal, restaurar esos valores y EXPORT_SVG_VERSION=v11-bars-navy-blue-png.
 
-  const EXPORT_SVG_VERSION = "v11-bars-navy-blue-png";
+  const EXPORT_SVG_VERSION = "v16-legend-yaxis-nudge";
   const EXPORT_SUBTITLE =
     "Real vs meta por período. Cifras acumuladas dentro del rango.";
   const EXPORT_WIDTH = 1920;
   const EXPORT_HEIGHT = 1080;
   const IMAGE_WIDTH = 1920;
   const IMAGE_HEIGHT = 1080;
-  // Superior: 155 px. Inferior: espacio para meses/Período/leyenda + ~155 px blancos libres.
-  // (v6 dejó solo ~35 px libres abajo; +120 → ≈155 px blancos limpios.)
-  const EXPORT_MARGIN_T = 155;
-  const EXPORT_MARGIN_B = 275;
-  const EXPORT_MARGIN_L = 100;
+  // v12: franja blanca superior/inferior ~155 → ~75 (mitad).
+  // Inferior: meses/Período/leyenda + ~75 px blancos libres (antes ~155).
+  const EXPORT_MARGIN_T = 75;
+  const EXPORT_MARGIN_B = 195;
+  // v13: margen L = base 100 + ancho de «500».
+  // v14–v16: +3× ancho de un dígito («0»).
+  const EXPORT_MARGIN_L_BASE = 100;
   const EXPORT_MARGIN_R = 80;
-  const EXPORT_TITLE_SIZE = 72;
-  const EXPORT_SUBTITLE_SIZE = 22;
-  const EXPORT_AXIS_TITLE_SIZE = 24;
-  const EXPORT_TICK_SIZE = 20;
-  const EXPORT_LEGEND_SIZE = 24;
+  // v12: título 2.5×; resto de textos 2× (ensayo).
+  const EXPORT_TITLE_SIZE = 180;
+  const EXPORT_SUBTITLE_SIZE = 44;
+  const EXPORT_AXIS_TITLE_SIZE = 48;
+  const EXPORT_TICK_SIZE = 40;
+  const EXPORT_LEGEND_SIZE = 48;
+
+  function measureExportTextWidth(text, fontSize) {
+    try {
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return Math.round(fontSize * 0.6 * String(text).length);
+      // Plotly usa tipografía sans-serif por defecto en estos exports.
+      ctx.font = fontSize + "px sans-serif";
+      return Math.ceil(ctx.measureText(text).width);
+    } catch (err) {
+      return Math.round(fontSize * 0.6 * String(text).length);
+    }
+  }
+
+  const EXPORT_YAXIS_DIGIT_W = measureExportTextWidth("0", EXPORT_TICK_SIZE);
+  const EXPORT_MARGIN_L =
+    EXPORT_MARGIN_L_BASE +
+    measureExportTextWidth("500", EXPORT_TICK_SIZE) +
+    3 * EXPORT_YAXIS_DIGIT_W;
+  // v14–v16: leyenda baja adicional ≈ 3 × (mitad del ancho de un dígito).
+  const EXPORT_LEGEND_NUDGE_PX = 1.5 * EXPORT_YAXIS_DIGIT_W;
   // Colores de marca (exactos). Real = azul navy de relleno; Meta = casi negro (línea).
   const EXPORT_COLOR_TEXT = "#3D3F3F";
   const EXPORT_COLOR_REAL = "#1D284A";
@@ -774,10 +803,9 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function buildExportIncomeLayout(title, series, yAxis) {
-    // Ajuste fino v7 a partir del PNG v6:
-    // - subtítulo un poco más abajo (aire vs título)
-    // - leyenda una línea más arriba
-    // - margin.b +120 px → franja blanca inferior ≈155 px limpia
+    // v12: márgenes blancos a la mitad; fuentes ×2.5 / ×2.
+    // Subtítulo debajo del título (título ~EXPORT_TITLE_SIZE px + aire).
+    const subtitleTopPx = EXPORT_TITLE_SIZE + 28;
     return {
       title: {
         text: "<b>" + title + "</b>",
@@ -788,7 +816,7 @@ document.addEventListener("DOMContentLoaded", function () {
         xanchor: "center",
         y: 1,
         yanchor: "top",
-        pad: { t: 18, b: 2, l: 0, r: 0 },
+        pad: { t: 10, b: 2, l: 0, r: 0 },
       },
       annotations: [
         {
@@ -796,8 +824,7 @@ document.addEventListener("DOMContentLoaded", function () {
           xref: "paper",
           yref: "paper",
           x: 0.5,
-          // v8: 110; +12 px ≈ baja ligeramente el subtítulo
-          y: 1 - 122 / IMAGE_HEIGHT,
+          y: 1 - subtitleTopPx / IMAGE_HEIGHT,
           xanchor: "center",
           yanchor: "top",
           showarrow: false,
@@ -821,8 +848,14 @@ document.addEventListener("DOMContentLoaded", function () {
         yref: "paper",
         x: 0.5,
         xanchor: "center",
-        // v7: -0.055; bajar exactamente 1 letra del mismo font (evita solape con «Período»)
-        y: -0.055 - EXPORT_LEGEND_SIZE / IMAGE_HEIGHT,
+        // v7: -0.055 − 1× altura del font (bajo «Período»).
+        // v13: −⅓ adicional de la altura del font de la leyenda.
+        // v14–v16: − EXPORT_LEGEND_NUDGE_PX (1.5× ancho de un dígito del eje Y).
+        y:
+          -0.055 -
+          EXPORT_LEGEND_SIZE / IMAGE_HEIGHT -
+          EXPORT_LEGEND_SIZE / (3 * IMAGE_HEIGHT) -
+          EXPORT_LEGEND_NUDGE_PX / IMAGE_HEIGHT,
         yanchor: "top",
         font: { size: EXPORT_LEGEND_SIZE, color: EXPORT_COLOR_TEXT },
         bgcolor: "rgba(255,255,255,0)",
