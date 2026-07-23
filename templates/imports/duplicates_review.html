@@ -7,7 +7,8 @@
     <h1 class="h3 mb-1">Revisión de posibles duplicados</h1>
     <p class="text-muted mb-0" style="max-width:44rem;">
       Busca duplicados en CRM, Balón de Riesgo, PGC y lotes de importación.
-      <strong>No se elimina nada automáticamente</strong>: revise y confirme al lado del botón.
+      En CRM se conserva el registro con <strong>más información</strong> y se
+      <strong>fusionan</strong> contactos/productos/interacciones/tareas antes de borrar el resto.
     </p>
   </div>
   <a class="wcg-home-link" href="{% url 'imports:import_hub' %}">← Importación General</a>
@@ -44,18 +45,20 @@
         <div class="small"><code>{{ g.key_display }}</code></div>
       </div>
       <div class="small text-muted">
-        Conservar #{{ g.keep_id }} · extras: {{ g.extra_count }}
+        Conservar #{{ g.keep_id }}{% if g.module == "crm_nombre" or g.module == "crm_entidad" %} (más info){% endif %}
+        · extras: {{ g.extra_count }}
       </div>
     </div>
     <ul class="small mb-3">
       {% for lab in g.sample_labels %}
-      <li>{{ lab }}</li>
+      <li>{% if forloop.first %}<strong>Conservar:</strong> {% endif %}{{ lab }}</li>
       {% endfor %}
     </ul>
     <form method="post" class="dup-delete-form">
       {% csrf_token %}
       <input type="hidden" name="action" value="delete">
       <input type="hidden" name="module" value="{{ g.module }}">
+      <input type="hidden" name="keep_id" value="{{ g.keep_id }}">
       {% for did in g.duplicate_ids %}
       <input type="hidden" name="ids" value="{{ did }}">
       {% endfor %}
@@ -64,7 +67,9 @@
           Eliminar {{ g.extra_count }} duplicado(s)
         </button>
         <span class="dup-confirm d-none small align-items-center gap-2">
-          <span class="text-danger">¿Confirmar? Se conserva #{{ g.keep_id }}.</span>
+          <span class="text-danger">
+            ¿Confirmar? Se conserva #{{ g.keep_id }}{% if g.module == "crm_nombre" or g.module == "crm_entidad" %} y se fusionan sus detalles{% endif %}.
+          </span>
           <button type="submit" class="btn btn-sm btn-danger">Sí, eliminar</button>
           <button type="button" class="btn btn-sm btn-link dup-cancel p-0">Cancelar</button>
         </span>

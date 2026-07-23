@@ -32,8 +32,14 @@ def _groups_from_rows(
     module_label: str,
     natural_key_desc: str,
     rows: list[tuple[tuple, int, str]],
+    *,
+    keep_chooser=None,
 ) -> list[DuplicateGroup]:
-    """rows: (key, id, label) ordenados por id ascendente (se conserva el más antiguo)."""
+    """
+    rows: (key, id, label).
+    Por defecto conserva el id más antiguo.
+    ``keep_chooser(items)`` opcional: recibe list[(id, label)] y devuelve keep_id.
+    """
     buckets: dict[tuple, list[tuple[int, str]]] = defaultdict(list)
     for key, pk, label in rows:
         buckets[key].append((pk, label))
@@ -42,9 +48,15 @@ def _groups_from_rows(
     for key, items in buckets.items():
         if len(items) < 2:
             continue
-        keep_id, keep_label = items[0]
-        dup_ids = [pk for pk, _ in items[1:]]
-        labels = [keep_label] + [lab for _, lab in items[1:3]]
+        if keep_chooser:
+            keep_id = keep_chooser(items)
+            items_by_id = {pk: lab for pk, lab in items}
+            keep_label = items_by_id.get(keep_id, items[0][1])
+            dup_ids = [pk for pk, _ in items if pk != keep_id]
+        else:
+            keep_id, keep_label = items[0]
+            dup_ids = [pk for pk, _ in items[1:]]
+        labels = [keep_label] + [lab for pk, lab in items if pk != keep_id][:3]
         key_display = " | ".join(str(p) for p in key if p not in ("", None))[:180]
         groups.append(
             DuplicateGroup(
@@ -59,6 +71,150 @@ def _groups_from_rows(
         )
     groups.sort(key=lambda g: (-g.extra_count, g.key_display))
     return groups
+
+
+def _crm_entidad_richness(ent) -> int:
+    """Puntaje de información útil (NIT, contactos, productos, CRM, notas)."""
+    from core.wcg_models import Contacto, RelacionEntidadProducto
+    from crm.models import Interaccion, Tarea
+
+    score = 0
+    if (ent.nit or "").strip():
+        score += 100
+    if (ent.notas or "").strip():
+        score += 10
+    if ent.unidad_negocio_id:
+        score += 5
+    score += Contacto.objects.filter(entidad=ent).count() * 20
+    score += RelacionEntidadProducto.objects.filter(entidad=ent).count() * 15
+    score += Interaccion.objects.filter(entidad=ent).count() * 10
+    score += Tarea.objects.filter(entidad=ent).count() * 10
+    return score
+
+
+def _choose_richest_crm_entidad(items: list[tuple[int, str]]) -> int:
+    """Conserva la entidad con más detalle; empate → id más bajo (más antigua)."""
+    from core.wcg_models import Entidad
+
+    ids = [pk for pk, _ in items]
+    best_id = ids[0]
+    best_score = -1
+    for ent in Entidad.objects.filter(id__in=ids):
+        score = _crm_entidad_richness(ent)
+        if score > best_score or (score == best_score and ent.id < best_id):
+            best_score = score
+            best_id = ent.id
+    return best_id
+
+
+def _crm_entidad_label(ent) -> str:
+    score = _crm_entidad_richness(ent)
+    nit = (ent.nit or "").strip() or "—"
+    return f"{ent.codigo} · {ent.nombre} · NIT {nit} · info={score}"
+
+
+def merge_crm_entidades_into(keep_id: int, loser_ids: list[int]) -> int:
+    """
+    Fusiona detalles de loser → keep y luego borra losers.
+    Reasigna contactos, productos, interacciones, tareas y vínculos Risk/PGO.
+    Completa campos vacíos del keep (NIT, notas, unidad).
+    """
+    from core.wcg_models import Contacto, Entidad, RelacionEntidadProducto
+    from crm.models import Interaccion, Tarea
+
+    keep = Entidad.objects.filter(pk=keep_id).first()
+    if not keep:
+        return 0
+
+    deleted = 0
+    for loser_id in loser_ids:
+        if loser_id == keep_id:
+            continue
+        loser = Entidad.objects.filter(pk=loser_id).first()
+        if not loser:
+            continue
+
+        # Completar campos vacíos del registro conservado.
+        changed = False
+        if not (keep.nit or "").strip() and (loser.nit or "").strip():
+            keep.nit = loser.nit
+            changed = True
+        if not (keep.notas or "").strip() and (loser.notas or "").strip():
+            keep.notas = loser.notas
+            changed = True
+        if not keep.unidad_negocio_id and loser.unidad_negocio_id:
+            keep.unidad_negocio_id = loser.unidad_negocio_id
+            changed = True
+        if changed:
+            keep.save()
+
+        # Contactos: reasignar si no hay homónimo; si hay, conservar el del keep.
+        for c in list(Contacto.objects.filter(entidad=loser)):
+            exists = Contacto.objects.filter(entidad=keep).filter(
+                nombre__iexact=(c.nombre or "").strip()
+            ).exists()
+            if exists:
+                c.delete()
+            else:
+                c.entidad = keep
+                c.save(update_fields=["entidad"])
+
+        for rel in list(RelacionEntidadProducto.objects.filter(entidad=loser)):
+            if RelacionEntidadProducto.objects.filter(
+                entidad=keep, producto_id=rel.producto_id
+            ).exists():
+                rel.delete()
+            else:
+                rel.entidad = keep
+                rel.save(update_fields=["entidad"])
+
+        Interaccion.objects.filter(entidad=loser).update(entidad=keep)
+        Tarea.objects.filter(entidad=loser).update(entidad=keep)
+
+        # Risk / PGO productivos (si existen vínculos).
+        try:
+            from risk.models import (
+                ContactoCobranza,
+                EstadoFinanciero,
+                PagoRealizado,
+                ProgramacionPago,
+                RiskOperationSnapshot,
+            )
+
+            for snap in list(RiskOperationSnapshot.objects.filter(entidad=loser)):
+                conflict = RiskOperationSnapshot.objects.filter(
+                    entidad=keep,
+                    referencia_operacion=snap.referencia_operacion,
+                    fecha_snapshot=snap.fecha_snapshot,
+                ).exists()
+                if conflict:
+                    snap.delete()
+                else:
+                    snap.entidad = keep
+                    snap.save(update_fields=["entidad"])
+            for model in (ProgramacionPago, PagoRealizado):
+                for row in list(model.objects.filter(entidad=loser)):
+                    if model.objects.filter(entidad=keep, referencia=row.referencia).exists():
+                        row.delete()
+                    else:
+                        row.entidad = keep
+                        row.save(update_fields=["entidad"])
+            EstadoFinanciero.objects.filter(entidad=loser).update(entidad=keep)
+            ContactoCobranza.objects.filter(entidad=loser).update(entidad=keep)
+        except Exception:
+            pass
+
+        try:
+            from pgo.models import Ticket
+
+            Ticket.objects.filter(entidad=loser).update(entidad=keep)
+        except Exception:
+            pass
+
+        loser.delete()
+        deleted += 1
+
+    return deleted
 
 
 def scan_new_client_duplicates(year: int | None = None, month: int | None = None) -> list[DuplicateGroup]:
@@ -127,7 +283,7 @@ def scan_cross_sale_duplicates(year: int | None = None, month: int | None = None
 
 
 def scan_crm_entity_duplicates() -> list[DuplicateGroup]:
-    """Duplicados por NIT normalizado cuando hay más de un código."""
+    """Duplicados por NIT: conserva la entidad con más detalle."""
     from core.wcg_models import Entidad
 
     rows = []
@@ -136,18 +292,18 @@ def scan_crm_entity_duplicates() -> list[DuplicateGroup]:
         if not nit:
             continue
         key = (nit.casefold(),)
-        label = f"{ent.codigo} · {ent.nombre}"
-        rows.append((key, ent.id, label))
+        rows.append((key, ent.id, _crm_entidad_label(ent)))
     return _groups_from_rows(
         "crm_entidad",
         "CRM — Entidades (mismo NIT)",
-        "NIT (clave natural secundaria; primaria es codigo)",
+        "NIT · se conserva el registro con más información (detalle fusionado)",
         rows,
+        keep_chooser=_choose_richest_crm_entidad,
     )
 
 
 def scan_crm_nombre_duplicates() -> list[DuplicateGroup]:
-    """Mismo nombre de cliente (lo que suele verse duplicado en listados CRM)."""
+    """Mismo nombre: conserva el registro más completo y fusiona detalles al borrar."""
     from core.wcg_models import Entidad
 
     rows = []
@@ -156,14 +312,13 @@ def scan_crm_nombre_duplicates() -> list[DuplicateGroup]:
         if not nombre:
             continue
         key = (nombre.casefold(),)
-        nit = (ent.nit or "").strip() or "—"
-        label = f"{ent.codigo} · {ent.nombre} · NIT {nit}"
-        rows.append((key, ent.id, label))
+        rows.append((key, ent.id, _crm_entidad_label(ent)))
     return _groups_from_rows(
         "crm_nombre",
         "CRM — Entidades (mismo nombre)",
-        "nombre normalizado (líneas duplicadas en reportes CRM)",
+        "nombre · se conserva el de mayor info=NIT/contactos/productos/CRM",
         rows,
+        keep_chooser=_choose_richest_crm_entidad,
     )
 
 
@@ -345,10 +500,10 @@ def summarize_duplicates(groups: list[DuplicateGroup] | None = None) -> dict[str
 
 
 @transaction.atomic
-def delete_duplicate_ids(module: str, ids: list[int]) -> int:
+def delete_duplicate_ids(module: str, ids: list[int], keep_id: int | None = None) -> int:
     """
     Borra solo los IDs indicados (revisión manual).
-    Nunca borra el keep_id; el caller debe enviar solo duplicate_ids.
+    En CRM: fusiona detalles hacia keep_id antes de borrar.
     """
     ids = [int(i) for i in ids if i]
     if not ids:
@@ -370,7 +525,9 @@ def delete_duplicate_ids(module: str, ids: list[int]) -> int:
 
         return CrossSaleImportRow.objects.filter(id__in=ids).delete()[0]
 
-    if module == "crm_entidad" or module == "crm_nombre":
+    if module in ("crm_entidad", "crm_nombre"):
+        if keep_id:
+            return merge_crm_entidades_into(int(keep_id), ids)
         from core.wcg_models import Entidad
 
         return Entidad.objects.filter(id__in=ids).delete()[0]

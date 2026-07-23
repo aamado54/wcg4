@@ -137,12 +137,19 @@ def duplicates_review(request):
                     ids.append(int(raw))
                 except (TypeError, ValueError):
                     continue
-            deleted = delete_duplicate_ids(mod, ids)
+            keep_raw = (request.POST.get("keep_id") or "").strip()
+            keep_id = None
+            if keep_raw:
+                try:
+                    keep_id = int(keep_raw)
+                except (TypeError, ValueError):
+                    keep_id = None
+            deleted = delete_duplicate_ids(mod, ids, keep_id=keep_id)
             if deleted:
-                messages.success(
-                    request,
-                    f"Eliminados {deleted} registro(s) duplicado(s) en {MODULE_SCANNERS.get(mod, (mod,))[0]}.",
-                )
+                msg = f"Eliminados {deleted} registro(s) duplicado(s) en {MODULE_SCANNERS.get(mod, (mod,))[0]}."
+                if mod in ("crm_nombre", "crm_entidad") and keep_id:
+                    msg += f" Detalles fusionados en #{keep_id}."
+                messages.success(request, msg)
             else:
                 messages.warning(request, "No se eliminó ningún registro.")
             return redirect(f"{reverse('imports:duplicates_review')}?module={mod}")
