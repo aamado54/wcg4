@@ -3,18 +3,18 @@
 {% block content %}
 <div class="page-toolbar">
   <div>
-    <p class="text-muted small mb-1 text-uppercase" style="letter-spacing:0.04em;font-weight:600;">Administración · Importación</p>
+    <p class="text-muted small mb-1 text-uppercase" style="letter-spacing:0.04em;font-weight:600;">Administración · Limpieza</p>
     <h1 class="h3 mb-1">Revisión de posibles duplicados</h1>
-    <p class="text-muted mb-0" style="max-width:42rem;">
-      Detección por clave natural, nombre de archivo y contenido equivalente.
-      <strong>No se elimina nada automáticamente</strong>: marque los registros extra y bórralos solo tras revisar.
+    <p class="text-muted mb-0" style="max-width:44rem;">
+      Busca duplicados en CRM, Balón de Riesgo, PGC y lotes de importación.
+      <strong>No se elimina nada automáticamente</strong>: revise y confirme al lado del botón.
     </p>
   </div>
   <a class="wcg-home-link" href="{% url 'imports:import_hub' %}">← Importación General</a>
 </div>
 
 <form method="get" class="row g-2 mb-3">
-  <div class="col-md-4">
+  <div class="col-md-5">
     <select name="module" class="form-select form-select-sm">
       <option value="">Todos los módulos</option>
       {% for key, label in modules %}
@@ -24,6 +24,11 @@
   </div>
   <div class="col-md-2">
     <button type="submit" class="btn btn-sm btn-outline-primary w-100">Filtrar</button>
+  </div>
+  <div class="col-md-5 d-flex flex-wrap gap-1 align-items-center">
+    <a class="btn btn-sm btn-outline-secondary" href="?module=crm_nombre">CRM (nombre)</a>
+    <a class="btn btn-sm btn-outline-secondary" href="?module=crm_entidad">CRM (NIT)</a>
+    <a class="btn btn-sm btn-outline-secondary" href="?module=risk_referencia">Balón (operación)</a>
   </div>
 </form>
 
@@ -47,20 +52,48 @@
       <li>{{ lab }}</li>
       {% endfor %}
     </ul>
-    <form method="post" onsubmit="return confirm('¿Eliminar {{ g.extra_count }} registro(s) duplicado(s)? Se conserva #{{ g.keep_id }}.');">
+    <form method="post" class="dup-delete-form">
       {% csrf_token %}
       <input type="hidden" name="action" value="delete">
       <input type="hidden" name="module" value="{{ g.module }}">
       {% for did in g.duplicate_ids %}
       <input type="hidden" name="ids" value="{{ did }}">
       {% endfor %}
-      <button type="submit" class="btn btn-sm btn-outline-danger">
-        Eliminar {{ g.extra_count }} duplicado(s) (conservar #{{ g.keep_id }})
-      </button>
+      <div class="d-flex flex-wrap align-items-center gap-2">
+        <button type="button" class="btn btn-sm btn-outline-danger dup-ask">
+          Eliminar {{ g.extra_count }} duplicado(s)
+        </button>
+        <span class="dup-confirm d-none small align-items-center gap-2">
+          <span class="text-danger">¿Confirmar? Se conserva #{{ g.keep_id }}.</span>
+          <button type="submit" class="btn btn-sm btn-danger">Sí, eliminar</button>
+          <button type="button" class="btn btn-sm btn-link dup-cancel p-0">Cancelar</button>
+        </span>
+      </div>
     </form>
   </div>
 </div>
 {% empty %}
 <div class="alert alert-success">No se detectaron grupos duplicados con el filtro actual.</div>
 {% endfor %}
+
+<script>
+document.querySelectorAll(".dup-delete-form").forEach(function (form) {
+  var ask = form.querySelector(".dup-ask");
+  var box = form.querySelector(".dup-confirm");
+  var cancel = form.querySelector(".dup-cancel");
+  if (!ask || !box) return;
+  ask.addEventListener("click", function () {
+    ask.classList.add("d-none");
+    box.classList.remove("d-none");
+    box.classList.add("d-inline-flex");
+  });
+  if (cancel) {
+    cancel.addEventListener("click", function () {
+      box.classList.add("d-none");
+      box.classList.remove("d-inline-flex");
+      ask.classList.remove("d-none");
+    });
+  }
+});
+</script>
 {% endblock %}

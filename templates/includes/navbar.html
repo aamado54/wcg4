@@ -38,6 +38,9 @@
             <li>
               <a class="dropdown-item" href="{% url 'imports:import_hub' %}">Importación General</a>
             </li>
+            <li>
+              <a class="dropdown-item" href="{% url 'imports:duplicates_review' %}">Revisar duplicados (CRM / Balón)</a>
+            </li>
             <li><a class="dropdown-item" href="{% url 'portal:estado' %}">Estado del sistema</a></li>
             <li><a class="dropdown-item" href="{% url 'portal:ayuda' %}">Guía de uso</a></li>
             {% if user.is_superuser %}

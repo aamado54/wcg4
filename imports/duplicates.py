@@ -146,6 +146,27 @@ def scan_crm_entity_duplicates() -> list[DuplicateGroup]:
     )
 
 
+def scan_crm_nombre_duplicates() -> list[DuplicateGroup]:
+    """Mismo nombre de cliente (lo que suele verse duplicado en listados CRM)."""
+    from core.wcg_models import Entidad
+
+    rows = []
+    for ent in Entidad.objects.order_by("id").iterator(chunk_size=500):
+        nombre = (ent.nombre or "").strip()
+        if not nombre:
+            continue
+        key = (nombre.casefold(),)
+        nit = (ent.nit or "").strip() or "—"
+        label = f"{ent.codigo} · {ent.nombre} · NIT {nit}"
+        rows.append((key, ent.id, label))
+    return _groups_from_rows(
+        "crm_nombre",
+        "CRM — Entidades (mismo nombre)",
+        "nombre normalizado (líneas duplicadas en reportes CRM)",
+        rows,
+    )
+
+
 def scan_pgo_ticket_duplicates() -> list[DuplicateGroup]:
     """Tickets con mismo código (no debería ocurrir con upsert; se reporta si hay)."""
     from pgo.models import Ticket
@@ -184,10 +205,64 @@ def scan_risk_snapshot_duplicates() -> list[DuplicateGroup]:
         rows.append((key, snap.id, label))
     return _groups_from_rows(
         "risk_snapshot",
-        "Riesgo — Snapshots Balón",
+        "Riesgo — Snapshots exactos",
         "entidad + referencia_operacion + fecha_snapshot",
         rows,
     )
+
+
+def scan_risk_referencia_report_duplicates() -> list[DuplicateGroup]:
+    """
+    Misma referencia de operación bajo distintas entidades (líneas duplicadas en Balón).
+    Conserva snapshots de la entidad más antigua; marca el resto para borrado manual.
+    """
+    from risk.models import RiskOperationSnapshot
+
+    by_ref: dict[str, dict[int, list[tuple[int, str]]]] = defaultdict(lambda: defaultdict(list))
+    for snap in RiskOperationSnapshot.objects.select_related("entidad").order_by("id").iterator(
+        chunk_size=500
+    ):
+        ref = (snap.referencia_operacion or "").strip()
+        if not ref or not snap.entidad_id:
+            continue
+        nombre = snap.entidad.nombre if snap.entidad_id else "—"
+        codigo = snap.entidad.codigo if snap.entidad_id else "—"
+        label = f"{codigo} · {nombre} · {ref} · {snap.fecha_snapshot}"
+        by_ref[ref.casefold()][snap.entidad_id].append((snap.id, label))
+
+    groups: list[DuplicateGroup] = []
+    for ref_key, entidades in by_ref.items():
+        if len(entidades) < 2:
+            continue
+        # Conservar la entidad con el snapshot id más bajo (más antigua).
+        ordered_ents = sorted(
+            entidades.items(),
+            key=lambda item: min(sid for sid, _ in item[1]),
+        )
+        keep_ent_id, keep_snaps = ordered_ents[0]
+        keep_id = keep_snaps[0][0]
+        dup_ids: list[int] = []
+        labels = [keep_snaps[0][1]]
+        for ent_id, snaps in ordered_ents[1:]:
+            for sid, lab in snaps:
+                dup_ids.append(sid)
+                if len(labels) < 4:
+                    labels.append(lab)
+        if not dup_ids:
+            continue
+        groups.append(
+            DuplicateGroup(
+                module="risk_referencia",
+                module_label="Balón — Misma operación / otra entidad",
+                natural_key_desc="referencia_operacion compartida entre entidades distintas",
+                key_display=ref_key[:180],
+                keep_id=keep_id,
+                duplicate_ids=dup_ids,
+                sample_labels=labels,
+            )
+        )
+    groups.sort(key=lambda g: (-g.extra_count, g.key_display))
+    return groups
 
 
 def scan_file_upload_duplicates() -> list[DuplicateGroup]:
@@ -231,11 +306,14 @@ def scan_batch_duplicates() -> list[DuplicateGroup]:
 
 
 MODULE_SCANNERS = {
+    # Reportes operativos primero (lo que ve gerencia en CRM / Balón).
+    "crm_nombre": ("CRM — Entidades (mismo nombre)", scan_crm_nombre_duplicates),
+    "crm_entidad": ("CRM — Entidades (mismo NIT)", scan_crm_entity_duplicates),
+    "risk_referencia": ("Balón — Misma operación / otra entidad", scan_risk_referencia_report_duplicates),
+    "risk_snapshot": ("Balón — Snapshots exactos", scan_risk_snapshot_duplicates),
     "new_clients": ("PGC — Clientes nuevos", scan_new_client_duplicates),
     "cross_sale": ("PGC — Venta cruzada", scan_cross_sale_duplicates),
-    "crm_entidad": ("CRM — Entidades", scan_crm_entity_duplicates),
     "pgo_ticket": ("PGO — Tickets", scan_pgo_ticket_duplicates),
-    "risk_snapshot": ("Riesgo — Snapshots", scan_risk_snapshot_duplicates),
     "file_upload": ("Archivos subidos", scan_file_upload_duplicates),
     "import_batch": ("Lotes de importación", scan_batch_duplicates),
 }
@@ -292,7 +370,7 @@ def delete_duplicate_ids(module: str, ids: list[int]) -> int:
 
         return CrossSaleImportRow.objects.filter(id__in=ids).delete()[0]
 
-    if module == "crm_entidad":
+    if module == "crm_entidad" or module == "crm_nombre":
         from core.wcg_models import Entidad
 
         return Entidad.objects.filter(id__in=ids).delete()[0]
@@ -302,7 +380,7 @@ def delete_duplicate_ids(module: str, ids: list[int]) -> int:
 
         return Ticket.objects.filter(id__in=ids).delete()[0]
 
-    if module == "risk_snapshot":
+    if module in ("risk_snapshot", "risk_referencia"):
         from risk.models import RiskOperationSnapshot
 
         return RiskOperationSnapshot.objects.filter(id__in=ids).delete()[0]
