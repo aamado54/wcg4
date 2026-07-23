@@ -48,26 +48,23 @@
 </div>
 
 <form method="get" class="row g-2 mb-3">
-  <div class="col-md-4">
+  <div class="col-md-5">
     <input type="search" name="cliente" value="{{ request.GET.cliente }}" class="form-control form-control-sm" placeholder="Filtrar por cliente">
   </div>
-  <div class="col-md-3">
-    <select name="nivel" class="form-select form-select-sm">
+  <div class="col-md-4">
+    <select name="nivel" class="form-select form-select-sm" onchange="this.form.submit()">
       <option value="">Todos los niveles</option>
       {% for value, label in niveles %}
       <option value="{{ value }}"{% if request.GET.nivel == value %} selected{% endif %}>{{ label }}</option>
       {% endfor %}
     </select>
   </div>
-  <div class="col-md-2">
-    <select name="alerta" class="form-select form-select-sm">
+  <div class="col-md-3">
+    <select name="alerta" class="form-select form-select-sm" onchange="this.form.submit()">
       <option value="">Alerta / Normal</option>
       <option value="1"{% if request.GET.alerta == '1' %} selected{% endif %}>Solo alertas</option>
       <option value="0"{% if request.GET.alerta == '0' %} selected{% endif %}>Sin alerta</option>
     </select>
-  </div>
-  <div class="col-md-2">
-    <button type="submit" class="btn btn-primary btn-sm w-100">Filtrar</button>
   </div>
 </form>
 
