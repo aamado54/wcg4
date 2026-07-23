@@ -7,6 +7,7 @@ from core.services.une_resolve import resolve_une_from_text
 from decimal import Decimal
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
+from imports.currency_normalize import normalize_currency_code
 from imports.models import FileUpload, NewClientImportHeader, NewClientImportRow
 from pathlib import Path
 from pgc.models import PGCPlan, MonthlyTarget, MonthlyMetricResult
@@ -106,6 +107,8 @@ class Command(BaseCommand):
         rows_written = 0
         rows_skipped = 0
         months_touched: set[tuple[int, int]] = set()
+        currency_warnings: list[str] = []
+        q_alias_count = 0
 
         with path.open("r", encoding="utf-8-sig") as f:
             sample = f.read(4096)
@@ -195,12 +198,17 @@ class Command(BaseCommand):
                     or ""
                 ).strip()
 
-                currency_code = (
+                currency_raw = (
                     row.get("Moneda")
                     or row.get("MONEDA")
                     or row.get("moneda")
                     or ""
-                ).strip().upper()
+                )
+                currency_code, currency_warn = normalize_currency_code(currency_raw)
+                if currency_warn:
+                    q_alias_count += 1
+                    if len(currency_warnings) < 8:
+                        currency_warnings.append(f"Fila {line_no}: {currency_warn}")
 
                 amount_raw = (
                     row.get("Monto")
@@ -220,7 +228,7 @@ class Command(BaseCommand):
                     except Exception:
                         amount = None
 
-                currency = currencies.get(currency_code)
+                currency = currencies.get(currency_code) if currency_code else None
 
                 NewClientImportRow.objects.create(
                     header=header,
@@ -252,6 +260,33 @@ class Command(BaseCommand):
                 f"Meses del archivo: {months_label}. "
                 f"Filas guardadas: {rows_written}. Omitidas: {rows_skipped}."
             )
+
+        if q_alias_count:
+            for w in currency_warnings:
+                self.stdout.write(self.style.WARNING(w))
+            summary_warn = (
+                f"WARNING moneda: {q_alias_count} fila(s) con 'Q' (u alias) "
+                f"tratadas como GTQ. Corrija el archivo fuente a GTQ."
+            )
+            self.stdout.write(self.style.WARNING(summary_warn))
+            if source_upload:
+                from imports.models import FileImportLog
+
+                FileImportLog.objects.create(
+                    file_upload=source_upload,
+                    step_code="currency",
+                    level=FileImportLog.LEVEL_WARNING,
+                    message=summary_warn,
+                    payload_json={
+                        "q_alias_count": q_alias_count,
+                        "samples": currency_warnings,
+                    },
+                )
+                notes = (source_upload.parsing_notes or "").strip()
+                source_upload.parsing_notes = (
+                    notes + ("\n" if notes else "") + summary_warn
+                )[:2000]
+                source_upload.save(update_fields=["parsing_notes"])
 
         years_in_file = sorted({year for (year, _, _), _ in counts.items()})
         if not years_in_file:

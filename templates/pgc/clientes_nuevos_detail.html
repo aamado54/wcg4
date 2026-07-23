@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load l10n %}
+{% load wcg_format %}
 
 {% block title %}Detalle clientes nuevos{% endblock %}
 
@@ -14,6 +14,11 @@
     font-size: 0.85rem;
     font-weight: 600;
     color: #0f3d56;
+  }
+  .amount-hint {
+    font-size: 0.85rem;
+    color: #64748b;
+    margin: 0 0 12px;
   }
   .investment-total {
     margin-top: 8px;
@@ -39,11 +44,12 @@
     UNE: <strong>{{ une.name_es }}</strong> |
     Periodo: <strong>{{ year }}-{{ month|stringformat:"02d" }}</strong>
   </p>
+  <p class="amount-hint">Montos en miles de dólares o quetzales (según la moneda indicada).</p>
 
   {% if investment_ingresos_total is not None %}
     <p class="investment-total">
-      Total Investment (USD):
-      <strong>${{ investment_ingresos_total|floatformat:2|unlocalize }}</strong>
+      Total Investment (USD, miles):
+      <strong>${{ investment_ingresos_total|wcg_miles:1 }}</strong>
       <span class="usd-tag">USD</span>
     </p>
   {% endif %}
@@ -87,11 +93,11 @@
         <td>
           {% if row.amount is not None %}
             {% if row.currency_code == "USD" or row.currency_code == "US$" or row.currency_code == "$" %}
-              <span class="amt-prefix">$</span>{{ row.amount|floatformat:2|unlocalize }}
+              <span class="amt-prefix">$</span>{{ row.amount|wcg_miles:1 }}
             {% elif row.currency_code == "GTQ" or row.currency_code == "Q" or row.currency_code == "QUETZAL" or row.currency_code == "QUETZALES" %}
-              <span class="amt-prefix">Q</span>{{ row.amount|floatformat:2|unlocalize }}
+              <span class="amt-prefix">Q</span>{{ row.amount|wcg_miles:1 }}
             {% else %}
-              {{ row.amount|floatformat:2|unlocalize }}
+              {{ row.amount|wcg_miles:1 }}
             {% endif %}
           {% else %}
             -

@@ -13,6 +13,7 @@ from pgc.admin_utils import parse_period
 
 from .detection import ALL_IMPORTABLE, TYPE_LABELS, TYPE_UNKNOWN, detect_file
 from .dispatch import run_import
+from .duplicates import MODULE_SCANNERS, delete_duplicate_ids, scan_all_duplicates, summarize_duplicates
 from .forms import GeneralImportForm
 from .models import FileUpload
 
@@ -63,9 +64,19 @@ def import_hub(request):
                 result = run_import(request.user, uploaded, tipo_forzado=tipo_forzado or None)
                 if result.ok:
                     messages.success(request, result.message)
+                    for w in result.warnings or []:
+                        messages.warning(request, w)
+                    if result.duplicate_extra:
+                        messages.warning(
+                            request,
+                            f"Se detectaron {result.duplicate_extra} registro(s) posibles "
+                            f"duplicados. Revíselos en Importación → Duplicados (sin borrado automático).",
+                        )
                     form = GeneralImportForm()
                 elif result.needs_manual:
                     messages.warning(request, result.message)
+                    for w in result.warnings or []:
+                        messages.warning(request, w)
                     detection_preview = result.detection
                     form = GeneralImportForm(
                         initial={
@@ -78,10 +89,16 @@ def import_hub(request):
                     )
                 else:
                     messages.warning(request, result.message or "Importación incompleta.")
+                    for w in result.warnings or []:
+                        messages.warning(request, w)
                     form = GeneralImportForm()
 
     batches = DataImportBatch.objects.select_related("uploaded_by").order_by("-created_at")[:25]
     uploads = FileUpload.objects.order_by("-created_at")[:15]
+    try:
+        dup_summary = summarize_duplicates()
+    except Exception:
+        dup_summary = {"__total__": 0}
 
     return render(
         request,
@@ -94,10 +111,55 @@ def import_hub(request):
             "uploads": uploads,
             "type_labels": TYPE_LABELS,
             "importable_types": [(t, TYPE_LABELS[t]) for t in ALL_IMPORTABLE],
+            "dup_total": dup_summary.get("__total__", 0),
             "breadcrumbs": [
                 {"label": "Inicio", "url": reverse("portal:home")},
                 {"label": "Administración"},
                 {"label": "Importación General"},
+            ],
+        },
+    )
+
+
+@login_required
+def duplicates_review(request):
+    """Revisión manual de posibles duplicados (sin borrado automático)."""
+    module = (request.GET.get("module") or request.POST.get("module") or "").strip() or None
+
+    if request.method == "POST":
+        action = request.POST.get("action", "")
+        mod = (request.POST.get("module") or "").strip()
+        if action == "delete" and mod:
+            raw_ids = request.POST.getlist("ids")
+            ids = []
+            for raw in raw_ids:
+                try:
+                    ids.append(int(raw))
+                except (TypeError, ValueError):
+                    continue
+            deleted = delete_duplicate_ids(mod, ids)
+            if deleted:
+                messages.success(
+                    request,
+                    f"Eliminados {deleted} registro(s) duplicado(s) en {MODULE_SCANNERS.get(mod, (mod,))[0]}.",
+                )
+            else:
+                messages.warning(request, "No se eliminó ningún registro.")
+            return redirect(f"{reverse('imports:duplicates_review')}?module={mod}")
+
+    groups = scan_all_duplicates(module=module)
+    return render(
+        request,
+        "imports/duplicates_review.html",
+        {
+            "groups": groups,
+            "module": module or "",
+            "modules": [(k, v[0]) for k, v in MODULE_SCANNERS.items()],
+            "dup_total": sum(g.extra_count for g in groups),
+            "breadcrumbs": [
+                {"label": "Inicio", "url": reverse("portal:home")},
+                {"label": "Administración", "url": reverse("imports:import_hub")},
+                {"label": "Duplicados"},
             ],
         },
     )

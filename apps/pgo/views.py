@@ -9,13 +9,23 @@ from apps.core.forms import ImportFileForm
 
 from .models import PgoMonthlyAgg, PgoPeriodScore, PgoTicket
 from .selectors import ticket_dashboard_summary, ticket_list_queryset
+from .services import brief_detalle, period_scores_for_dashboard, recalculate_pgo_scores
 
 
 @login_required
 def dashboard(request):
+    # Recalc liviano para que la tabla de resultados tenga datos al abrir.
+    try:
+        recalculate_pgo_scores()
+    except Exception:
+        pass
     summary = ticket_dashboard_summary()
+    scores = list(period_scores_for_dashboard(40))
+    for s in scores:
+        s.detalle_breve = brief_detalle(s)
     context = {
         **summary,
+        "period_scores": scores,
         "breadcrumbs": [
             {"label": "Panel principal", "url": "/panel/"},
             {"label": "PGO — Operación"},
@@ -63,6 +73,10 @@ class TicketDetailView(LoginRequiredMixin, DetailView):
 
 @login_required
 def resultados(request):
+    try:
+        recalculate_pgo_scores(periodo=request.GET.get("periodo", "").strip() or None)
+    except Exception:
+        pass
     periodo = request.GET.get("periodo", "").strip()
     scores = PgoPeriodScore.objects.select_related("unidad_negocio", "usuario").order_by(
         "-periodo", "area"
@@ -71,8 +85,11 @@ def resultados(request):
     if periodo:
         scores = scores.filter(periodo=periodo)
         aggs = aggs.filter(periodo=periodo)
+    score_list = list(scores[:50])
+    for s in score_list:
+        s.detalle_breve = brief_detalle(s)
     context = {
-        "scores": scores[:50],
+        "scores": score_list,
         "aggs": aggs[:50],
         "breadcrumbs": [
             {"label": "Panel principal", "url": "/panel/"},

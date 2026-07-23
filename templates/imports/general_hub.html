@@ -13,6 +13,20 @@
   <a class="wcg-home-link" href="{% url 'portal:home' %}">← Menú principal</a>
 </div>
 
+{% if dup_total %}
+<div class="alert alert-warning mb-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+  <span>
+    <strong>{{ dup_total }}</strong> posible(s) registro(s) duplicado(s) detectado(s) en importaciones.
+    Revise y elimine manualmente si corresponde.
+  </span>
+  <a href="{% url 'imports:duplicates_review' %}" class="btn btn-sm btn-outline-dark">Revisar duplicados</a>
+</div>
+{% else %}
+<div class="mb-3">
+  <a href="{% url 'imports:duplicates_review' %}" class="btn btn-sm btn-outline-secondary">Revisar duplicados</a>
+</div>
+{% endif %}
+
 {% if detection_preview %}
 <div class="alert {% if detection_preview.ambiguous or not detection_preview.can_auto_import %}alert-warning{% else %}alert-info{% endif %} mb-4">
   <div class="fw-semibold mb-1">
@@ -71,6 +85,18 @@
           <div class="small mt-2 text-muted">
             {{ result.detection.rule_summary }}
             {% if result.forced %} · tipo forzado{% endif %}
+          </div>
+          {% endif %}
+          {% if result.warnings %}
+          <ul class="small mt-2 mb-0">
+            {% for w in result.warnings %}
+            <li class="text-warning-emphasis">{{ w }}</li>
+            {% endfor %}
+          </ul>
+          {% endif %}
+          {% if result.ok and result.duplicate_extra %}
+          <div class="mt-2">
+            <a href="{% url 'imports:duplicates_review' %}">Revisar {{ result.duplicate_extra }} duplicado(s) →</a>
           </div>
           {% endif %}
           {% if result.ok and result.redirect_hint %}

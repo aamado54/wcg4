@@ -12,6 +12,62 @@
     <a href="{% url 'wcgone_pgo:export_tickets' %}" class="btn btn-sm btn-outline-primary">Exportar CSV</a>
     <a href="{% url 'wcgone_pgo:ticket_list' %}" class="btn btn-sm btn-outline-primary">Ver todos</a>
     <a href="{% url 'wcgone_pgo:resultados' %}" class="btn btn-sm btn-outline-secondary">Resultados</a>
+    <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="collapse" data-bs-target="#pgoResultadosTabla" aria-expanded="false" aria-controls="pgoResultadosTabla">
+      Tabla de resultados PGO
+    </button>
+  </div>
+</div>
+
+<style>
+  /* Solo filas con PgoPeriodScore.clasifica real — no aplicar a SLA% operativo. */
+  #pgoResultadosTabla table.pgo-scoreboard tbody tr.row-clasifica-si td { background: #dff6fb; }
+  #pgoResultadosTabla table.pgo-scoreboard tbody tr.row-clasifica-no td { background: #fde8c8; }
+  #pgoResultadosTabla table.pgo-scoreboard tbody tr.row-clasifica-si td:first-child { box-shadow: inset 5px 0 0 #0284c7; }
+  #pgoResultadosTabla table.pgo-scoreboard tbody tr.row-clasifica-no td:first-child { box-shadow: inset 5px 0 0 #c2410c; }
+</style>
+
+<div class="collapse mb-3" id="pgoResultadosTabla">
+  <div class="card border-0 shadow-sm">
+    <div class="card-header bg-white py-2 d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <span class="fw-semibold small text-muted">Tabla de resultados PGO <span class="fw-normal">(secundaria · umbral ≥ 80)</span></span>
+      <a href="{% url 'wcgone_pgo:resultados' %}" class="btn btn-sm btn-link py-0">Ver página completa</a>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-sm mb-0 pgo-scoreboard align-middle small">
+        <thead>
+          <tr>
+            <th>Período</th>
+            <th>Unidad</th>
+            <th class="text-end">Puntaje total</th>
+            <th>Clasifica</th>
+            <th>Detalle</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for score in period_scores %}
+          <tr class="{% if score.clasifica %}row-clasifica-si{% else %}row-clasifica-no{% endif %}">
+            <td>{{ score.periodo }}</td>
+            <td>{{ score.unidad_negocio.nombre|default:score.unidad_negocio.codigo|default:"—" }}</td>
+            <td class="text-end">{{ score.puntaje_total }}</td>
+            <td>
+              {% if score.clasifica %}
+                <span class="badge text-bg-success">Sí</span>
+              {% else %}
+                <span class="badge text-bg-secondary">No</span>
+              {% endif %}
+            </td>
+            <td class="text-muted" style="max-width:18rem;">{{ score.detalle_breve|default:"—"|truncatechars:80 }}</td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="5" class="text-muted text-center py-3">
+              Aún no hay puntajes calculados. Importe tickets o ejecute el recálculo PGO.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
   </div>
 </div>
 

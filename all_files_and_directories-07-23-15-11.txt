@@ -1,0 +1,509 @@
+=== PROJECT ROOT ===
+
+[archivos directos en /home/caa/wc/wcg4/dashboard]
+.gitignore [creado: 2026-07-16 14:37] [modificado: 2026-07-16 14:37]
+Procfile [creado: 2026-07-15 11:05] [modificado: 2026-04-24 11:45]
+all_html_templates.index-07-23-15-11.md [creado: 2026-07-23 15:11] [modificado: 2026-07-23 15:11]
+all_html_templates.part-01-of-05-07-23-15-11.md [creado: 2026-07-23 15:11] [modificado: 2026-07-23 15:11]
+all_html_templates.part-02-of-05-07-23-15-11.md [creado: 2026-07-23 15:11] [modificado: 2026-07-23 15:11]
+all_html_templates.part-03-of-05-07-23-15-11.md [creado: 2026-07-23 15:11] [modificado: 2026-07-23 15:11]
+all_html_templates.part-04-of-05-07-23-15-11.md [creado: 2026-07-23 15:11] [modificado: 2026-07-23 15:11]
+all_html_templates.part-05-of-05-07-23-15-11.md [creado: 2026-07-23 15:11] [modificado: 2026-07-23 15:11]
+all_python_scripts.index-07-23-15-11.md [creado: 2026-07-23 15:11] [modificado: 2026-07-23 15:11]
+all_python_scripts.part-01-of-10-07-23-15-11.md [creado: 2026-07-23 15:11] [modificado: 2026-07-23 15:11]
+all_python_scripts.part-02-of-10-07-23-15-11.md [creado: 2026-07-23 15:11] [modificado: 2026-07-23 15:11]
+all_python_scripts.part-03-of-10-07-23-15-11.md [creado: 2026-07-23 15:11] [modificado: 2026-07-23 15:11]
+all_python_scripts.part-04-of-10-07-23-15-11.md [creado: 2026-07-23 15:11] [modificado: 2026-07-23 15:11]
+all_python_scripts.part-05-of-10-07-23-15-11.md [creado: 2026-07-23 15:11] [modificado: 2026-07-23 15:11]
+all_python_scripts.part-06-of-10-07-23-15-11.md [creado: 2026-07-23 15:11] [modificado: 2026-07-23 15:11]
+all_python_scripts.part-07-of-10-07-23-15-11.md [creado: 2026-07-23 15:11] [modificado: 2026-07-23 15:11]
+all_python_scripts.part-08-of-10-07-23-15-11.md [creado: 2026-07-23 15:11] [modificado: 2026-07-23 15:11]
+all_python_scripts.part-09-of-10-07-23-15-11.md [creado: 2026-07-23 15:11] [modificado: 2026-07-23 15:11]
+all_python_scripts.part-10-of-10-07-23-15-11.md [creado: 2026-07-23 15:11] [modificado: 2026-07-23 15:11]
+cambios1.diff [creado: 2026-07-15 11:05] [modificado: 2026-04-29 15:57]
+cambios2.diff [creado: 2026-07-15 11:05] [modificado: 2026-04-29 15:57]
+concat_scripts4.py [creado: 2026-07-15 11:05] [modificado: 2026-05-27 13:13]
+data.json [creado: 2026-07-15 11:05] [modificado: 2026-04-24 11:45]
+db.sqlite3 [creado: 2026-07-21 18:26] [modificado: 2026-07-21 18:26]
+dbcontents.txt [creado: 2026-07-15 11:05] [modificado: 2026-04-14 17:54]
+find_inconsist.py [creado: 2026-07-15 11:05] [modificado: 2026-04-24 11:45]
+inv_nombres.py [creado: 2026-07-15 11:05] [modificado: 2026-06-05 11:46]
+key.txt [creado: 2026-07-15 11:05] [modificado: 2026-04-24 11:45]
+key.txt.pub [creado: 2026-07-15 11:05] [modificado: 2026-04-24 11:45]
+manage.py [creado: 2026-07-15 11:05] [modificado: 2026-04-07 15:33]
+output.txt [creado: 2026-07-15 11:05] [modificado: 2026-04-24 11:45]
+railway.toml [creado: 2026-07-15 11:05] [modificado: 2026-04-24 11:45]
+requirements.txt [creado: 2026-07-15 11:05] [modificado: 2026-07-09 13:41]
+runtime.txt [creado: 2026-07-15 11:05] [modificado: 2026-04-21 16:02]
+see_dat.py [creado: 2026-07-15 11:05] [modificado: 2026-04-14 17:54]
+tar.txt [creado: 2026-07-15 11:58] [modificado: 2026-07-15 11:58]
+
+./config:
+__init__.py [creado: 2026-07-15 11:05] [modificado: 2026-04-07 15:33]
+asgi.py [creado: 2026-07-15 11:05] [modificado: 2026-04-07 15:33]
+settings.py [creado: 2026-07-21 15:49] [modificado: 2026-07-21 15:49]
+urls.py [creado: 2026-07-21 18:08] [modificado: 2026-07-21 18:08]
+wsgi.py [creado: 2026-07-15 11:05] [modificado: 2026-04-07 15:33]
+
+./config/formats:
+__init__.py [creado: 2026-07-15 11:05] [modificado: 2026-04-07 15:33]
+
+./config/formats/es:
+__init__.py [creado: 2026-07-15 11:05] [modificado: 2026-04-07 15:33]
+formats.py [creado: 2026-07-15 11:05] [modificado: 2026-05-22 19:12]
+
+./core:
+__init__.py [creado: 2026-07-15 11:05] [modificado: 2026-04-07 15:33]
+admin.py [creado: 2026-07-15 11:05] [modificado: 2026-07-09 13:41]
+apps.py [creado: 2026-07-15 11:05] [modificado: 2026-04-07 15:33]
+models.py [creado: 2026-07-15 11:05] [modificado: 2026-07-09 13:41]
+tests.py [creado: 2026-07-15 11:05] [modificado: 2026-04-07 15:33]
+views.py [creado: 2026-07-15 11:05] [modificado: 2026-04-07 15:33]
+wcg_models.py [creado: 2026-07-15 11:05] [modificado: 2026-07-09 13:41]
+wcg_paths.py [creado: 2026-07-15 11:05] [modificado: 2026-07-09 13:41]
+
+./core/management:
+__init__.py [creado: 2026-07-15 11:05] [modificado: 2026-04-07 17:26]
+
+./core/management/commands:
+__init__.py [creado: 2026-07-15 11:05] [modificado: 2026-04-07 17:26]
+bootstrap_wcg_demo.py [creado: 2026-07-17 11:21] [modificado: 2026-07-17 11:21]
+import_wcg_data.py [creado: 2026-07-15 11:05] [modificado: 2026-07-09 13:41]
+prepare_wcg_data_files.py [creado: 2026-07-15 11:05] [modificado: 2026-07-09 13:41]
+recalc_pgc.py [creado: 2026-07-15 11:05] [modificado: 2026-05-22 18:44]
+seed_pgc.py [creado: 2026-07-16 18:34] [modificado: 2026-07-16 18:34]
+seed_sample_results.py [creado: 2026-07-15 11:05] [modificado: 2026-04-07 17:31]
+seed_wcg_demo.py [creado: 2026-07-15 11:05] [modificado: 2026-07-09 13:41]
+
+./core/services:
+__init__.py [creado: 2026-07-15 11:05] [modificado: 2026-07-09 13:41]
+column_map.py [creado: 2026-07-17 10:33] [modificado: 2026-07-17 10:33]
+import_base.py [creado: 2026-07-17 10:34] [modificado: 2026-07-17 10:34]
+une_resolve.py [creado: 2026-07-15 11:05] [modificado: 2026-07-13 14:14]
+
+./accounts:
+__init__.py [creado: 2026-07-15 11:05] [modificado: 2026-04-07 15:33]
+admin.py [creado: 2026-07-15 11:05] [modificado: 2026-04-07 15:39]
+apps.py [creado: 2026-07-15 11:05] [modificado: 2026-04-07 15:53]
+models.py [creado: 2026-07-15 11:05] [modificado: 2026-04-07 15:38]
+signals.py [creado: 2026-07-15 11:05] [modificado: 2026-04-07 15:39]
+tests.py [creado: 2026-07-15 11:05] [modificado: 2026-04-07 15:33]
+views.py [creado: 2026-07-15 11:05] [modificado: 2026-04-07 15:33]
+
+./imports:
+__init__.py [creado: 2026-07-15 11:05] [modificado: 2026-04-07 15:33]
+admin.py [creado: 2026-07-15 11:05] [modificado: 2026-05-19 16:54]
+apps.py [creado: 2026-07-15 11:05] [modificado: 2026-04-07 15:33]
+detection.py [creado: 2026-07-17 13:18] [modificado: 2026-07-17 13:18]
+dispatch.py [creado: 2026-07-17 13:19] [modificado: 2026-07-17 13:19]
+forms.py [creado: 2026-07-17 13:19] [modificado: 2026-07-17 13:19]
+models.py [creado: 2026-07-21 18:08] [modificado: 2026-07-21 18:08]
+tests.py [creado: 2026-07-17 13:23] [modificado: 2026-07-17 13:23]
+urls.py [creado: 2026-07-15 11:05] [modificado: 2026-04-09 17:31]
+views.py [creado: 2026-07-17 13:19] [modificado: 2026-07-17 13:19]
+
+./imports/management:
+__init__.py [creado: 2026-07-15 11:05] [modificado: 2026-04-07 17:39]
+
+./imports/management/commands:
+__init__.py [creado: 2026-07-15 11:05] [modificado: 2026-04-07 17:39]
+import_clientes_nuevos.py [creado: 2026-07-21 18:08] [modificado: 2026-07-21 18:08]
+import_ingresos.py [creado: 2026-07-15 11:05] [modificado: 2026-04-29 13:36]
+import_venta_cruzada.py [creado: 2026-07-17 10:38] [modificado: 2026-07-17 10:38]
+load_wcg_data.py [creado: 2026-07-17 11:21] [modificado: 2026-07-17 11:21]
+recalc_investment_ingresos_from_new_clients.py [creado: 2026-07-21 18:08] [modificado: 2026-07-21 18:08]
+
+./pgc:
+__init__.py [creado: 2026-07-15 11:05] [modificado: 2026-04-07 15:33]
+admin.py [creado: 2026-07-15 11:05] [modificado: 2026-07-09 13:41]
+admin_ingresos_year.py [creado: 2026-07-15 11:05] [modificado: 2026-07-13 19:00]
+admin_manual.py [creado: 2026-07-15 11:05] [modificado: 2026-07-13 18:46]
+admin_new_clients_browse.py [creado: 2026-07-16 18:44] [modificado: 2026-07-16 18:44]
+admin_period.py [creado: 2026-07-21 18:08] [modificado: 2026-07-21 18:08]
+admin_recalc.py [creado: 2026-07-15 11:05] [modificado: 2026-07-13 19:18]
+admin_utils.py [creado: 2026-07-21 18:08] [modificado: 2026-07-21 18:08]
+admin_views.py [creado: 2026-07-21 18:08] [modificado: 2026-07-21 18:08]
+apps.py [creado: 2026-07-15 11:05] [modificado: 2026-04-07 15:33]
+income_conversion.py [creado: 2026-07-15 11:05] [modificado: 2026-07-13 16:34]
+investment_ingresos.py [creado: 2026-07-21 18:08] [modificado: 2026-07-21 18:08]
+models.py [creado: 2026-07-15 11:05] [modificado: 2026-07-13 16:32]
+tests.py [creado: 2026-07-15 11:05] [modificado: 2026-07-13 19:19]
+tv_charts.py [creado: 2026-07-21 15:50] [modificado: 2026-07-21 15:50]
+urls.py [creado: 2026-07-15 11:05] [modificado: 2026-07-15 09:29]
+views.py [creado: 2026-07-17 13:45] [modificado: 2026-07-17 13:45]
+
+./pgc/management:
+__init__.py [creado: 2026-07-15 11:05] [modificado: 2026-07-13 16:34]
+
+./pgc/management/commands:
+__init__.py [creado: 2026-07-15 11:05] [modificado: 2026-07-13 16:34]
+recalc_stale_ingresos.py [creado: 2026-07-15 11:05] [modificado: 2026-07-13 16:34]
+
+./feedback:
+__init__.py [creado: 2026-07-15 11:05] [modificado: 2026-04-07 15:33]
+admin.py [creado: 2026-07-15 11:05] [modificado: 2026-04-07 15:33]
+apps.py [creado: 2026-07-15 11:05] [modificado: 2026-04-07 15:33]
+models.py [creado: 2026-07-15 11:05] [modificado: 2026-04-07 15:33]
+tests.py [creado: 2026-07-15 11:05] [modificado: 2026-04-07 15:33]
+views.py [creado: 2026-07-15 11:05] [modificado: 2026-04-07 15:33]
+
+./static:
+
+./static/img:
+splash.jpg [creado: 2026-07-15 11:05] [modificado: 2026-02-25 09:28]
+splashv.jpg [creado: 2026-07-15 11:05] [modificado: 2026-04-24 11:45]
+
+./static/docs:
+WCG-PGC.pdf [creado: 2026-07-15 11:05] [modificado: 2026-04-29 12:49]
+
+./static/portal:
+
+./static/portal/img:
+wcg_splash_v1h.jpg [creado: 2026-07-15 11:05] [modificado: 2026-02-25 09:28]
+wcg_splash_v1v.jpg [creado: 2026-07-15 11:05] [modificado: 2026-04-24 11:45]
+
+./templates:
+base.html [creado: 2026-07-17 14:01] [modificado: 2026-07-17 14:01]
+base_wcg.html [creado: 2026-07-17 14:01] [modificado: 2026-07-17 14:01]
+splash.html [creado: 2026-07-16 13:51] [modificado: 2026-07-16 13:51]
+wcgone_base.html [creado: 2026-07-17 14:02] [modificado: 2026-07-17 14:02]
+
+./templates/pgc:
+admin_ingresos_year.html [creado: 2026-07-16 16:49] [modificado: 2026-07-16 16:49]
+admin_manual_edit.html [creado: 2026-07-16 16:49] [modificado: 2026-07-16 16:49]
+admin_monthly.html [creado: 2026-07-21 18:08] [modificado: 2026-07-21 18:08]
+admin_monthly_log.html [creado: 2026-07-15 11:05] [modificado: 2026-07-13 15:58]
+admin_new_clients_browse.html [creado: 2026-07-16 18:44] [modificado: 2026-07-16 18:44]
+admin_new_clients_une.html [creado: 2026-07-15 11:05] [modificado: 2026-07-13 15:58]
+admin_tv_charts.html [creado: 2026-07-21 15:50] [modificado: 2026-07-21 15:50]
+clientes_nuevos.html [creado: 2026-07-17 14:01] [modificado: 2026-07-17 14:01]
+clientes_nuevos_detail.html [creado: 2026-07-15 11:05] [modificado: 2026-07-13 17:28]
+dashboard.html [creado: 2026-07-21 18:25] [modificado: 2026-07-21 18:25]
+ingresos.html [creado: 2026-07-17 14:01] [modificado: 2026-07-17 14:01]
+pgchome.html [creado: 2026-07-15 11:05] [modificado: 2026-07-09 13:41]
+respuesta_reqs.html [creado: 2026-07-17 14:01] [modificado: 2026-07-17 14:01]
+venta_cruzada.html [creado: 2026-07-17 14:01] [modificado: 2026-07-17 14:01]
+venta_cruzada_detail.html [creado: 2026-07-15 11:05] [modificado: 2026-07-13 19:05]
+
+./templates/pgc/admin:
+_nav.html [creado: 2026-07-15 11:05] [modificado: 2026-07-15 09:29]
+_period_select.html [creado: 2026-07-15 11:05] [modificado: 2026-07-13 19:05]
+_recalc_button.html [creado: 2026-07-21 18:08] [modificado: 2026-07-21 18:08]
+_save_footer.html [creado: 2026-07-15 11:05] [modificado: 2026-07-09 13:41]
+_styles.html [creado: 2026-07-21 18:08] [modificado: 2026-07-21 18:08]
+
+./templates/registration:
+login.html [creado: 2026-07-15 11:05] [modificado: 2026-04-08 12:21]
+
+./templates/imports:
+general_hub.html [creado: 2026-07-17 13:20] [modificado: 2026-07-17 13:20]
+
+./templates/admin:
+base_site.html [creado: 2026-07-15 11:05] [modificado: 2026-07-09 13:41]
+change_list.html.html [creado: 2026-07-15 11:05] [modificado: 2026-05-19 17:38]
+run_recalc_ops.html [creado: 2026-07-15 11:05] [modificado: 2026-05-19 17:39]
+
+./templates/dashboard:
+dashboardhome.html [creado: 2026-07-17 13:29] [modificado: 2026-07-17 13:29]
+
+./templates/crm:
+crmcontactolist.html [creado: 2026-07-17 14:02] [modificado: 2026-07-17 14:02]
+crmentitydetail.html [creado: 2026-07-17 11:26] [modificado: 2026-07-17 11:26]
+crmentitylist.html [creado: 2026-07-17 14:02] [modificado: 2026-07-17 14:02]
+crmimportform.html [creado: 2026-07-15 11:05] [modificado: 2026-07-09 13:41]
+crminteractionform.html [creado: 2026-07-15 11:05] [modificado: 2026-07-09 13:41]
+crmtarealist.html [creado: 2026-07-17 14:02] [modificado: 2026-07-17 14:02]
+crmtaskform.html [creado: 2026-07-15 11:05] [modificado: 2026-07-09 13:41]
+
+./templates/risk:
+riskclientdetail.html [creado: 2026-07-17 11:26] [modificado: 2026-07-17 11:26]
+riskclientlist.html [creado: 2026-07-17 14:02] [modificado: 2026-07-17 14:02]
+riskcommandobalon.html [creado: 2026-07-17 14:02] [modificado: 2026-07-17 14:02]
+riskimportform.html [creado: 2026-07-15 11:05] [modificado: 2026-07-09 13:41]
+riskoperationdetail.html [creado: 2026-07-17 11:26] [modificado: 2026-07-17 11:26]
+
+./templates/pgo:
+pgodashboard.html [creado: 2026-07-17 14:02] [modificado: 2026-07-17 14:02]
+pgoimportform.html [creado: 2026-07-15 11:05] [modificado: 2026-07-09 13:41]
+pgoresultados.html [creado: 2026-07-17 14:02] [modificado: 2026-07-17 14:02]
+pgoresumenunidad.html [creado: 2026-07-15 11:05] [modificado: 2026-07-09 13:41]
+pgoresumenusuario.html [creado: 2026-07-15 11:05] [modificado: 2026-07-09 13:41]
+pgoticketdetail.html [creado: 2026-07-15 11:05] [modificado: 2026-07-09 13:41]
+pgoticketlist.html [creado: 2026-07-17 14:02] [modificado: 2026-07-17 14:02]
+
+./templates/includes:
+breadcrumbs.html [creado: 2026-07-15 11:05] [modificado: 2026-06-24 14:55]
+empty_state.html [creado: 2026-07-15 11:05] [modificado: 2026-06-24 18:08]
+kpi_cards.html [creado: 2026-07-15 11:05] [modificado: 2026-06-24 18:08]
+messages.html [creado: 2026-07-15 11:05] [modificado: 2026-06-24 18:09]
+module_mark.html [creado: 2026-07-17 14:01] [modificado: 2026-07-17 14:01]
+navbar.html [creado: 2026-07-17 13:30] [modificado: 2026-07-17 13:30]
+
+./templates/portal:
+ayuda.html [creado: 2026-07-17 13:30] [modificado: 2026-07-17 13:30]
+estado.html [creado: 2026-07-17 13:29] [modificado: 2026-07-17 13:29]
+home_wcgone.html [creado: 2026-07-17 13:21] [modificado: 2026-07-17 13:21]
+splash_wcgone.html [creado: 2026-07-15 11:06] [modificado: 2026-07-15 11:06]
+
+./templates/wcgone:
+
+./templates/wcgone/crm:
+contacto_list.html [creado: 2026-07-17 14:02] [modificado: 2026-07-17 14:02]
+entidad_detail.html [creado: 2026-07-15 11:06] [modificado: 2026-07-15 11:06]
+entidad_list.html [creado: 2026-07-17 14:02] [modificado: 2026-07-17 14:02]
+tarea_list.html [creado: 2026-07-17 14:02] [modificado: 2026-07-17 14:02]
+
+./templates/wcgone/risk:
+cliente_detail.html [creado: 2026-07-15 11:06] [modificado: 2026-07-15 11:06]
+cliente_list.html [creado: 2026-07-17 14:02] [modificado: 2026-07-17 14:02]
+comando_balon.html [creado: 2026-07-17 14:02] [modificado: 2026-07-17 14:02]
+operacion_detail.html [creado: 2026-07-15 11:06] [modificado: 2026-07-15 11:06]
+
+./templates/wcgone/pgo:
+dashboard.html [creado: 2026-07-17 14:02] [modificado: 2026-07-17 14:02]
+resultados.html [creado: 2026-07-17 14:02] [modificado: 2026-07-17 14:02]
+ticket_detail.html [creado: 2026-07-15 11:06] [modificado: 2026-07-15 11:06]
+ticket_list.html [creado: 2026-07-17 14:02] [modificado: 2026-07-17 14:02]
+
+./templates/wcgone/imports:
+batch_result.html [creado: 2026-07-15 11:06] [modificado: 2026-07-15 11:06]
+upload.html [creado: 2026-07-15 11:06] [modificado: 2026-07-15 11:06]
+
+./templates/wcgone/pgc:
+home.html [creado: 2026-07-15 11:06] [modificado: 2026-07-15 11:06]
+
+./templates/wcgone/legacy_pgc1:
+home.html [creado: 2026-07-15 11:06] [modificado: 2026-07-15 11:06]
+
+./scripts:
+reimport_2026_q1.sh [creado: 2026-07-15 11:05] [modificado: 2026-04-16 15:32]
+
+./portal:
+__init__.py [creado: 2026-07-15 11:05] [modificado: 2026-06-24 13:14]
+admin.py [creado: 2026-07-15 11:05] [modificado: 2026-06-24 13:14]
+apps.py [creado: 2026-07-15 11:05] [modificado: 2026-06-24 13:14]
+models.py [creado: 2026-07-15 11:05] [modificado: 2026-06-24 13:14]
+tests.py [creado: 2026-07-15 11:05] [modificado: 2026-06-24 13:14]
+urls.py [creado: 2026-07-17 13:29] [modificado: 2026-07-17 13:29]
+views.py [creado: 2026-07-17 13:29] [modificado: 2026-07-17 13:29]
+
+./crm:
+__init__.py [creado: 2026-07-15 11:05] [modificado: 2026-06-24 13:14]
+admin.py [creado: 2026-07-15 11:05] [modificado: 2026-07-09 13:41]
+apps.py [creado: 2026-07-15 11:05] [modificado: 2026-06-24 13:14]
+forms.py [creado: 2026-07-15 11:05] [modificado: 2026-07-09 13:41]
+models.py [creado: 2026-07-15 11:05] [modificado: 2026-07-09 13:41]
+selectors.py [creado: 2026-07-17 11:19] [modificado: 2026-07-17 11:19]
+services.py [creado: 2026-07-17 10:36] [modificado: 2026-07-17 10:36]
+tests.py [creado: 2026-07-15 11:05] [modificado: 2026-06-24 13:14]
+urls.py [creado: 2026-07-17 11:19] [modificado: 2026-07-17 11:19]
+views.py [creado: 2026-07-17 11:26] [modificado: 2026-07-17 11:26]
+
+./risk:
+__init__.py [creado: 2026-07-15 11:05] [modificado: 2026-06-24 13:14]
+admin.py [creado: 2026-07-15 11:05] [modificado: 2026-07-09 13:41]
+apps.py [creado: 2026-07-15 11:05] [modificado: 2026-06-24 13:14]
+forms.py [creado: 2026-07-17 10:35] [modificado: 2026-07-17 10:35]
+models.py [creado: 2026-07-15 11:05] [modificado: 2026-07-09 13:41]
+selectors.py [creado: 2026-07-17 11:19] [modificado: 2026-07-17 11:19]
+services.py [creado: 2026-07-17 10:35] [modificado: 2026-07-17 10:35]
+tests.py [creado: 2026-07-15 11:05] [modificado: 2026-06-24 13:14]
+urls.py [creado: 2026-07-17 11:19] [modificado: 2026-07-17 11:19]
+views.py [creado: 2026-07-17 11:26] [modificado: 2026-07-17 11:26]
+
+./pgo:
+__init__.py [creado: 2026-07-15 11:05] [modificado: 2026-06-24 13:14]
+admin.py [creado: 2026-07-15 11:05] [modificado: 2026-07-09 13:41]
+apps.py [creado: 2026-07-15 11:05] [modificado: 2026-06-24 13:14]
+forms.py [creado: 2026-07-15 11:05] [modificado: 2026-07-09 13:41]
+models.py [creado: 2026-07-15 11:05] [modificado: 2026-07-09 13:41]
+periodo.py [creado: 2026-07-15 11:05] [modificado: 2026-07-09 13:41]
+selectors.py [creado: 2026-07-17 11:19] [modificado: 2026-07-17 11:19]
+services.py [creado: 2026-07-17 10:34] [modificado: 2026-07-17 10:34]
+tests.py [creado: 2026-07-15 11:05] [modificado: 2026-06-24 13:14]
+urls.py [creado: 2026-07-17 11:19] [modificado: 2026-07-17 11:19]
+views.py [creado: 2026-07-17 11:26] [modificado: 2026-07-17 11:26]
+
+./pgo/services:
+
+./data:
+pgc1_pgc_data_RECOVERED_PARTIAL.json [creado: 2026-07-16 17:33] [modificado: 2026-07-16 17:33]
+
+./data/wcg:
+balon datos - Ejemplo de datos Riesgo al 31-mayo para una operacion - Base de datos Leasing.xlsx [creado: 2026-07-15 11:05] [modificado: 2026-06-24 13:36]
+crm datos - InfoClientesWCG para CRM.csv [creado: 2026-07-15 11:05] [modificado: 2026-06-24 13:36]
+pgo datos - Archivos para PGO.csv [creado: 2026-07-15 11:05] [modificado: 2026-06-24 13:36]
+pgo datos - control de tickets marzo abril y mayo 2026 para PGO.xlsx [creado: 2026-07-15 11:05] [modificado: 2026-06-24 13:36]
+pgo ejemplo del analisis - PGO - TI Q22026.xlsx [creado: 2026-07-15 11:05] [modificado: 2026-06-24 13:36]
+
+./apps:
+__init__.py [creado: 2026-07-15 11:05] [modificado: 2026-07-15 11:05]
+
+./apps/core:
+__init__.py [creado: 2026-07-15 11:05] [modificado: 2026-06-24 14:39]
+admin.py [creado: 2026-07-15 11:05] [modificado: 2026-06-24 14:38]
+apps.py [creado: 2026-07-15 11:05] [modificado: 2026-07-15 11:05]
+exports.py [creado: 2026-07-15 11:05] [modificado: 2026-06-24 18:08]
+forms.py [creado: 2026-07-15 11:05] [modificado: 2026-06-24 17:48]
+urls.py [creado: 2026-07-15 11:06] [modificado: 2026-07-15 11:06]
+views.py [creado: 2026-07-15 11:05] [modificado: 2026-07-15 11:05]
+
+./apps/core/models:
+__init__.py [creado: 2026-07-15 11:05] [modificado: 2026-06-24 14:38]
+imports.py [creado: 2026-07-15 11:07] [modificado: 2026-07-15 11:07]
+masters.py [creado: 2026-07-15 11:05] [modificado: 2026-06-24 14:38]
+
+./apps/core/imports:
+__init__.py [creado: 2026-07-15 11:05] [modificado: 2026-06-24 17:47]
+base.py [creado: 2026-07-15 11:05] [modificado: 2026-06-24 17:48]
+columns.py [creado: 2026-07-15 11:05] [modificado: 2026-06-24 17:47]
+entities.py [creado: 2026-07-15 11:05] [modificado: 2026-06-24 17:47]
+
+./apps/core/management:
+__init__.py [creado: 2026-07-15 11:05] [modificado: 2026-06-24 18:12]
+
+./apps/core/management/commands:
+__init__.py [creado: 2026-07-15 11:05] [modificado: 2026-06-24 18:12]
+seed_wcg_demo.py [creado: 2026-07-15 11:05] [modificado: 2026-06-24 18:12]
+
+./apps/crm:
+__init__.py [creado: 2026-07-15 11:05] [modificado: 2026-06-24 14:39]
+admin.py [creado: 2026-07-15 11:05] [modificado: 2026-06-24 14:38]
+apps.py [creado: 2026-07-15 11:05] [modificado: 2026-07-15 11:05]
+models.py [creado: 2026-07-15 11:07] [modificado: 2026-07-15 11:07]
+selectors.py [creado: 2026-07-15 11:05] [modificado: 2026-06-24 18:08]
+urls.py [creado: 2026-07-15 11:06] [modificado: 2026-07-15 11:06]
+views.py [creado: 2026-07-17 13:21] [modificado: 2026-07-17 13:21]
+
+./apps/crm/imports:
+__init__.py [creado: 2026-07-15 11:05] [modificado: 2026-06-24 17:47]
+entidades.py [creado: 2026-07-15 11:05] [modificado: 2026-06-24 17:48]
+
+./apps/risk:
+__init__.py [creado: 2026-07-15 11:05] [modificado: 2026-06-24 14:39]
+admin.py [creado: 2026-07-15 11:05] [modificado: 2026-06-24 14:39]
+apps.py [creado: 2026-07-15 11:05] [modificado: 2026-07-15 11:05]
+forms.py [creado: 2026-07-15 11:05] [modificado: 2026-06-24 17:48]
+models.py [creado: 2026-07-15 11:05] [modificado: 2026-07-15 11:05]
+selectors.py [creado: 2026-07-15 11:05] [modificado: 2026-06-24 18:08]
+urls.py [creado: 2026-07-15 11:06] [modificado: 2026-07-15 11:06]
+views.py [creado: 2026-07-17 13:22] [modificado: 2026-07-17 13:22]
+
+./apps/risk/imports:
+__init__.py [creado: 2026-07-15 11:05] [modificado: 2026-06-24 17:47]
+estados_financieros.py [creado: 2026-07-15 11:05] [modificado: 2026-06-24 17:48]
+snapshots.py [creado: 2026-07-15 11:05] [modificado: 2026-06-24 17:48]
+
+./apps/pgo:
+__init__.py [creado: 2026-07-15 11:05] [modificado: 2026-06-24 14:39]
+admin.py [creado: 2026-07-15 11:05] [modificado: 2026-06-24 14:39]
+apps.py [creado: 2026-07-15 11:05] [modificado: 2026-07-15 11:05]
+models.py [creado: 2026-07-15 11:07] [modificado: 2026-07-15 11:07]
+selectors.py [creado: 2026-07-15 11:05] [modificado: 2026-06-24 18:08]
+urls.py [creado: 2026-07-15 11:06] [modificado: 2026-07-15 11:06]
+views.py [creado: 2026-07-17 13:21] [modificado: 2026-07-17 13:21]
+
+./apps/pgo/imports:
+__init__.py [creado: 2026-07-15 11:05] [modificado: 2026-06-24 17:47]
+tickets.py [creado: 2026-07-15 11:05] [modificado: 2026-06-24 17:48]
+
+./apps/portal:
+__init__.py [creado: 2026-07-15 11:05] [modificado: 2026-06-24 14:39]
+apps.py [creado: 2026-07-15 11:05] [modificado: 2026-07-15 11:05]
+urls.py [creado: 2026-07-16 13:51] [modificado: 2026-07-16 13:51]
+views.py [creado: 2026-07-15 11:05] [modificado: 2026-07-15 11:05]
+
+./apps/pgc:
+__init__.py [creado: 2026-07-15 11:05] [modificado: 2026-06-24 14:39]
+apps.py [creado: 2026-07-15 11:05] [modificado: 2026-07-15 11:05]
+urls.py [creado: 2026-07-16 13:51] [modificado: 2026-07-16 13:51]
+views.py [creado: 2026-07-16 13:51] [modificado: 2026-07-16 13:51]
+
+./apps/legacy_pgc1:
+__init__.py [creado: 2026-07-15 11:05] [modificado: 2026-06-24 14:39]
+apps.py [creado: 2026-07-15 11:05] [modificado: 2026-07-15 11:05]
+urls.py [creado: 2026-07-16 13:51] [modificado: 2026-07-16 13:51]
+views.py [creado: 2026-07-16 13:51] [modificado: 2026-07-16 13:51]
+
+./uploads:
+03e371b37aa892c6_tickets.csv [creado: 2026-07-15 11:05] [modificado: 2026-06-24 17:48]
+15fd92cd412c637a_crm datos - InfoClientesWCG para CRM.csv [creado: 2026-07-15 11:05] [modificado: 2026-06-24 17:48]
+76e9b439cded7d26_bad.csv [creado: 2026-07-15 11:05] [modificado: 2026-06-24 17:48]
+be8c4a9048f94ae9_leasing.xlsx [creado: 2026-07-15 11:05] [modificado: 2026-06-24 17:48]
+e3b0c44298fc1c14_empty.csv [creado: 2026-07-15 11:05] [modificado: 2026-06-24 17:48]
+f09a53b2d1ee9405_eeff.csv [creado: 2026-07-15 11:05] [modificado: 2026-06-24 17:48]
+
+./docs:
+00-contexto-de-continuidad.txt [creado: 2026-07-15 11:05] [modificado: 2026-06-24 14:29]
+06-guia-demo-operativa.md [creado: 2026-07-15 11:05] [modificado: 2026-06-24 18:12]
+Documento-1-Memoria-maestra-WCG-One.md [creado: 2026-07-15 11:05] [modificado: 2026-06-24 13:59]
+deploy_railway_demo.md [creado: 2026-07-21 15:50] [modificado: 2026-07-21 15:50]
+documento-2-especificacion-funcional-v1-wcg-one.md [creado: 2026-07-15 11:05] [modificado: 2026-06-24 13:58]
+documento-3-especificacion-tecnica-django-wcg-one.md [creado: 2026-07-15 11:05] [modificado: 2026-06-24 14:10]
+documento-4-modelos-migraciones-admin-para-cursor.md [creado: 2026-07-15 11:05] [modificado: 2026-06-24 14:12]
+documento-5-prompt-maestro-para-cursor-construccion-wcg-one.md [creado: 2026-07-15 11:05] [modificado: 2026-06-24 14:10]
+pgc1_dump_migration_status.md [creado: 2026-07-16 17:33] [modificado: 2026-07-16 17:33]
+pgc_vs_pgo_explicacion.md [creado: 2026-07-21 18:08] [modificado: 2026-07-21 18:08]
+plan_railway_demo_hardening.md [creado: 2026-07-16 14:02] [modificado: 2026-07-16 14:02]
+
+./reports:
+__init__.py [creado: 2026-07-15 16:02] [modificado: 2026-07-15 16:02]
+admin.py [creado: 2026-07-21 18:08] [modificado: 2026-07-21 18:08]
+apps.py [creado: 2026-07-21 18:08] [modificado: 2026-07-21 18:08]
+md_utils.py [creado: 2026-07-21 18:08] [modificado: 2026-07-21 18:08]
+models.py [creado: 2026-07-21 18:08] [modificado: 2026-07-21 18:08]
+naming.py [creado: 2026-07-21 18:08] [modificado: 2026-07-21 18:08]
+tests.py [creado: 2026-07-21 18:08] [modificado: 2026-07-21 18:08]
+urls.py [creado: 2026-07-21 18:08] [modificado: 2026-07-21 18:08]
+views.py [creado: 2026-07-21 18:08] [modificado: 2026-07-21 18:08]
+xlsx_utils.py [creado: 2026-07-21 18:08] [modificado: 2026-07-21 18:08]
+
+./reports/services:
+__init__.py [creado: 2026-07-21 18:08] [modificado: 2026-07-21 18:08]
+common.py [creado: 2026-07-21 18:08] [modificado: 2026-07-21 18:08]
+coverage.py [creado: 2026-07-21 18:08] [modificado: 2026-07-21 18:08]
+package.py [creado: 2026-07-21 18:08] [modificado: 2026-07-21 18:08]
+pgc_results.py [creado: 2026-07-21 18:08] [modificado: 2026-07-21 18:08]
+pgo_results.py [creado: 2026-07-21 18:08] [modificado: 2026-07-21 18:08]
+risk_results.py [creado: 2026-07-21 18:08] [modificado: 2026-07-21 18:08]
+
+./demo_data:
+BaseLeasing202606.csv [creado: 2026-07-17 11:21] [modificado: 2026-07-17 11:21]
+LeasingRentas2026-06-30.csv [creado: 2026-07-17 11:21] [modificado: 2026-07-17 11:21]
+balon datos - BaseLeasing202605.csv [creado: 2026-07-17 11:21] [modificado: 2026-07-17 11:21]
+crm datos - InfoClientesWCG para CRM.csv [creado: 2026-07-17 11:21] [modificado: 2026-07-17 11:21]
+pgo datos - Archivos para PGO.csv [creado: 2026-07-17 11:21] [modificado: 2026-07-17 11:21]
+pgo datos - control de tickets marzo abril y mayo 2026 para PGO.xlsx [creado: 2026-07-17 11:21] [modificado: 2026-07-17 11:21]
+
+Archivos recientes (72h):
+2026-07-21 18:25 templates/pgc/dashboard.html
+2026-07-21 18:08 templates/pgc/admin/_styles.html
+2026-07-21 18:08 reports/tests.py
+2026-07-21 18:08 reports/services/risk_results.py
+2026-07-21 18:08 reports/services/pgo_results.py
+2026-07-21 18:08 reports/services/pgc_results.py
+2026-07-21 18:08 reports/services/package.py
+2026-07-21 18:08 reports/services/coverage.py
+2026-07-21 18:08 reports/naming.py
+2026-07-21 18:08 reports/models.py
+2026-07-21 18:08 pgc/investment_ingresos.py
+2026-07-21 18:08 pgc/admin_utils.py
+2026-07-21 18:08 imports/management/commands/recalc_investment_ingresos_from_new_clients.py
+2026-07-21 18:08 reports/views.py
+2026-07-21 18:08 reports/apps.py
+2026-07-21 18:08 reports/urls.py
+2026-07-21 18:08 reports/admin.py
+2026-07-21 18:08 config/urls.py
+2026-07-21 18:08 templates/pgc/admin_monthly.html
+2026-07-21 18:08 templates/pgc/admin/_recalc_button.html
+2026-07-21 18:08 reports/xlsx_utils.py
+2026-07-21 18:08 reports/services/common.py
+2026-07-21 18:08 reports/services/__init__.py
+2026-07-21 18:08 reports/md_utils.py
+2026-07-21 18:08 pgc/admin_views.py
+2026-07-21 18:08 pgc/admin_period.py
+2026-07-21 18:08 imports/models.py
+2026-07-21 18:08 imports/management/commands/import_clientes_nuevos.py
+2026-07-21 15:50 pgc/tv_charts.py
+2026-07-21 15:50 templates/pgc/admin_tv_charts.html
+2026-07-21 15:49 config/settings.py

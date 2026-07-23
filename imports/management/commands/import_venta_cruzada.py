@@ -4,6 +4,7 @@ from datetime import datetime
 from decimal import Decimal
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
+from imports.currency_normalize import normalize_currency_code
 from imports.models import CrossSaleImportHeader, CrossSaleImportRow
 from pathlib import Path
 from pgc.models import PGCPlan, MonthlyTarget, MonthlyMetricResult
@@ -41,6 +42,9 @@ class Command(BaseCommand):
         headers_cache = {}
         counts_by_pair = {}
         counts_by_origin = {}  # (year, month, une_origin_id) -> int
+        q_alias_count = 0
+        currency_warnings: list[str] = []
+        currencies = {c.code.upper(): c for c in Currency.objects.all()}
 
         with path.open("r", encoding="utf-8-sig") as f:
             sample = f.read(4096)
@@ -98,7 +102,7 @@ class Command(BaseCommand):
                     or row.get("MONEDA")
                     or row.get("moneda")
                     or ""
-                ).strip().upper()
+                )
 
                 une_dest_raw = (
                     row.get("UNE")
@@ -129,8 +133,13 @@ class Command(BaseCommand):
                 )
 
                 currency = None
-                if moneda_raw:
-                    currency = Currency.objects.filter(code__iexact=moneda_raw).first()
+                moneda_code, currency_warn = normalize_currency_code(moneda_raw)
+                if currency_warn:
+                    q_alias_count += 1
+                    if len(currency_warnings) < 8:
+                        currency_warnings.append(currency_warn)
+                if moneda_code:
+                    currency = currencies.get(moneda_code)
 
                 header_key = (year, month)
                 header = headers_cache.get(header_key)
@@ -232,6 +241,16 @@ class Command(BaseCommand):
                     "points_awarded": 0,
                     "calculation_note": f"{count} referencias válidas de venta cruzada en el mes",
                 },
+            )
+
+        if q_alias_count:
+            for w in currency_warnings:
+                self.stdout.write(self.style.WARNING(w))
+            self.stdout.write(
+                self.style.WARNING(
+                    f"WARNING moneda: {q_alias_count} fila(s) con 'Q' (u alias) "
+                    f"tratadas como GTQ. Corrija el archivo fuente a GTQ."
+                )
             )
 
         self.stdout.write(self.style.SUCCESS("Venta cruzada importada correctamente."))

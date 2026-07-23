@@ -159,6 +159,9 @@ LANGUAGE_CODE = 'es-gt'
 TIME_ZONE = 'America/Guatemala'
 USE_I18N = True
 USE_TZ = True
+# Formato numérico WCG: coma miles, punto decimal (ver config.formats.es_gt).
+USE_THOUSAND_SEPARATOR = True
+NUMBER_GROUPING = 3
 
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'

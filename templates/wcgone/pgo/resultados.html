@@ -38,7 +38,7 @@
       <div class="card-header bg-white fw-semibold">Puntajes por período</div>
       <div class="table-responsive">
         <table class="table table-sm mb-0 pgo-scoreboard">
-          <thead><tr><th>Período</th><th>Área</th><th>Unidad</th><th class="text-end">Puntaje</th><th>Clasifica</th></tr></thead>
+          <thead><tr><th>Período</th><th>Área</th><th>Unidad</th><th class="text-end">Puntaje</th><th>Clasifica</th><th>Detalle</th></tr></thead>
           <tbody>
             {% for score in scores %}
             <tr class="{% if score.clasifica %}row-clasifica-si{% else %}row-clasifica-no{% endif %}">
@@ -53,16 +53,17 @@
                   <span class="badge text-bg-secondary">No</span>
                 {% endif %}
               </td>
+              <td class="small text-muted">{{ score.detalle_breve|default:"—"|truncatechars:60 }}</td>
             </tr>
             {% empty %}
-            <tr><td colspan="5" class="text-muted text-center py-3">Sin puntajes calculados.</td></tr>
+            <tr><td colspan="6" class="text-muted text-center py-3">Sin puntajes calculados.</td></tr>
             {% endfor %}
           </tbody>
         </table>
       </div>
       <div class="card-footer bg-white small text-muted">
-        Color de fila según <code>PgoPeriodScore.clasifica</code> (valor almacenado).
-        En el código actual no hay comando que calcule ese booleano ni umbral ≥80.
+        Color de fila según <code>PgoPeriodScore.clasifica</code> (umbral ≥ 80).
+        Recálculo: <code>python manage.py recalc_pgo</code> (también al abrir este dashboard).
       </div>
     </div>
   </div>

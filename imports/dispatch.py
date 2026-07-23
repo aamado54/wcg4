@@ -36,6 +36,8 @@ class DispatchResult:
     redirect_hint: str = ""
     needs_manual: bool = False
     forced: bool = False
+    warnings: list[str] | None = None
+    duplicate_extra: int = 0
 
 
 def _batch_summary(batch) -> str:
@@ -47,6 +49,52 @@ def _batch_summary(batch) -> str:
             f"{batch.errores} errores (filas {getattr(batch, 'filas_leidas', '?')})"
         )
     return str(batch)
+
+
+def _collect_upload_warnings(upload) -> list[str]:
+    warnings: list[str] = []
+    if upload is None:
+        return warnings
+    notes = (getattr(upload, "parsing_notes", None) or "")
+    for line in notes.splitlines():
+        if "WARNING" in line.upper() or "interpretada como GTQ" in line or "tratadas como GTQ" in line:
+            warnings.append(line.strip())
+    try:
+        from imports.models import FileImportLog
+
+        for log in FileImportLog.objects.filter(
+            file_upload=upload, level=FileImportLog.LEVEL_WARNING
+        ).order_by("-id")[:10]:
+            if log.message and log.message not in warnings:
+                warnings.append(log.message)
+    except Exception:
+        pass
+    # Also surface currency warnings from batch log_texto
+    log_texto = getattr(upload, "log_texto", None) or ""
+    for line in log_texto.splitlines():
+        if line.startswith("WARNING") and line not in warnings:
+            warnings.append(line)
+    return warnings
+
+
+def _duplicate_hint_for_tipo(tipo: str) -> int:
+    try:
+        from imports.duplicates import scan_all_duplicates
+
+        module_map = {
+            TYPE_NEW_CLIENTS: "new_clients",
+            TYPE_CROSS_SALE: "cross_sale",
+            TYPE_CRM_CLIENTES: "crm_entidad",
+            TYPE_PGO_TICKETS: "pgo_ticket",
+            TYPE_RISK_LEASING: "risk_snapshot",
+            TYPE_RISK_RENTAS: "risk_snapshot",
+        }
+        mod = module_map.get(tipo)
+        if not mod:
+            return 0
+        return sum(g.extra_count for g in scan_all_duplicates(module=mod))
+    except Exception:
+        return 0
 
 
 def _detection_log(detection: DetectionResult, tipo: str, forced: bool) -> str:
@@ -104,15 +152,21 @@ def run_import(user, uploaded_file: UploadedFile, tipo_forzado: str | None = Non
 
         batch = crm_services.import_entidades(user, uploaded_file)
         _annotate_batch(batch, detection, tipo, forced)
+        dup = _duplicate_hint_for_tipo(tipo)
+        msg = f"CRM: {_batch_summary(batch)}"
+        if dup:
+            msg += f" · {dup} posible(s) duplicado(s) para revisión."
         return DispatchResult(
             tipo=tipo,
             label=label,
             detection=detection,
             batch=batch,
-            message=f"CRM: {_batch_summary(batch)}",
+            message=msg,
             ok=batch.status in ("OK", "PARTIAL"),
             redirect_hint="crm:entidad_list",
             forced=forced,
+            warnings=_collect_upload_warnings(batch),
+            duplicate_extra=dup,
         )
 
     if tipo == TYPE_PGO_TICKETS:
@@ -122,15 +176,21 @@ def run_import(user, uploaded_file: UploadedFile, tipo_forzado: str | None = Non
         batch = pgo_services.import_tickets(user, uploaded_file)
         recalculate_pgo_periodos()
         _annotate_batch(batch, detection, tipo, forced)
+        dup = _duplicate_hint_for_tipo(tipo)
+        msg = f"PGO tickets: {_batch_summary(batch)}"
+        if dup:
+            msg += f" · {dup} posible(s) duplicado(s) para revisión."
         return DispatchResult(
             tipo=tipo,
             label=label,
             detection=detection,
             batch=batch,
-            message=f"PGO tickets: {_batch_summary(batch)}",
+            message=msg,
             ok=batch.status in ("OK", "PARTIAL"),
             redirect_hint="pgo:dashboard",
             forced=forced,
+            warnings=_collect_upload_warnings(batch),
+            duplicate_extra=dup,
         )
 
     if tipo == TYPE_PGO_CATALOGO:
@@ -154,15 +214,21 @@ def run_import(user, uploaded_file: UploadedFile, tipo_forzado: str | None = Non
 
         batch = risk_services.import_leasing_database(user, uploaded_file)
         _annotate_batch(batch, detection, tipo, forced)
+        dup = _duplicate_hint_for_tipo(tipo)
+        msg = f"Balón leasing: {_batch_summary(batch)}"
+        if dup:
+            msg += f" · {dup} posible(s) duplicado(s) para revisión."
         return DispatchResult(
             tipo=tipo,
             label=label,
             detection=detection,
             batch=batch,
-            message=f"Balón leasing: {_batch_summary(batch)}",
+            message=msg,
             ok=batch.status in ("OK", "PARTIAL"),
             redirect_hint="risk:comando_balon",
             forced=forced,
+            warnings=_collect_upload_warnings(batch),
+            duplicate_extra=dup,
         )
 
     if tipo == TYPE_RISK_RENTAS:
@@ -170,15 +236,22 @@ def run_import(user, uploaded_file: UploadedFile, tipo_forzado: str | None = Non
 
         batch = risk_services.import_leasing_rentas(user, uploaded_file)
         _annotate_batch(batch, detection, tipo, forced)
+        warns = _collect_upload_warnings(batch)
+        dup = _duplicate_hint_for_tipo(tipo)
+        msg = f"Rentas leasing: {_batch_summary(batch)}"
+        if dup:
+            msg += f" · {dup} posible(s) duplicado(s) para revisión."
         return DispatchResult(
             tipo=tipo,
             label=label,
             detection=detection,
             batch=batch,
-            message=f"Rentas leasing: {_batch_summary(batch)}",
+            message=msg,
             ok=batch.status in ("OK", "PARTIAL"),
             redirect_hint="risk:comando_balon",
             forced=forced,
+            warnings=warns,
+            duplicate_extra=dup,
         )
 
     if tipo in (TYPE_NEW_CLIENTS, TYPE_CROSS_SALE, TYPE_FINANCIAL):
@@ -246,15 +319,22 @@ def run_import(user, uploaded_file: UploadedFile, tipo_forzado: str | None = Non
                 level=FileImportLog.LEVEL_INFO,
                 message=f"Procesado con {IMPORTER_LABELS.get(tipo, tipo)}",
             )
+            warns = _collect_upload_warnings(tmp)
+            dup = _duplicate_hint_for_tipo(tipo)
+            msg = f"{label}: procesado correctamente."
+            if dup:
+                msg += f" · {dup} posible(s) duplicado(s) para revisión."
             return DispatchResult(
                 tipo=tipo,
                 label=label,
                 detection=detection,
                 batch=tmp,
-                message=f"{label}: procesado correctamente.",
+                message=msg,
                 ok=True,
                 redirect_hint="pgc:admin_monthly" if tipo != TYPE_NEW_CLIENTS else "pgc:clientes_nuevos",
                 forced=forced,
+                warnings=warns,
+                duplicate_extra=dup,
             )
         except Exception as exc:
             tmp.status = FileUpload.STATUS_PARSED_ERROR

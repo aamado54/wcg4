@@ -1,0 +1,66 @@
+{% extends "base_wcg.html" %}
+{% block title %}Duplicados — Importación — WCG{% endblock %}
+{% block content %}
+<div class="page-toolbar">
+  <div>
+    <p class="text-muted small mb-1 text-uppercase" style="letter-spacing:0.04em;font-weight:600;">Administración · Importación</p>
+    <h1 class="h3 mb-1">Revisión de posibles duplicados</h1>
+    <p class="text-muted mb-0" style="max-width:42rem;">
+      Detección por clave natural, nombre de archivo y contenido equivalente.
+      <strong>No se elimina nada automáticamente</strong>: marque los registros extra y bórralos solo tras revisar.
+    </p>
+  </div>
+  <a class="wcg-home-link" href="{% url 'imports:import_hub' %}">← Importación General</a>
+</div>
+
+<form method="get" class="row g-2 mb-3">
+  <div class="col-md-4">
+    <select name="module" class="form-select form-select-sm">
+      <option value="">Todos los módulos</option>
+      {% for key, label in modules %}
+      <option value="{{ key }}"{% if module == key %} selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-md-2">
+    <button type="submit" class="btn btn-sm btn-outline-primary w-100">Filtrar</button>
+  </div>
+</form>
+
+<p class="small text-muted">Grupos con extras: {{ groups|length }} · registros extra: {{ dup_total }}</p>
+
+{% for g in groups %}
+<div class="card border-0 mb-3">
+  <div class="card-body">
+    <div class="d-flex justify-content-between flex-wrap gap-2 mb-2">
+      <div>
+        <div class="fw-semibold">{{ g.module_label }}</div>
+        <div class="small text-muted">Clave: {{ g.natural_key_desc }}</div>
+        <div class="small"><code>{{ g.key_display }}</code></div>
+      </div>
+      <div class="small text-muted">
+        Conservar #{{ g.keep_id }} · extras: {{ g.extra_count }}
+      </div>
+    </div>
+    <ul class="small mb-3">
+      {% for lab in g.sample_labels %}
+      <li>{{ lab }}</li>
+      {% endfor %}
+    </ul>
+    <form method="post" onsubmit="return confirm('¿Eliminar {{ g.extra_count }} registro(s) duplicado(s)? Se conserva #{{ g.keep_id }}.');">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="delete">
+      <input type="hidden" name="module" value="{{ g.module }}">
+      {% for did in g.duplicate_ids %}
+      <input type="hidden" name="ids" value="{{ did }}">
+      {% endfor %}
+      <button type="submit" class="btn btn-sm btn-outline-danger">
+        Eliminar {{ g.extra_count }} duplicado(s) (conservar #{{ g.keep_id }})
+      </button>
+    </form>
+  </div>
+</div>
+{% empty %}
+<div class="alert alert-success">No se detectaron grupos duplicados con el filtro actual.</div>
+{% endfor %}
+{% endblock %}

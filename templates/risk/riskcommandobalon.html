@@ -1,10 +1,12 @@
 {% extends "base_wcg.html" %}
+{% load wcg_format %}
 {% block title %}Comando Balón — WCG{% endblock %}
 {% block content %}
 <div class="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2 mt-2">
   <div class="wcg-report-head">
     <h1 class="h4 fw-semibold mb-0">Riesgo — Comando Balón</h1>
     {% include "includes/module_mark.html" with module="risk" %}
+    <p class="text-muted small mb-0 mt-1">Montos en quetzales (GTQ). Cifras en unidades (no en miles), con 2 decimales.</p>
   </div>
   <div class="d-flex gap-1 flex-wrap">
     <a href="{% url 'risk:export_comando_balon' %}?cliente={{ request.GET.cliente }}&nivel={{ request.GET.nivel }}" class="btn btn-sm btn-outline-primary">Exportar CSV</a>
@@ -33,8 +35,8 @@
   </div>
   <div class="col-md-3 col-6">
     <div class="card border-0 shadow-sm"><div class="card-body py-2 text-center">
-      <div class="stat-value text-danger" style="font-size:1.35rem;">{{ summary.suma_vencido|floatformat:0 }}</div>
-      <div class="text-muted small">Suma saldos vencidos</div>
+      <div class="stat-value text-danger" style="font-size:1.35rem;">{{ summary.suma_vencido|wcg_num:2 }}</div>
+      <div class="text-muted small">Suma saldos vencidos (GTQ)</div>
     </div></div>
   </div>
   <div class="col-md-3 col-6">
@@ -106,12 +108,12 @@
               {{ snap.get_nivel_riesgo_display }}
             </span>
           </td>
-          <td class="text-end">{{ snap.saldo }}</td>
+          <td class="text-end">{{ snap.saldo|wcg_num:2 }}</td>
           <td class="text-end">
             {% if snap.monto_exigible and snap.monto_exigible > 0 %}
-            <span class="text-danger fw-semibold">{{ snap.monto_exigible }}</span>
+            <span class="text-danger fw-semibold">{{ snap.monto_exigible|wcg_num:2 }}</span>
             {% else %}
-            {{ snap.monto_exigible }}
+            {{ snap.monto_exigible|wcg_num:2 }}
             {% endif %}
           </td>
           <td class="text-center">
@@ -144,7 +146,7 @@
     {% for a in alertas|slice:":15" %}
     <li class="list-group-item d-flex justify-content-between">
       <span>{{ a.entidad.nombre }} — {{ a.referencia_operacion }}</span>
-      <span>{{ a.dias_mora }} días · Q{{ a.monto_exigible }}</span>
+      <span>{{ a.dias_mora }} días · {{ a.monto_exigible|wcg_num:2 }}</span>
     </li>
     {% endfor %}
   </ul>

@@ -24,12 +24,21 @@ from core.services.column_map import normalize_columns, pick, pick_decimal, pick
 from core.services.import_base import read_dataframe, run_import_batch
 from core.wcg_models import DataImportBatch, Entidad, Producto, UnidadNegocio
 from crm.services import _entidad_codigo_from_row, _resolve_unidad, _slug_codigo
+from imports.currency_normalize import normalize_currency_code
 from risk.models import (
     EstadoFinanciero,
     PagoRealizado,
     ProgramacionPago,
     RiskOperationSnapshot,
 )
+
+
+def _normalize_moneda_field(raw: str | None, default: str = "GTQ") -> tuple[str, str | None]:
+    """Normaliza moneda de fila Risk; Q→GTQ con warning opcional."""
+    code, warning = normalize_currency_code(raw)
+    if not code:
+        return default, None
+    return code, warning
 
 
 def _parse_date(value: str) -> date | None:
@@ -239,6 +248,7 @@ def import_leasing_rentas(user, uploaded_file) -> DataImportBatch:
         ],
     )
     uploaded_file.seek(0)
+    currency_warnings: list[str] = []
 
     def handler(row: pd.Series, errors: list[str]):
         contrato = pick(row, "no_contrato", "contrato", "contract_number", "referencia", "operacion")
@@ -272,13 +282,16 @@ def import_leasing_rentas(user, uploaded_file) -> DataImportBatch:
             return None
         monto = pick_decimal(row, "renta_total", "valor_renta_con_mora", "valor_renta", "monto")
         estado = pick(row, "estado", "status").lower()
+        moneda, mon_warn = _normalize_moneda_field(pick(row, "moneda"), "GTQ")
+        if mon_warn:
+            currency_warnings.append(mon_warn)
         _, created_prog = ProgramacionPago.objects.update_or_create(
             entidad=entidad,
             referencia=referencia,
             defaults={
                 "fecha_programada": fecha,
                 "monto": monto,
-                "moneda": "GTQ",
+                "moneda": moneda,
             },
         )
         created = created_prog
@@ -291,14 +304,15 @@ def import_leasing_rentas(user, uploaded_file) -> DataImportBatch:
                 defaults={
                     "fecha_pago": fecha_pago or fecha,
                     "monto": monto,
-                    "moneda": "GTQ",
+                    "moneda": moneda,
                 },
             )
             created = created or created_pago
             updated = updated or (not created_pago)
         return created, updated and not created
 
-    return run_import_batch(
+    uploaded_file.seek(0)
+    batch = run_import_batch(
         user=user,
         modulo=DataImportBatch.MODULO_RISK,
         tipo_importacion="leasing_rentas",
@@ -306,6 +320,14 @@ def import_leasing_rentas(user, uploaded_file) -> DataImportBatch:
         required_columns=[],
         row_handler=handler,
     )
+    if currency_warnings:
+        warn_line = (
+            f"WARNING moneda: {len(currency_warnings)} fila(s) con 'Q' (u alias) "
+            f"tratadas como GTQ. Corrija el archivo fuente a GTQ."
+        )
+        batch.log_texto = (warn_line + "\n" + (batch.log_texto or ""))[:8000]
+        batch.save(update_fields=["log_texto"])
+    return batch
 
 
 def import_estados_financieros(user, uploaded_file) -> DataImportBatch:
@@ -363,7 +385,7 @@ def import_programacion_pagos(user, uploaded_file) -> DataImportBatch:
             defaults={
                 "fecha_programada": fecha,
                 "monto": pick_decimal(row, "monto"),
-                "moneda": pick(row, "moneda") or "GTQ",
+                "moneda": _normalize_moneda_field(pick(row, "moneda"), "GTQ")[0],
             },
         )
         return created, not created
@@ -398,7 +420,7 @@ def import_pagos_realizados(user, uploaded_file) -> DataImportBatch:
             defaults={
                 "fecha_pago": fecha,
                 "monto": pick_decimal(row, "monto"),
-                "moneda": pick(row, "moneda") or "GTQ",
+                "moneda": _normalize_moneda_field(pick(row, "moneda"), "GTQ")[0],
             },
         )
         return created, not created

@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load l10n %}
+{% load l10n wcg_format %}
 
 {% block title %}Ingresos vs meta{% endblock %}
 
@@ -61,7 +61,7 @@
   <p class="muted">
     Meta y resultado mensual de ingresos por UNE y periodo.
   </p>
-  <p class="currency-hint">Montos oficiales en USD (cifras en miles de US$).</p>
+  <p class="currency-hint">Montos oficiales en miles de US$.</p>
 
   <form method="get" class="filters">
       <div>
@@ -150,9 +150,9 @@
                     <td class="usd-official">
                         {% if row.meta is not None %}
                             {% if row.target.une.code == "INSURANCE" %}
-                                ${{ row.meta|floatformat:3|unlocalize }}
+                                ${{ row.meta|wcg_miles:1 }}
                             {% else %}
-                                ${{ row.meta|floatformat:0|unlocalize }}
+                                ${{ row.meta|wcg_miles:0 }}
                             {% endif %}
                         {% else %}
                             -
@@ -161,13 +161,13 @@
                     <td class="usd-official">
                         {% if row.real is not None %}
                             {% if row.target.une.code == "INSURANCE" %}
-                                ${{ row.real|floatformat:3|unlocalize }}
+                                ${{ row.real|wcg_miles:1 }}
                             {% else %}
-                                ${{ row.real|floatformat:0|unlocalize }}
+                                ${{ row.real|wcg_miles:0 }}
                             {% endif %}
                             {% if row.source_gtq is not None %}
                             <span class="gtq-ref" title="Captura manual en GTQ (referencia; el score usa USD)">
-                              ref Q{{ row.source_gtq|floatformat:2|unlocalize }}
+                              ref Q{{ row.source_gtq|wcg_num:2 }}
                             </span>
                             {% endif %}
                         {% else %}
@@ -177,9 +177,9 @@
                     <td class="usd-official">
                         {% if row.diferencia is not None %}
                             {% if row.target.une.code == "INSURANCE" %}
-                                ${{ row.diferencia|floatformat:3|unlocalize }}
+                                ${{ row.diferencia|wcg_miles:1 }}
                             {% else %}
-                                ${{ row.diferencia|floatformat:0|unlocalize }}
+                                ${{ row.diferencia|wcg_miles:0 }}
                             {% endif %}
                         {% else %}
                             -

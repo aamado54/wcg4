@@ -1,4 +1,5 @@
 {% extends "base_wcg.html" %}
+{% load wcg_format %}
 {% block title %}Operación {{ snapshot.referencia_operacion }} — Balón de Riesgo{% endblock %}
 {% block content %}
 <div class="mb-3 mt-1">
@@ -6,6 +7,7 @@
   <p class="text-muted small mb-0">
     Cliente:
     <a href="{% url 'risk:cliente_detail' snapshot.entidad.codigo %}">{{ snapshot.entidad.nombre }}</a>
+    · Montos en quetzales (GTQ), unidades con 2 decimales
   </p>
 </div>
 
@@ -55,8 +57,8 @@
         <tr>
           <td>{{ h.fecha_snapshot|date:"d/m/Y" }}</td>
           <td>{{ h.get_nivel_riesgo_display }}</td>
-          <td class="text-end">{{ h.saldo }}</td>
-          <td class="text-end{% if h.monto_exigible > 0 %} text-danger fw-semibold{% endif %}">{{ h.monto_exigible }}</td>
+          <td class="text-end">{{ h.saldo|wcg_num:2 }}</td>
+          <td class="text-end{% if h.monto_exigible > 0 %} text-danger fw-semibold{% endif %}">{{ h.monto_exigible|wcg_num:2 }}</td>
           <td class="text-center">
             {% if h.dias_mora > 0 %}<span class="badge text-bg-warning">{{ h.dias_mora }}</span>{% else %}0{% endif %}
           </td>
@@ -76,13 +78,13 @@
       <div class="card-header bg-white fw-semibold">Pagos programados</div>
       <div class="table-responsive">
         <table class="table table-sm mb-0">
-          <thead><tr><th>Fecha</th><th>Ref.</th><th class="text-end">Monto</th></tr></thead>
+          <thead><tr><th>Fecha</th><th>Ref.</th><th class="text-end">Monto (GTQ u otra)</th></tr></thead>
           <tbody>
             {% for p in pagos_programados %}
             <tr>
               <td>{{ p.fecha_programada|date:"d/m/Y" }}</td>
               <td class="small">{{ p.referencia }}</td>
-              <td class="text-end">{{ p.monto }}</td>
+              <td class="text-end">{% if p.moneda and p.moneda != "GTQ" %}{{ p.moneda }} {% endif %}{{ p.monto|wcg_num:2 }}</td>
             </tr>
             {% empty %}
             <tr><td colspan="3" class="text-muted py-3">Sin pagos programados.</td></tr>
@@ -97,13 +99,13 @@
       <div class="card-header bg-white fw-semibold">Pagos realizados</div>
       <div class="table-responsive">
         <table class="table table-sm mb-0">
-          <thead><tr><th>Fecha</th><th>Ref.</th><th class="text-end">Monto</th></tr></thead>
+          <thead><tr><th>Fecha</th><th>Ref.</th><th class="text-end">Monto (GTQ u otra)</th></tr></thead>
           <tbody>
             {% for p in pagos_realizados %}
             <tr>
               <td>{{ p.fecha_pago|date:"d/m/Y" }}</td>
               <td class="small">{{ p.referencia }}</td>
-              <td class="text-end">{{ p.monto }}</td>
+              <td class="text-end">{% if p.moneda and p.moneda != "GTQ" %}{{ p.moneda }} {% endif %}{{ p.monto|wcg_num:2 }}</td>
             </tr>
             {% empty %}
             <tr><td colspan="3" class="text-muted py-3">Sin pagos realizados.</td></tr>
