@@ -6,7 +6,7 @@
   <div class="wcg-report-head">
     <h1 class="h4 fw-semibold mb-0">Riesgo — Comando Balón</h1>
     {% include "includes/module_mark.html" with module="risk" %}
-    <p class="text-muted small mb-0 mt-1">Montos en quetzales (GTQ). Cifras en unidades (no en miles), con 2 decimales.</p>
+    <p class="text-muted small mb-0 mt-1">Montos en quetzales (GTQ).</p>
   </div>
   <div class="d-flex gap-1 flex-wrap">
     <a href="{% url 'risk:export_comando_balon' %}?cliente={{ request.GET.cliente }}&nivel={{ request.GET.nivel }}" class="btn btn-sm btn-outline-primary">Exportar CSV</a>
