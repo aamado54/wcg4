@@ -454,7 +454,7 @@ def sort_ingresos_rows(rows, report_sort):
 
 def _safe_int(value, default=None):
     try:
-        return int(value)
+        return int(str(value).replace(",", "").replace(" ", "").replace("\u00a0", ""))
     except (TypeError, ValueError):
         return default
 
@@ -1781,7 +1781,7 @@ def user_can_view_detail(user, une):
 @login_required
 def clientes_nuevos_detail(request):
 
-    une_id = request.GET.get("une_id")
+    une_id = request.GET.get("une_id") or request.GET.get("une")
     year_raw = request.GET.get("year")
     month_raw = request.GET.get("month")
     
@@ -1789,9 +1789,10 @@ def clientes_nuevos_detail(request):
         raise Http404("Faltan parámetros obligatorios: une_id, year, month.")
     
     try:
-        une_id = int(une_id)
-        year = int(year_raw)
-        month = int(month_raw)
+        # Tolerar "2,026" si alguna plantilla localizó el año con miles.
+        une_id = int(str(une_id).replace(",", "").replace(" ", ""))
+        year = int(str(year_raw).replace(",", "").replace(" ", ""))
+        month = int(str(month_raw).replace(",", "").replace(" ", ""))
     except (TypeError, ValueError):
         raise Http404("Parámetros inválidos: une_id, year, month.")
 

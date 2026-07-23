@@ -184,7 +184,7 @@
                         </td>
                         <td>
                             <a
-                                href="{% url 'pgc:clientes_nuevos_detail' %}?une_id={{ row.target.une.id }}&year={{ row.target.year }}&month={{ row.target.month }}"
+                                href="{% url 'pgc:clientes_nuevos_detail' %}?une_id={{ row.target.une.id|unlocalize }}&year={{ row.target.year|unlocalize }}&month={{ row.target.month|unlocalize }}"
                                 class="detail-icon-link {% if row.has_detail %}has-detail{% else %}no-detail{% endif %}"
                                 aria-label="Ver detalle de clientes"
                             >

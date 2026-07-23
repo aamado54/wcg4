@@ -119,9 +119,9 @@ def parse_admin_period(
     month_from_raw = month_from_raw or month_to_raw
 
     try:
-        year = int(year_raw)
-        month_to = _clamp_month(int(month_to_raw))
-        month_from = _clamp_month(int(month_from_raw))
+        year = int(str(year_raw).replace(",", "").replace(" ", "").replace("\u00a0", ""))
+        month_to = _clamp_month(int(str(month_to_raw).replace(",", "").replace(" ", "").replace("\u00a0", "")))
+        month_from = _clamp_month(int(str(month_from_raw).replace(",", "").replace(" ", "").replace("\u00a0", "")))
     except (TypeError, ValueError):
         return AdminPeriod(
             year=default_year,
