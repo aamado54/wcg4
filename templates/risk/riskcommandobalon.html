@@ -1,6 +1,77 @@
 {% extends "base_wcg.html" %}
 {% load wcg_format %}
 {% block title %}Comando Balón — WCG{% endblock %}
+{% block extra_head %}
+<style>
+  /* Acciones secundarias: más pálidas para ceder protagonismo */
+  .balon-actions .btn-outline-primary,
+  .balon-actions .btn-outline-secondary {
+    background: #f7f9fb !important;
+    border-color: #d8e0e8 !important;
+    color: #7a8796 !important;
+    box-shadow: none;
+  }
+  .balon-actions .btn-outline-primary:hover,
+  .balon-actions .btn-outline-secondary:hover {
+    background: #eef2f6 !important;
+    border-color: #c5d0db !important;
+    color: #5a6a7a !important;
+  }
+
+  .btn-ev-fin {
+    --ev-ink: #1e4d3a;
+    --ev-bg: #d8ebe2;
+    --ev-bg-top: #e8f4ee;
+    --ev-edge: #a8c9b8;
+    display: inline-flex;
+    align-items: center;
+    font-size: 0.875rem;
+    font-weight: 600;
+    letter-spacing: 0.015em;
+    line-height: 1.25;
+    padding: 0.38rem 0.85rem;
+    color: var(--ev-ink) !important;
+    background: linear-gradient(180deg, var(--ev-bg-top) 0%, var(--ev-bg) 100%) !important;
+    border: 1px solid var(--ev-edge) !important;
+    border-bottom-color: #8fb8a4 !important;
+    border-radius: 8px;
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.9) inset,
+      0 -1px 0 rgba(30, 77, 58, 0.06) inset,
+      0 2px 0 #8fb8a4,
+      0 5px 12px rgba(30, 77, 58, 0.14);
+    transform: translateY(0);
+    transition:
+      transform 0.12s ease,
+      box-shadow 0.12s ease,
+      background 0.15s ease,
+      filter 0.15s ease;
+  }
+  .btn-ev-fin:hover {
+    color: #163d2e !important;
+    background: linear-gradient(180deg, #f0f8f4 0%, #dcefe6 100%) !important;
+    filter: brightness(1.03);
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.95) inset,
+      0 -1px 0 rgba(30, 77, 58, 0.05) inset,
+      0 3px 0 #7eaa96,
+      0 7px 16px rgba(30, 77, 58, 0.16);
+  }
+  .btn-ev-fin:active,
+  .btn-ev-fin:focus-visible:active {
+    transform: translateY(2px);
+    background: linear-gradient(180deg, #c9e0d5 0%, #bdd6c9 100%) !important;
+    box-shadow:
+      0 2px 5px rgba(30, 77, 58, 0.2) inset,
+      0 1px 0 #8fb8a4;
+    filter: none;
+  }
+  .btn-ev-fin:focus-visible {
+    outline: 2px solid #5a9a7a;
+    outline-offset: 2px;
+  }
+</style>
+{% endblock %}
 {% block content %}
 <div class="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2 mt-2">
   <div class="wcg-report-head">
@@ -8,8 +79,8 @@
     {% include "includes/module_mark.html" with module="risk" %}
     <p class="text-muted small mb-0 mt-1">Montos en quetzales (GTQ).</p>
   </div>
-  <div class="d-flex gap-1 flex-wrap">
-    <a href="{% url 'risk:evaluacion_clientes' %}" class="btn btn-sm btn-outline-dark">Evaluación financiera</a>
+  <div class="d-flex gap-1 flex-wrap align-items-center balon-actions">
+    <a href="{% url 'risk:evaluacion_clientes' %}" class="btn btn-sm btn-ev-fin">Evaluación financiera</a>
     <a href="{% url 'risk:export_comando_balon' %}?cliente={{ request.GET.cliente }}&nivel={{ request.GET.nivel }}" class="btn btn-sm btn-outline-primary">Exportar CSV</a>
     <a href="{% url 'risk:cliente_list' %}" class="btn btn-sm btn-outline-secondary">Clientes</a>
   </div>
