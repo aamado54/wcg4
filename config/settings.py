@@ -174,6 +174,15 @@ MEDIA_ROOT = BASE_DIR / 'media'
 UPLOADS_ROOT = BASE_DIR / 'uploads'
 OUTPUT_ROOT = BASE_DIR / 'output'
 
+# Plantilla de evaluación financiera (Z Altman / Carátula) — extensión Balón.
+# Sustituible por env o por upload futuro vía load_evaluacion(uploaded_file=...).
+WCG_EVALUACION_RIESGO_XLSX = Path(
+    os.environ.get(
+        "WCG_EVALUACION_RIESGO_XLSX",
+        str(BASE_DIR / "docs" / "WCG-evaluacion-riesgo-clientes-2025.xlsx"),
+    )
+)
+
 LOGIN_URL = '/accounts/login/'
 LOGIN_REDIRECT_URL = '/panel/'
 LOGOUT_REDIRECT_URL = '/accounts/login/'

@@ -1,0 +1,450 @@
+{% extends "base_wcg.html" %}
+{% load wcg_format %}
+{% block title %}Evaluación financiera — Balón de Riesgo{% endblock %}
+{% block extra_head %}
+<style>
+  .ev-wrap { max-width: 1120px; }
+  .ev-kicker {
+    font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--wcg-muted); font-weight: 600; margin-bottom: 0.35rem;
+  }
+  .ev-title { font-size: 1.35rem; font-weight: 700; letter-spacing: -0.02em; margin: 0; color: var(--wcg-ink); }
+  .ev-sub { font-size: 0.82rem; color: var(--wcg-muted); margin: 0.35rem 0 0; max-width: 42rem; line-height: 1.45; }
+  .ev-story {
+    margin: 1rem 0 1.15rem; padding: 0.85rem 1.1rem;
+    background: linear-gradient(135deg, #f7fafc 0%, #eef3f7 100%);
+    border: 1px solid var(--wcg-line); border-left: 3px solid #5b7c99;
+    border-radius: var(--wcg-radius); font-size: 0.9rem; color: var(--wcg-ink);
+    line-height: 1.45;
+  }
+  .ev-stat {
+    background: var(--wcg-surface); border: 1px solid var(--wcg-line);
+    border-radius: var(--wcg-radius); padding: 0.9rem 1rem;
+    box-shadow: var(--wcg-shadow); height: 100%;
+  }
+  .ev-stat .n { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.03em; line-height: 1.1; }
+  .ev-stat .l { font-size: 0.75rem; color: var(--wcg-muted); margin-top: 0.25rem; font-weight: 500; }
+  .ev-stat.is-risk .n { color: #8a3a34; }
+  .ev-stat.is-warn .n { color: #7a6320; }
+  .ev-stat.is-ok .n { color: #2f5c4e; }
+  .ev-zone {
+    display: inline-block; font-size: 0.7rem; font-weight: 600;
+    padding: 0.18rem 0.45rem; border-radius: 4px;
+  }
+  .ev-zone-alto { background: #f5e6e4; color: #8a3a34; }
+  .ev-zone-moderado { background: #f5efd9; color: #7a6320; }
+  .ev-zone-bajo { background: #e4efe9; color: #2f5c4e; }
+  .ev-zone-sin_dato { background: #eef1f4; color: #5a6a7a; }
+  .ev-delta-neg { color: #8a3a34; font-weight: 600; }
+  .ev-delta-pos { color: #2f5c4e; font-weight: 600; }
+  .ev-panel {
+    background: var(--wcg-surface); border: 1px solid var(--wcg-line);
+    border-radius: var(--wcg-radius); box-shadow: var(--wcg-shadow);
+  }
+  .ev-panel-h {
+    padding: 0.7rem 1rem; border-bottom: 1px solid var(--wcg-line);
+    font-weight: 600; font-size: 0.88rem; display: flex; justify-content: space-between;
+    align-items: baseline; gap: 0.75rem; flex-wrap: wrap;
+  }
+  .ev-spark { display: flex; align-items: flex-end; gap: 2px; height: 22px; }
+  .ev-spark span {
+    width: 6px; border-radius: 1px 1px 0 0; background: #9bb0c2; min-height: 2px;
+  }
+  .ev-spark span.alto { background: #b4534a; }
+  .ev-spark span.moderado { background: #c4a35a; }
+  .ev-spark span.bajo { background: #4a7c6f; }
+  .ev-note { font-size: 0.76rem; color: var(--wcg-muted); }
+  .ev-table th { white-space: nowrap; font-size: 0.72rem; color: var(--wcg-muted); font-weight: 600; border-bottom-width: 1px; }
+  .ev-table td { font-size: 0.84rem; vertical-align: middle; }
+  .ev-table tbody tr:hover { background: #f8fafc; }
+  .ev-row-alto { background: rgba(180, 83, 74, 0.05); }
+  .ev-chart-box { height: 248px; position: relative; padding: 0.4rem 1rem 0.75rem; }
+  .ev-empty {
+    text-align: center; padding: 2.5rem 1.5rem; color: var(--wcg-muted);
+  }
+  .ev-empty h2 { font-size: 1.05rem; color: var(--wcg-ink); font-weight: 600; margin-bottom: 0.4rem; }
+  .ev-movers { font-size: 0.82rem; }
+  .ev-movers li { padding: 0.45rem 0; border-bottom: 1px solid var(--wcg-line); }
+  .ev-movers li:last-child { border-bottom: 0; }
+  .ev-chip {
+    display: inline-block; font-size: 0.68rem; font-weight: 600;
+    padding: 0.12rem 0.4rem; border-radius: 3px; background: #eef1f4; color: #5a6a7a;
+  }
+  .ev-chip-cae { background: #f5e6e4; color: #8a3a34; }
+  .ev-chip-mejora { background: #e4efe9; color: #2f5c4e; }
+  .ev-filter .form-control { border-color: var(--wcg-line); }
+  a.ev-client { color: var(--wcg-ink); text-decoration: none; font-weight: 500; }
+  a.ev-client:hover { color: var(--wcg-accent-ink); text-decoration: underline; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="ev-wrap mx-auto mt-2 mb-4">
+  <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-1">
+    <div>
+      <div class="ev-kicker">Balón de Riesgo · Extensión</div>
+      <h1 class="ev-title">Evaluación financiera</h1>
+      <p class="ev-sub">
+        Z Altman — {{ portfolio.primary_model_name|truncatechars:48 }}.
+        Alto &lt; {{ portfolio.thresholds.alto_lt }} · Bajo ≥ {{ portfolio.thresholds.bajo_gte }}.
+      </p>
+    </div>
+    <a href="{% url 'risk:comando_balon' %}" class="btn btn-sm btn-outline-secondary">← Comando Balón</a>
+  </div>
+
+  {% if portfolio.status == 'error' %}
+  <div class="ev-panel mt-3">
+    <div class="ev-empty">
+      <h2>No hay datos de evaluación</h2>
+      <p class="mb-2">{{ portfolio.errors.0|default:"La plantilla no está disponible o no se pudo leer." }}</p>
+      <p class="ev-note mb-0">Esta vista es independiente del Comando Balón operativo. Puede volver cuando la plantilla esté lista.</p>
+    </div>
+  </div>
+
+  {% elif portfolio.status == 'empty' %}
+  <div class="ev-panel mt-3">
+    <div class="ev-empty">
+      <h2>{% if request.GET.cliente %}Sin resultados para ese filtro{% else %}Sin clientes en la plantilla{% endif %}</h2>
+      <p class="mb-2 ev-note">
+        {% if request.GET.cliente %}
+        Pruebe otro nombre o <a href="{% url 'risk:evaluacion_clientes' %}">limpie el filtro</a>.
+        {% else %}
+        La lectura no encontró períodos/empresas reconocibles.
+        {% endif %}
+      </p>
+    </div>
+  </div>
+
+  {% else %}
+
+  {% if portfolio.errors %}
+  <div class="alert alert-light border small py-2 mt-2 mb-0">
+    Lectura parcial — el tablero sigue disponible:
+    {{ portfolio.errors|join:" · " }}
+  </div>
+  {% endif %}
+
+  <div class="ev-story">{{ portfolio.headline }}</div>
+
+  <form method="get" class="row g-2 mb-3 ev-filter">
+    <div class="col-md-5 col-lg-4">
+      <input type="search" name="cliente" value="{{ request.GET.cliente }}"
+             class="form-control form-control-sm" placeholder="Buscar cliente…" aria-label="Filtrar cliente">
+    </div>
+    <div class="col-auto">
+      <button class="btn btn-sm btn-primary" type="submit">Buscar</button>
+      {% if request.GET.cliente %}
+      <a class="btn btn-sm btn-outline-secondary" href="{% url 'risk:evaluacion_clientes' %}">Limpiar</a>
+      {% endif %}
+    </div>
+  </form>
+
+  <div class="row g-2 mb-3">
+    <div class="col-6 col-md">
+      <div class="ev-stat"><div class="n">{{ portfolio.summary.clientes }}</div><div class="l">Clientes</div></div>
+    </div>
+    <div class="col-6 col-md">
+      <div class="ev-stat is-risk"><div class="n">{{ portfolio.summary.alto }}</div><div class="l">Alto riesgo</div></div>
+    </div>
+    <div class="col-6 col-md">
+      <div class="ev-stat is-warn"><div class="n">{{ portfolio.summary.moderado }}</div><div class="l">Moderado</div></div>
+    </div>
+    <div class="col-6 col-md">
+      <div class="ev-stat is-ok"><div class="n">{{ portfolio.summary.bajo }}</div><div class="l">Bajo riesgo</div></div>
+    </div>
+    <div class="col-6 col-md">
+      <div class="ev-stat is-risk"><div class="n">{% if portfolio.summary.concentracion_pct != None %}{{ portfolio.summary.concentracion_pct|floatformat:0 }}%{% else %}—{% endif %}</div><div class="l">Concentración riesgo</div></div>
+    </div>
+    <div class="col-6 col-md">
+      <div class="ev-stat"><div class="n"><span class="ev-delta-neg">{{ portfolio.summary.deterioro }}</span><span class="text-muted" style="font-size:0.85rem"> / </span><span class="ev-delta-pos">{{ portfolio.summary.mejora }}</span></div><div class="l">Caen / Mejoran</div></div>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-3">
+    <div class="col-lg-8">
+      <div class="ev-panel h-100">
+        <div class="ev-panel-h">
+          <span>Evolución Z</span>
+          <span class="ev-note">Peores 4 + mejores 2 · líneas de umbral</span>
+        </div>
+        {% if portfolio.chart_z_evolution.has_series %}
+        <div class="ev-chart-box"><canvas id="evChartZ" aria-label="Evolución Z"></canvas></div>
+        {% else %}
+        <div class="ev-empty py-4"><p class="mb-0 ev-note">Sin series temporales para graficar.</p></div>
+        {% endif %}
+      </div>
+    </div>
+    <div class="col-lg-4">
+      <div class="ev-panel h-100">
+        <div class="ev-panel-h">
+          <span>Concentración</span>
+          <span class="ev-note">Último período</span>
+        </div>
+        <div class="ev-chart-box"><canvas id="evChartMix" aria-label="Mix de zonas"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  {% if portfolio.falling or portfolio.improving %}
+  <div class="row g-3 mb-3">
+    <div class="col-md-6">
+      <div class="ev-panel h-100">
+        <div class="ev-panel-h"><span>Quién cae</span><span class="ev-chip ev-chip-cae">ΔZ &lt; −0.25</span></div>
+        <ul class="list-unstyled mb-0 px-3 py-1 ev-movers">
+          {% for a in portfolio.falling %}
+          <li class="d-flex justify-content-between gap-2">
+            <a class="ev-client" href="?cliente={{ a.name|urlencode }}">{{ a.name }}</a>
+            <span class="ev-delta-neg text-nowrap">{% if a.z_delta != None %}{{ a.z_delta|floatformat:2 }}{% endif %}</span>
+          </li>
+          {% empty %}
+          <li class="ev-note py-2">Nadie con caída relevante.</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="ev-panel h-100">
+        <div class="ev-panel-h"><span>Quién mejora</span><span class="ev-chip ev-chip-mejora">ΔZ &gt; +0.25</span></div>
+        <ul class="list-unstyled mb-0 px-3 py-1 ev-movers">
+          {% for a in portfolio.improving %}
+          <li class="d-flex justify-content-between gap-2">
+            <a class="ev-client" href="?cliente={{ a.name|urlencode }}">{{ a.name }}</a>
+            <span class="ev-delta-pos text-nowrap">+{{ a.z_delta|floatformat:2 }}</span>
+          </li>
+          {% empty %}
+          <li class="ev-note py-2">Nadie con mejora relevante.</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if portfolio.alerts %}
+  <div class="ev-panel mb-3">
+    <div class="ev-panel-h">
+      <span>Alertas prioritarias</span>
+      <span class="ev-note">{{ portfolio.alerts|length }} · alto riesgo o caída de Z</span>
+    </div>
+    <ul class="list-group list-group-flush small">
+      {% for a in portfolio.alerts|slice:":8" %}
+      <li class="list-group-item d-flex justify-content-between align-items-start gap-2 py-2">
+        <div>
+          <a class="ev-client" href="?cliente={{ a.name|urlencode }}">{{ a.name }}</a>
+          <span class="ev-zone ev-zone-{{ a.zone }} ms-1">{{ a.zone_label }}</span>
+          <div class="ev-note mt-1">{{ a.alert_reasons|join:" · " }}</div>
+        </div>
+        <div class="text-nowrap text-end">
+          <div class="fw-semibold">Z {% if a.z != None %}{{ a.z|floatformat:2 }}{% else %}—{% endif %}</div>
+          {% if a.z_delta != None %}
+          <div class="{% if a.z_delta < 0 %}ev-delta-neg{% else %}ev-delta-pos{% endif %} small">
+            {% if a.z_delta > 0 %}+{% endif %}{{ a.z_delta|floatformat:2 }}
+          </div>
+          {% endif %}
+        </div>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
+  <div class="ev-panel">
+    <div class="ev-panel-h">
+      <span>Ranking por Z</span>
+      <span class="ev-note">Peor → mejor · último período</span>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-hover mb-0 ev-table align-middle">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Cliente</th>
+            <th>Año</th>
+            <th>Zona</th>
+            <th class="text-end">Z</th>
+            <th class="text-end">ΔZ</th>
+            <th class="text-end">Liquidez</th>
+            <th class="text-end">Apalan.</th>
+            <th class="text-end">ROE</th>
+            <th>Trayectoria</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in portfolio.ranking %}
+          <tr class="{% if r.zone == 'alto' %}ev-row-alto{% endif %}">
+            <td class="text-muted">{{ forloop.counter }}</td>
+            <td>
+              <a class="ev-client" href="?cliente={{ r.name|urlencode }}">{{ r.name }}</a>
+              {% if r.status %}<div class="ev-note">{{ r.status }}{% if r.currency_unit %} · {{ r.currency_unit }}{% endif %}</div>{% endif %}
+            </td>
+            <td>{{ r.year|default:"—" }}</td>
+            <td><span class="ev-zone ev-zone-{{ r.zone }}">{{ r.zone_label }}</span></td>
+            <td class="text-end fw-semibold">{% if r.z != None %}{{ r.z|floatformat:2 }}{% else %}—{% endif %}</td>
+            <td class="text-end">
+              {% if r.z_delta != None %}
+              <span class="{% if r.z_delta < 0 %}ev-delta-neg{% elif r.z_delta > 0 %}ev-delta-pos{% endif %}">
+                {% if r.z_delta > 0 %}+{% endif %}{{ r.z_delta|floatformat:2 }}
+              </span>
+              {% else %}—{% endif %}
+            </td>
+            <td class="text-end">{% if r.liquidez != None %}{{ r.liquidez|floatformat:2 }}{% else %}—{% endif %}</td>
+            <td class="text-end">{% if r.apalancamiento != None %}{{ r.apalancamiento|floatformat:2 }}{% else %}—{% endif %}</td>
+            <td class="text-end">{% if r.roe != None %}{{ r.roe|floatformat:2 }}{% else %}—{% endif %}</td>
+            <td>
+              <div class="ev-spark" title="Z por año">
+                {% for h in r.history %}
+                <span class="{{ h.zone }}" style="height:{{ h.spark_h }}px;"></span>
+                {% endfor %}
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {% if selected %}
+  <div class="ev-panel mt-3">
+    <div class="ev-panel-h">
+      <span>Detalle · {{ selected.name }}</span>
+      <a class="ev-note" href="{% url 'risk:evaluacion_clientes' %}">Ver portafolio</a>
+    </div>
+    <div class="table-responsive">
+      <table class="table mb-0 ev-table">
+        <thead>
+          <tr>
+            <th>Año</th><th>Estado</th><th>Zona</th>
+            <th class="text-end">Z</th>
+            <th class="text-end">Ventas</th>
+            <th class="text-end">Utilidad</th>
+            <th class="text-end">Liquidez</th>
+            <th class="text-end">ROE</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for h in selected.history %}
+          <tr>
+            <td>{{ h.year }}</td>
+            <td>{{ h.status|default:"—" }}</td>
+            <td><span class="ev-zone ev-zone-{{ h.zone }}">{{ h.zone_label }}</span></td>
+            <td class="text-end">{% if h.z != None %}{{ h.z|floatformat:2 }}{% else %}—{% endif %}</td>
+            <td class="text-end">{% if h.ventas != None %}{{ h.ventas|floatformat:1 }}{% else %}—{% endif %}</td>
+            <td class="text-end">{% if h.utilidad_neta != None %}{{ h.utilidad_neta|floatformat:1 }}{% else %}—{% endif %}</td>
+            <td class="text-end">{% if h.liquidez != None %}{{ h.liquidez|floatformat:2 }}{% else %}—{% endif %}</td>
+            <td class="text-end">{% if h.roe != None %}{{ h.roe|floatformat:2 }}{% else %}—{% endif %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p class="ev-note px-3 py-2 mb-0">Montos en miles ({{ selected.currency_unit|default:"unidad de la plantilla" }}).</p>
+  </div>
+  {% endif %}
+
+  <p class="ev-note mt-3 mb-0">
+    Fuente: {{ portfolio.source|truncatechars:72 }}
+    {% if portfolio.sheets_read %} · {{ portfolio.sheets_read|join:", " }}{% endif %}
+    · Vista aislada del Comando Balón operativo.
+  </p>
+
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% if portfolio.status == 'ok' or portfolio.status == 'partial' %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+(function () {
+  const zData = {{ chart_z_json|safe }};
+  const mixData = {{ chart_mix_json|safe }};
+  const grid = '#e2e8f0';
+  const ink = '#6b7a8d';
+
+  const zEl = document.getElementById('evChartZ');
+  if (zEl && zData.has_series && zData.labels && zData.labels.length) {
+    const thr = zData.thresholds || {};
+    const plugins = {
+      id: 'evThresholds',
+      afterDraw: function (chart) {
+        const y = chart.scales.y;
+        const a = chart.chartArea;
+        if (!y || !a) return;
+        const ctx = chart.ctx;
+        function line(val, color) {
+          if (val == null) return;
+          const py = y.getPixelForValue(val);
+          if (py < a.top || py > a.bottom) return;
+          ctx.save();
+          ctx.strokeStyle = color;
+          ctx.lineWidth = 1;
+          ctx.setLineDash([4, 4]);
+          ctx.beginPath();
+          ctx.moveTo(a.left, py);
+          ctx.lineTo(a.right, py);
+          ctx.stroke();
+          ctx.restore();
+        }
+        line(thr.alto_lt, '#b4534a88');
+        line(thr.bajo_gte, '#4a7c6f88');
+      }
+    };
+    new Chart(zEl, {
+      type: 'line',
+      data: {
+        labels: zData.labels,
+        datasets: (zData.datasets || []).map(function (ds) {
+          return {
+            label: ds.label,
+            data: ds.data,
+            borderColor: ds.borderColor,
+            backgroundColor: 'transparent',
+            tension: 0.25,
+            spanGaps: true,
+            pointRadius: 2.5,
+            borderWidth: 2,
+          };
+        }),
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 11 }, color: ink } },
+        },
+        scales: {
+          x: { grid: { color: grid }, ticks: { color: ink, font: { size: 11 } } },
+          y: {
+            grid: { color: grid },
+            ticks: { color: ink, font: { size: 11 } },
+            title: { display: true, text: 'Z', font: { size: 11 }, color: ink },
+          },
+        },
+      },
+      plugins: [plugins],
+    });
+  }
+
+  const mixEl = document.getElementById('evChartMix');
+  if (mixEl) {
+    new Chart(mixEl, {
+      type: 'doughnut',
+      data: {
+        labels: mixData.labels,
+        datasets: [{ data: mixData.values, backgroundColor: mixData.colors, borderWidth: 0 }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: '60%',
+        plugins: {
+          legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 11 }, color: ink } },
+        },
+      },
+    });
+  }
+})();
+</script>
+{% endif %}
+{% endblock %}
