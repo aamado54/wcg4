@@ -11,14 +11,20 @@ from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_REL = Path("data/wcg/financiero/combined_series.json")
+DEFAULT_REL = Path("risk/financiero/seed/combined_series.json")
+# Legacy/local rebuild path (gitignored under data/)
+LEGACY_REL = Path("data/wcg/financiero/combined_series.json")
 
 
 def _default_path() -> Path:
     custom = getattr(settings, "WCG_FINANCIERO_COMBINED", None)
     if custom:
         return Path(custom)
-    return Path(settings.BASE_DIR) / DEFAULT_REL
+    base = Path(settings.BASE_DIR)
+    seed = base / DEFAULT_REL
+    if seed.exists():
+        return seed
+    return base / LEGACY_REL
 
 
 def load_combined(path: str | Path | None = None) -> dict[str, Any]:
