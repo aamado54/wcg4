@@ -668,33 +668,45 @@ document.addEventListener("DOMContentLoaded", function () {
   renderAllCharts();
 
   // --- Exportación 4 charts: PNG 1920×1080 (TV). ---
-  // EXPORT_SVG_VERSION=v16-legend-yaxis-nudge
+  // EXPORT_SVG_VERSION=v24-header-tighten
   // No modifica charts visibles (buildLayout / renderChart).
   // Los 4 charts (FACTORING, LEASING, INSURANCE, GRUPO) usan el MISMO layout.
   //
-  // Configuración base (v11, antes del ensayo de fuentes/márgenes v12):
-  //   MARGIN T/B/L/R = 155 / 275 / 100 / 80
-  //   TITLE / SUBTITLE / AXIS / TICK / LEGEND = 72 / 22 / 24 / 20 / 24
-  // Si el ensayo queda mal, restaurar esos valores y EXPORT_SVG_VERSION=v11-bars-navy-blue-png.
+  // BASE original (v16) sigue disponible.
+  //
+  // CHART 5 / v23 — mejor estado funcional (revertir aquí si v24 queda mal):
+  //   EXPORT_SVG_VERSION = "v23-header-stack"
+  //   MARGIN_B = 195
+  //   TITLE_SIZE / SUBTITLE_SIZE = 180 / 44
+  //   SUBTITLE_ABOVE_PLOT = 16 · TITLE_SUBTITLE_GAP = 12 · HEADER_TOP_PAD = 12
+  //   → SUBTITLE_YSHIFT = 16 · TITLE_YSHIFT = 72 · MARGIN_T = 264
+  //   Título y subtítulo = 2 annotations (y=1, yanchor=bottom, yshift).
+  //
+  // v24 (desde chart 5): título −45 px, subtítulo −10 px; margin.t se encoge igual.
 
-  const EXPORT_SVG_VERSION = "v16-legend-yaxis-nudge";
+  const EXPORT_SVG_VERSION = "v24-header-tighten";
   const EXPORT_SUBTITLE =
     "Real vs meta por período. Cifras acumuladas dentro del rango.";
   const EXPORT_WIDTH = 1920;
   const EXPORT_HEIGHT = 1080;
   const IMAGE_WIDTH = 1920;
   const IMAGE_HEIGHT = 1080;
-  // v12: franja blanca superior/inferior ~155 → ~75 (mitad).
-  // Inferior: meses/Período/leyenda + ~75 px blancos libres (antes ~155).
-  const EXPORT_MARGIN_T = 75;
   const EXPORT_MARGIN_B = 195;
+  const EXPORT_TITLE_SIZE = 180;
+  const EXPORT_SUBTITLE_SIZE = 44;
+  // Chart 5: 16 / 12 / 12. v24: subtítulo −10, título −45 (yshift↓ = más cerca del plot).
+  const EXPORT_SUBTITLE_ABOVE_PLOT_PX = 6;
+  const EXPORT_TITLE_SUBTITLE_GAP_PX = 12;
+  const EXPORT_HEADER_TOP_PAD_PX = 12;
+  const EXPORT_SUBTITLE_YSHIFT = EXPORT_SUBTITLE_ABOVE_PLOT_PX;
+  // Chart 5 TITLE_YSHIFT era 72; 72 − 45 = 27.
+  const EXPORT_TITLE_YSHIFT = 27;
+  const EXPORT_MARGIN_T =
+    EXPORT_HEADER_TOP_PAD_PX + EXPORT_TITLE_YSHIFT + EXPORT_TITLE_SIZE;
   // v13: margen L = base 100 + ancho de «500».
   // v14–v16: +3× ancho de un dígito («0»).
   const EXPORT_MARGIN_L_BASE = 100;
   const EXPORT_MARGIN_R = 80;
-  // v12: título 2.5×; resto de textos 2× (ensayo).
-  const EXPORT_TITLE_SIZE = 180;
-  const EXPORT_SUBTITLE_SIZE = 44;
   const EXPORT_AXIS_TITLE_SIZE = 48;
   const EXPORT_TICK_SIZE = 40;
   const EXPORT_LEGEND_SIZE = 48;
@@ -803,30 +815,32 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function buildExportIncomeLayout(title, series, yAxis) {
-    // v12: márgenes blancos a la mitad; fuentes ×2.5 / ×2.
-    // Subtítulo debajo del título (título ~EXPORT_TITLE_SIZE px + aire).
-    const subtitleTopPx = EXPORT_TITLE_SIZE + 28;
+    // Header fuera del plot: 2 annotations con y=1 / yanchor=bottom / yshift (px).
+    // No usar layout.title: con yanchor=top cuelga sobre el subtítulo (chart 4).
     return {
-      title: {
-        text: "<b>" + title + "</b>",
-        font: { size: EXPORT_TITLE_SIZE, color: EXPORT_COLOR_TEXT },
-        xref: "paper",
-        yref: "paper",
-        x: 0.5,
-        xanchor: "center",
-        y: 1,
-        yanchor: "top",
-        pad: { t: 10, b: 2, l: 0, r: 0 },
-      },
+      title: { text: "" },
       annotations: [
+        {
+          text: "<b>" + title + "</b>",
+          xref: "paper",
+          yref: "paper",
+          x: 0.5,
+          y: 1,
+          xanchor: "center",
+          yanchor: "bottom",
+          yshift: EXPORT_TITLE_YSHIFT,
+          showarrow: false,
+          font: { size: EXPORT_TITLE_SIZE, color: EXPORT_COLOR_TEXT },
+        },
         {
           text: EXPORT_SUBTITLE,
           xref: "paper",
           yref: "paper",
           x: 0.5,
-          y: 1 - subtitleTopPx / IMAGE_HEIGHT,
+          y: 1,
           xanchor: "center",
-          yanchor: "top",
+          yanchor: "bottom",
+          yshift: EXPORT_SUBTITLE_YSHIFT,
           showarrow: false,
           font: { size: EXPORT_SUBTITLE_SIZE, color: EXPORT_COLOR_TEXT },
         },
