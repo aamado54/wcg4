@@ -70,6 +70,58 @@
     outline: 2px solid #5a9a7a;
     outline-offset: 2px;
   }
+  .btn-fi-inst {
+    --fi-ink: #1a3d5c;
+    --fi-bg: #d9e6f0;
+    --fi-bg-top: #e8f0f6;
+    --fi-edge: #9bb4c9;
+    display: inline-flex;
+    align-items: center;
+    font-size: 0.875rem;
+    font-weight: 600;
+    letter-spacing: 0.015em;
+    line-height: 1.25;
+    padding: 0.38rem 0.85rem;
+    color: var(--fi-ink) !important;
+    background: linear-gradient(180deg, var(--fi-bg-top) 0%, var(--fi-bg) 100%) !important;
+    border: 1px solid var(--fi-edge) !important;
+    border-bottom-color: #7f9fb8 !important;
+    border-radius: 8px;
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.9) inset,
+      0 -1px 0 rgba(26, 61, 92, 0.06) inset,
+      0 2px 0 #7f9fb8,
+      0 5px 12px rgba(26, 61, 92, 0.14);
+    transform: translateY(0);
+    transition:
+      transform 0.12s ease,
+      box-shadow 0.12s ease,
+      background 0.15s ease,
+      filter 0.15s ease;
+  }
+  .btn-fi-inst:hover {
+    color: #122c44 !important;
+    background: linear-gradient(180deg, #f0f5f9 0%, #dde8f1 100%) !important;
+    filter: brightness(1.03);
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.95) inset,
+      0 -1px 0 rgba(26, 61, 92, 0.05) inset,
+      0 3px 0 #6e91ad,
+      0 7px 16px rgba(26, 61, 92, 0.16);
+  }
+  .btn-fi-inst:active,
+  .btn-fi-inst:focus-visible:active {
+    transform: translateY(2px);
+    background: linear-gradient(180deg, #c5d6e4 0%, #b7cbdc 100%) !important;
+    box-shadow:
+      0 2px 5px rgba(26, 61, 92, 0.2) inset,
+      0 1px 0 #7f9fb8;
+    filter: none;
+  }
+  .btn-fi-inst:focus-visible {
+    outline: 2px solid #5a8aaf;
+    outline-offset: 2px;
+  }
 </style>
 {% endblock %}
 {% block content %}
@@ -80,7 +132,8 @@
     <p class="text-muted small mb-0 mt-1">Montos en quetzales (GTQ).</p>
   </div>
   <div class="d-flex gap-1 flex-wrap align-items-center balon-actions">
-    <a href="{% url 'risk:evaluacion_clientes' %}" class="btn btn-sm btn-ev-fin">Evaluación financiera</a>
+    <a href="{% url 'risk:financiero_institucional' %}" class="btn btn-sm btn-fi-inst">Estados Financieros</a>
+    <a href="{% url 'risk:evaluacion_clientes' %}" class="btn btn-sm btn-ev-fin">Clientes</a>
     <a href="{% url 'risk:export_comando_balon' %}?cliente={{ request.GET.cliente }}&nivel={{ request.GET.nivel }}" class="btn btn-sm btn-outline-primary">Exportar CSV</a>
     <a href="{% url 'risk:cliente_list' %}" class="btn btn-sm btn-outline-secondary">Clientes</a>
   </div>

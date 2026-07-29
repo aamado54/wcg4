@@ -1,0 +1,260 @@
+{% extends "base_wcg.html" %}
+{% load wcg_format %}
+{% block title %}Financiero institucional — Balón de Riesgo{% endblock %}
+{% block extra_head %}
+<style>
+  .fi-wrap { max-width: 1180px; }
+  .fi-kicker {
+    font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--wcg-muted); font-weight: 600; margin-bottom: 0.35rem;
+  }
+  .fi-title { font-size: 1.35rem; font-weight: 700; letter-spacing: -0.02em; margin: 0; color: var(--wcg-ink); }
+  .fi-sub { font-size: 0.82rem; color: var(--wcg-muted); margin: 0.35rem 0 0; max-width: 44rem; line-height: 1.45; }
+  .fi-story {
+    margin: 1rem 0 1.15rem; padding: 0.85rem 1.1rem;
+    background: linear-gradient(135deg, #f5f8f6 0%, #eef3f0 55%, #e8eef5 100%);
+    border: 1px solid var(--wcg-line); border-left: 3px solid #1e4d3a;
+    border-radius: var(--wcg-radius); font-size: 0.9rem; color: var(--wcg-ink); line-height: 1.45;
+  }
+  .fi-stat {
+    background: var(--wcg-surface); border: 1px solid var(--wcg-line);
+    border-radius: var(--wcg-radius); padding: 0.85rem 1rem;
+    box-shadow: var(--wcg-shadow); height: 100%;
+  }
+  .fi-stat .n { font-size: 1.35rem; font-weight: 700; letter-spacing: -0.03em; line-height: 1.1; }
+  .fi-stat .l { font-size: 0.72rem; color: var(--wcg-muted); margin-top: 0.3rem; font-weight: 500; }
+  .fi-stat .d { font-size: 0.72rem; margin-top: 0.2rem; font-weight: 600; }
+  .fi-stat.is-ok .n { color: #2f5c4e; }
+  .fi-stat.is-warn .n { color: #7a6320; }
+  .fi-stat.is-risk .n { color: #8a3a34; }
+  .fi-panel {
+    background: var(--wcg-surface); border: 1px solid var(--wcg-line);
+    border-radius: var(--wcg-radius); box-shadow: var(--wcg-shadow); margin-bottom: 1rem;
+  }
+  .fi-panel-h {
+    padding: 0.7rem 1rem; border-bottom: 1px solid var(--wcg-line);
+    font-weight: 600; font-size: 0.88rem; display: flex; justify-content: space-between;
+    align-items: baseline; gap: 0.75rem; flex-wrap: wrap;
+  }
+  .fi-panel-b { padding: 0.75rem 1rem 1rem; }
+  .fi-table th { white-space: nowrap; font-size: 0.72rem; color: var(--wcg-muted); font-weight: 600; }
+  .fi-table td { font-size: 0.84rem; vertical-align: middle; }
+  .fi-table tbody tr:hover { background: #f8fafc; }
+  .fi-num { text-align: right; font-variant-numeric: tabular-nums; }
+  .fi-chart { height: 260px; position: relative; }
+  .fi-notes { font-size: 0.84rem; margin: 0; padding-left: 1.1rem; }
+  .fi-notes li { margin-bottom: 0.35rem; }
+  .fi-chip {
+    display: inline-block; font-size: 0.68rem; font-weight: 600;
+    padding: 0.12rem 0.45rem; border-radius: 3px; background: #e8efe9; color: #1e4d3a;
+  }
+  .fi-bu-tabs a {
+    display: inline-block; padding: 0.28rem 0.65rem; margin: 0 0.15rem 0.25rem 0;
+    border-radius: 6px; border: 1px solid var(--wcg-line); font-size: 0.78rem;
+    color: var(--wcg-muted); text-decoration: none; background: #f7f9fb;
+  }
+  .fi-bu-tabs a.active {
+    background: #1e4d3a; color: #fff; border-color: #1e4d3a;
+  }
+  .fi-empty { text-align: center; padding: 2.5rem 1.5rem; color: var(--wcg-muted); }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
+{% endblock %}
+{% block content %}
+<div class="fi-wrap mx-auto mt-2 mb-4">
+  <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-2">
+    <div>
+      <div class="fi-kicker">Balón de Riesgo · Institución</div>
+      <h1 class="fi-title">Estados financieros · estrategia y riesgo</h1>
+      <p class="fi-sub">Histórico wc-mod5c + importación wcup2 (últimos meses) · unidades {{ board.unit }}. Distinción utilidad contable vs gerencial (disciplina qf).</p>
+    </div>
+    <div class="d-flex gap-1 flex-wrap">
+      <a href="{% url 'risk:comando_balon' %}" class="btn btn-sm btn-outline-secondary">← Comando Balón</a>
+      <a href="{% url 'risk:evaluacion_clientes' %}" class="btn btn-sm btn-outline-secondary">Evaluación clientes</a>
+    </div>
+  </div>
+
+  <div class="fi-bu-tabs mb-2">
+    {% for b, label in bu_choices %}
+      <a href="?bu={{ b }}" class="{% if b == bu %}active{% endif %}">{{ label }}</a>
+    {% endfor %}
+  </div>
+
+  {% if board.status != 'ok' %}
+  <div class="fi-panel">
+    <div class="fi-empty">
+      <h2 class="h5">{{ board.headline }}</h2>
+      <p>{{ board.story }}</p>
+      {% if board.errors %}<p class="small text-danger">{{ board.errors|join:"; " }}</p>{% endif %}
+    </div>
+  </div>
+  {% else %}
+
+  <div class="fi-story">{{ board.story }}</div>
+
+  <div class="row g-2 mb-3">
+    {% for c in board.summary_cards %}
+    <div class="col-6 col-md-4 col-xl-2">
+      <div class="fi-stat is-{{ c.tone }}">
+        <div class="n">{{ c.value }}</div>
+        <div class="l">{{ c.label }}</div>
+        <div class="l">{{ c.hint }}</div>
+        {% if c.delta %}<div class="d">{{ c.delta }}</div>{% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="row g-3 mb-1">
+    <div class="col-lg-6">
+      <div class="fi-panel">
+        <div class="fi-panel-h"><span>Activo — trayectoria</span><span class="fi-chip">{{ board.focus_periods.0 }} → {{ board.focus_periods|last }}</span></div>
+        <div class="fi-panel-b"><div class="fi-chart"><canvas id="fiActivo"></canvas></div></div>
+      </div>
+    </div>
+    <div class="col-lg-6">
+      <div class="fi-panel">
+        <div class="fi-panel-h"><span>Utilidades de balance (302)</span><span class="text-muted small">Contable en libros</span></div>
+        <div class="fi-panel-b"><div class="fi-chart"><canvas id="fiUtil"></canvas></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-lg-5">
+      <div class="fi-panel">
+        <div class="fi-panel-h"><span>Contable vs gerencial</span><span class="text-muted small">{{ bu }}</span></div>
+        <div class="fi-panel-b p-0">
+          <table class="table fi-table mb-0">
+            <thead><tr><th>Concepto</th><th class="fi-num">000 QTZ</th></tr></thead>
+            <tbody>
+            {% for r in board.util_compare %}
+              <tr>
+                <td><div>{{ r.concept }}</div><div class="small text-muted">{{ r.detail }}</div></td>
+                <td class="fi-num">{{ r.amount_display }}</td>
+              </tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="fi-panel">
+        <div class="fi-panel-h"><span>Notas de estrategia / riesgo</span></div>
+        <div class="fi-panel-b">
+          <ul class="fi-notes">
+            {% for n in board.strategy_notes %}<li>{{ n }}</li>{% endfor %}
+          </ul>
+          <p class="small text-muted mb-0 mt-2">{{ board.projection_note }}</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-7">
+      <div class="fi-panel">
+        <div class="fi-panel-h"><span>Liquidez vs apalancamiento (Total)</span></div>
+        <div class="fi-panel-b"><div class="fi-chart"><canvas id="fiRiesgo"></canvas></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="fi-panel">
+    <div class="fi-panel-h"><span>Comparativo por unidad de negocio</span><span class="text-muted small">Último período disponible</span></div>
+    <div class="fi-panel-b p-0 table-responsive">
+      <table class="table fi-table mb-0">
+        <thead>
+          <tr>
+            <th>BU</th>
+            <th class="fi-num">Activo</th>
+            <th class="fi-num">Cartera</th>
+            <th class="fi-num">Util. contable</th>
+            <th class="fi-num">Util. gerencial</th>
+            <th class="fi-num">Liquidez</th>
+            <th class="fi-num">Apalan.</th>
+            <th class="fi-num">ROE</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for r in board.bu_table %}
+          <tr {% if r.bu == bu %}style="background:#f3f7f4"{% endif %}>
+            <td><strong>{{ r.label }}</strong> <span class="text-muted small">{{ r.bu }}</span></td>
+            <td class="fi-num">{{ r.activo|floatformat:0 }}</td>
+            <td class="fi-num">{{ r.cartera|floatformat:0 }}</td>
+            <td class="fi-num">{{ r.util_c|floatformat:0 }}</td>
+            <td class="fi-num">{{ r.util_g|floatformat:0 }}</td>
+            <td class="fi-num">{% if r.liquidez != None %}{{ r.liquidez|floatformat:2 }}×{% else %}—{% endif %}</td>
+            <td class="fi-num">{% if r.apalancamiento != None %}{{ r.apalancamiento|floatformat:2 }}×{% else %}—{% endif %}</td>
+            <td class="fi-num">{% if r.roe_pct != None %}{{ r.roe_pct|floatformat:1 }}%{% else %}—{% endif %}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="fi-panel">
+    <div class="fi-panel-h"><span>Serie reciente — riesgo financiero ({{ bu }})</span><span class="fi-chip">importación + histórico</span></div>
+    <div class="fi-panel-b p-0 table-responsive">
+      <table class="table fi-table mb-0">
+        <thead>
+          <tr>
+            <th>Período</th>
+            <th class="fi-num">Activo</th>
+            <th class="fi-num">Cartera</th>
+            <th class="fi-num">Utilidades</th>
+            <th class="fi-num">Liquidez</th>
+            <th class="fi-num">Apalan.</th>
+            <th class="fi-num">ROA</th>
+            <th class="fi-num">ROE</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for r in board.risk_table %}
+          <tr>
+            <td>{{ r.period }}</td>
+            <td class="fi-num">{{ r.activo|floatformat:0 }}</td>
+            <td class="fi-num">{{ r.cartera|floatformat:0 }}</td>
+            <td class="fi-num">{{ r.utilidades|floatformat:0 }}</td>
+            <td class="fi-num">{% if r.liquidez != None %}{{ r.liquidez|floatformat:2 }}{% else %}—{% endif %}</td>
+            <td class="fi-num">{% if r.apalancamiento != None %}{{ r.apalancamiento|floatformat:2 }}{% else %}—{% endif %}</td>
+            <td class="fi-num">{% if r.roa_pct != None %}{{ r.roa_pct|floatformat:2 }}%{% else %}—{% endif %}</td>
+            <td class="fi-num">{% if r.roe_pct != None %}{{ r.roe_pct|floatformat:1 }}%{% else %}—{% endif %}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="8" class="text-muted text-center py-3">Sin filas recientes</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <p class="small text-muted">Fuente: {{ board.source_path }}</p>
+
+  <script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const a = {{ chart_activo_json|safe }};
+    const u = {{ chart_util_json|safe }};
+    const r = {{ chart_riesgo_json|safe }};
+    const opt = {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 11 } } } },
+      scales: { x: { ticks: { maxRotation: 45, font: { size: 10 } } }, y: { ticks: { font: { size: 10 } } } }
+    };
+    if (window.Chart) {
+      new Chart(document.getElementById('fiActivo'), { type: 'line', data: a, options: opt });
+      new Chart(document.getElementById('fiUtil'), { type: 'line', data: u, options: opt });
+      new Chart(document.getElementById('fiRiesgo'), {
+        type: 'line', data: r,
+        options: {
+          ...opt,
+          scales: {
+            x: opt.scales.x,
+            y: { position: 'left', title: { display: true, text: 'Liquidez', font: { size: 10 } }, ticks: { font: { size: 10 } } },
+            y1: { position: 'right', grid: { drawOnChartArea: false }, title: { display: true, text: 'Apalan.', font: { size: 10 } }, ticks: { font: { size: 10 } } }
+          }
+        }
+      });
+    }
+  });
+  </script>
+  {% endif %}
+</div>
+{% endblock %}

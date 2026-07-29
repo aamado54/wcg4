@@ -1,0 +1,3 @@
+wcsource2512a.xlsx
+~/download/wcg4/lectura_de_datos_al_modelo/wcsource
+wcout2d.xlsx

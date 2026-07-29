@@ -187,6 +187,60 @@ def evaluacion_clientes(request):
 
 
 @login_required
+def financiero_institucional(request):
+    """Tablero institucional: histórico + importación + contable vs gerencial.
+
+    Extensión aislada del Comando Balón (mismo patrón que evaluación clientes).
+    """
+    import json
+
+    from .financiero import build_financiero_board, load_combined
+
+    bu = (request.GET.get("bu") or "T").strip().upper()
+    try:
+        data = load_combined()
+        board = build_financiero_board(data, bu=bu)
+    except Exception:
+        from .financiero.reports import FinancieroBoard
+
+        board = FinancieroBoard(
+            status="error",
+            unit="000 quetzales",
+            source_path="",
+            headline="No se pudo armar el tablero financiero",
+            story="Revise data/wcg/financiero/combined_series.json.",
+            errors=["Error inesperado al construir el tablero."],
+        )
+
+    bu_choices = [
+        ("T", "Total"),
+        ("F", "Factoraje"),
+        ("L", "Leasing"),
+        ("I", "Insurance"),
+        ("S", "Services"),
+    ]
+    if bu not in dict(bu_choices):
+        bu = "T"
+    return render(
+        request,
+        "risk/financiero_institucional.html",
+        {
+            "board": board,
+            "bu": bu,
+            "bu_choices": bu_choices,
+            "chart_activo_json": json.dumps(board.chart_activo),
+            "chart_util_json": json.dumps(board.chart_util),
+            "chart_riesgo_json": json.dumps(board.chart_riesgo),
+            "breadcrumbs": [
+                {"label": "Panel principal", "url": "/panel/"},
+                {"label": "Balón de Riesgo", "url": "/risk/"},
+                {"label": "Financiero institucional"},
+            ],
+        },
+    )
+
+
+@login_required
 def importar(request):
     return redirect("imports:import_hub")
 
