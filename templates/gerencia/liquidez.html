@@ -78,7 +78,7 @@
 {% endblock %}
 {% block extra_js %}
 <script>
-(function(){
+document.addEventListener('DOMContentLoaded', function () {
   if (!window.Chart) return;
   const raw = {{ chart_json|safe }};
   const z = {{ z_json|safe }};
@@ -113,6 +113,6 @@
       options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
     });
   }
-})();
+});
 </script>
 {% endblock %}

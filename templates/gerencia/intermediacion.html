@@ -87,7 +87,7 @@
 {% endblock %}
 {% block extra_js %}
 <script>
-(function(){
+document.addEventListener('DOMContentLoaded', function () {
   const raw = {{ chart_json|safe }};
   if (!raw.labels || !window.Chart) return;
   new Chart(document.getElementById('geInterChart'), {
@@ -103,6 +103,6 @@
       }
     }
   });
-})();
+});
 </script>
 {% endblock %}

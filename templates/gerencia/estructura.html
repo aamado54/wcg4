@@ -42,7 +42,7 @@
 {% endblock %}
 {% block extra_js %}
 <script>
-(function(){
+document.addEventListener('DOMContentLoaded', function () {
   if (!window.Chart) return;
   const opt = { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { font: { size: 10 } } } } };
   const f = {{ chart_fondeo_json|safe }};
@@ -57,6 +57,6 @@
     });
     new Chart(document.getElementById('cDeuda'), { type: 'line', data: { labels: d.labels, datasets: ds }, options: opt });
   }
-})();
+});
 </script>
 {% endblock %}
