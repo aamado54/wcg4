@@ -57,15 +57,27 @@
     background: #1e4d3a; color: #fff; border-color: #1e4d3a;
   }
   .fi-empty { text-align: center; padding: 2.5rem 1.5rem; color: var(--wcg-muted); }
-  .fi-warn {
-    margin: 0 0 1rem; padding: 0.85rem 1.1rem;
+  .fi-warn-btn {
+    display: inline-flex; align-items: center; gap: 0.35rem;
+    font-size: 0.75rem; font-weight: 600; line-height: 1.2;
+    padding: 0.28rem 0.65rem; border-radius: 6px; cursor: pointer;
+    color: #7a6320; background: #fbf6e9; border: 1px solid #e5d7a8;
+    list-style: none;
+  }
+  .fi-warn-btn::-webkit-details-marker { display: none; }
+  .fi-warn-btn .fi-warn-n {
+    display: inline-block; min-width: 1.1rem; padding: 0.05rem 0.35rem;
+    border-radius: 999px; background: #a67c2a; color: #fff; font-size: 0.68rem;
+  }
+  .fi-warn-panel {
+    margin: 0.55rem 0 1rem; padding: 0.75rem 1rem;
     background: #fbf6e9; border: 1px solid #e5d7a8; border-left: 3px solid #a67c2a;
     border-radius: var(--wcg-radius); font-size: 0.84rem; color: #5c4a1a;
   }
-  .fi-warn h2 { font-size: 0.88rem; font-weight: 700; margin: 0 0 0.45rem; color: #7a6320; }
-  .fi-warn ul { margin: 0; padding-left: 1.1rem; }
-  .fi-warn li { margin-bottom: 0.3rem; }
-  .fi-warn .meta { font-size: 0.75rem; color: #8a7a4a; margin-top: 0.5rem; }
+  .fi-warn-panel ul { margin: 0; padding-left: 1.1rem; }
+  .fi-warn-panel li { margin-bottom: 0.3rem; }
+  .fi-warn-panel .meta { font-size: 0.75rem; color: #8a7a4a; margin: 0.5rem 0 0; }
+  .fi-warn-wrap { margin: 0 0 0.85rem; }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
 {% endblock %}
@@ -77,7 +89,7 @@
       <h1 class="fi-title">Estados financieros · estrategia y riesgo</h1>
       <p class="fi-sub">Histórico wc-mod5c + importación wcup2 (últimos meses) · unidades {{ board.unit }}. Distinción utilidad contable vs gerencial (disciplina qf).</p>
     </div>
-    <div class="d-flex gap-1 flex-wrap">
+    <div class="d-flex gap-1 flex-wrap align-items-center">
       {% if board.has_tabla_xlsx %}
       <a href="{% url 'risk:financiero_export_tabla' %}" class="btn btn-sm btn-primary">Descargar tabla Excel</a>
       {% endif %}
@@ -104,15 +116,19 @@
   <div class="fi-story">{{ board.story }}</div>
 
   {% if board.data_warnings %}
-  <div class="fi-warn">
-    <h2>Advertencias de datos ({{ board.warnings_count }} hallazgos)</h2>
-    <ul>
-      {% for w in board.data_warnings %}
-      <li>{{ w.text }}</li>
-      {% endfor %}
-    </ul>
-    <p class="meta">Revise la hoja <em>Advertencias</em> y <em>Datos</em> del Excel. Los huecos de mapeo (p. ej. Cartera L/I, Activo cuenta 1 en 2025) alteran KPIs hasta que se corrija la importación.</p>
-  </div>
+  <details class="fi-warn-wrap">
+    <summary class="fi-warn-btn">
+      Advertencias <span class="fi-warn-n">{{ board.warnings_count }}</span>
+    </summary>
+    <div class="fi-warn-panel">
+      <ul>
+        {% for w in board.data_warnings %}
+        <li>{{ w.text }}</li>
+        {% endfor %}
+      </ul>
+      <p class="meta">Detalle completo en la hoja <em>Advertencias</em> del Excel.</p>
+    </div>
+  </details>
   {% endif %}
 
   <div class="row g-2 mb-3">
