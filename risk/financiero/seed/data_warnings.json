@@ -1,0 +1,1371 @@
+{
+  "generated": "2026-07-29T14:22:10",
+  "count": 195,
+  "warnings": [
+    {
+      "severity": "kpi_gap",
+      "bu": "T",
+      "period": "2023-01",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "T",
+      "period": "2023-02",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "T",
+      "period": "2023-03",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "T",
+      "period": "2023-04",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "T",
+      "period": "2023-05",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "T",
+      "period": "2023-06",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "T",
+      "period": "2023-07",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "T",
+      "period": "2023-08",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "T",
+      "period": "2023-09",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "T",
+      "period": "2023-10",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "T",
+      "period": "2023-11",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "T",
+      "period": "2023-12",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "T",
+      "period": "2024-01",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "T",
+      "period": "2024-02",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "T",
+      "period": "2024-03",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "T",
+      "period": "2024-04",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "T",
+      "period": "2024-05",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "T",
+      "period": "2024-06",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "T",
+      "period": "2024-07",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "T",
+      "period": "2024-08",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "T",
+      "period": "2024-09",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "T",
+      "period": "2024-10",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "T",
+      "period": "2024-11",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "T",
+      "period": "2024-12",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "T",
+      "period": "2025-01",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "T",
+      "period": "2025-02",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "T",
+      "period": "2025-03",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "T",
+      "period": "2025-04",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "T",
+      "period": "2025-06",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "T",
+      "period": "2025-07",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "T",
+      "period": "2025-08",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "T",
+      "period": "2025-09",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "T",
+      "period": "2025-10",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "T",
+      "period": "2025-11",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "T",
+      "period": "2025-12",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "F",
+      "period": "2023-01",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "F",
+      "period": "2023-02",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "F",
+      "period": "2023-03",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "F",
+      "period": "2023-04",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "F",
+      "period": "2023-05",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "F",
+      "period": "2023-06",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "F",
+      "period": "2023-07",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "F",
+      "period": "2023-08",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "F",
+      "period": "2023-09",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "F",
+      "period": "2023-10",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "F",
+      "period": "2023-11",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "F",
+      "period": "2023-12",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "F",
+      "period": "2024-01",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "F",
+      "period": "2024-02",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "F",
+      "period": "2024-03",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "F",
+      "period": "2024-04",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "F",
+      "period": "2024-05",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "F",
+      "period": "2024-06",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "F",
+      "period": "2024-07",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "F",
+      "period": "2024-08",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "F",
+      "period": "2024-09",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "F",
+      "period": "2024-10",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "F",
+      "period": "2024-11",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "F",
+      "period": "2024-12",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "F",
+      "period": "2025-01",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "F",
+      "period": "2025-02",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "F",
+      "period": "2025-03",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "F",
+      "period": "2025-04",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "F",
+      "period": "2025-06",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "F",
+      "period": "2025-07",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "F",
+      "period": "2025-08",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "F",
+      "period": "2025-09",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "F",
+      "period": "2025-10",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "F",
+      "period": "2025-11",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "F",
+      "period": "2025-12",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "L",
+      "period": "2023-01",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "L",
+      "period": "2023-02",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "L",
+      "period": "2023-03",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "L",
+      "period": "2023-04",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "L",
+      "period": "2023-05",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "L",
+      "period": "2023-06",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "L",
+      "period": "2023-07",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "L",
+      "period": "2023-08",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "L",
+      "period": "2023-09",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "L",
+      "period": "2023-10",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "L",
+      "period": "2023-11",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "L",
+      "period": "2023-12",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "L",
+      "period": "2024-01",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "L",
+      "period": "2024-02",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "L",
+      "period": "2024-03",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "L",
+      "period": "2024-04",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "L",
+      "period": "2024-05",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "L",
+      "period": "2024-06",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "L",
+      "period": "2024-07",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "L",
+      "period": "2024-08",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "L",
+      "period": "2024-09",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "L",
+      "period": "2024-10",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "L",
+      "period": "2024-11",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "L",
+      "period": "2024-12",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "L",
+      "period": "2025-01",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "L",
+      "period": "2025-02",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "L",
+      "period": "2025-03",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "L",
+      "period": "2025-04",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "L",
+      "period": "2025-05",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "L",
+      "period": "2025-06",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "L",
+      "period": "2025-07",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "L",
+      "period": "2025-08",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "L",
+      "period": "2025-09",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "L",
+      "period": "2025-10",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "L",
+      "period": "2025-11",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "L",
+      "period": "2025-12",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_map",
+      "bu": "L",
+      "period": "2026-01",
+      "metric": "cartera",
+      "detail": "Sin mapeo de cartera para esta BU (códigos F-only 10103*)"
+    },
+    {
+      "severity": "kpi_map",
+      "bu": "L",
+      "period": "2026-02",
+      "metric": "cartera",
+      "detail": "Sin mapeo de cartera para esta BU (códigos F-only 10103*)"
+    },
+    {
+      "severity": "kpi_map",
+      "bu": "L",
+      "period": "2026-03",
+      "metric": "cartera",
+      "detail": "Sin mapeo de cartera para esta BU (códigos F-only 10103*)"
+    },
+    {
+      "severity": "kpi_map",
+      "bu": "L",
+      "period": "2026-04",
+      "metric": "cartera",
+      "detail": "Sin mapeo de cartera para esta BU (códigos F-only 10103*)"
+    },
+    {
+      "severity": "kpi_map",
+      "bu": "L",
+      "period": "2026-05",
+      "metric": "cartera",
+      "detail": "Sin mapeo de cartera para esta BU (códigos F-only 10103*)"
+    },
+    {
+      "severity": "kpi_map",
+      "bu": "L",
+      "period": "2026-06",
+      "metric": "cartera",
+      "detail": "Sin mapeo de cartera para esta BU (códigos F-only 10103*)"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "I",
+      "period": "2023-01",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "I",
+      "period": "2023-02",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "I",
+      "period": "2023-03",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "I",
+      "period": "2023-04",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "I",
+      "period": "2023-05",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "I",
+      "period": "2023-06",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "I",
+      "period": "2023-07",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "I",
+      "period": "2023-08",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "I",
+      "period": "2023-09",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "I",
+      "period": "2023-10",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "I",
+      "period": "2023-11",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "I",
+      "period": "2023-12",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "I",
+      "period": "2024-01",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "I",
+      "period": "2024-02",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "I",
+      "period": "2024-03",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "I",
+      "period": "2024-04",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "I",
+      "period": "2024-05",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "I",
+      "period": "2024-06",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "I",
+      "period": "2024-07",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "I",
+      "period": "2024-08",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "I",
+      "period": "2024-09",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "I",
+      "period": "2024-10",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "I",
+      "period": "2024-11",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "I",
+      "period": "2024-12",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "I",
+      "period": "2025-01",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "I",
+      "period": "2025-02",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "I",
+      "period": "2025-03",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "I",
+      "period": "2025-04",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "I",
+      "period": "2025-05",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "I",
+      "period": "2025-06",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "I",
+      "period": "2025-07",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "I",
+      "period": "2025-08",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "I",
+      "period": "2025-09",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "I",
+      "period": "2025-10",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "I",
+      "period": "2025-11",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "I",
+      "period": "2025-12",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_map",
+      "bu": "I",
+      "period": "2026-01",
+      "metric": "cartera",
+      "detail": "Sin mapeo de cartera para esta BU (códigos F-only 10103*)"
+    },
+    {
+      "severity": "kpi_map",
+      "bu": "I",
+      "period": "2026-02",
+      "metric": "cartera",
+      "detail": "Sin mapeo de cartera para esta BU (códigos F-only 10103*)"
+    },
+    {
+      "severity": "kpi_map",
+      "bu": "I",
+      "period": "2026-03",
+      "metric": "cartera",
+      "detail": "Sin mapeo de cartera para esta BU (códigos F-only 10103*)"
+    },
+    {
+      "severity": "kpi_map",
+      "bu": "I",
+      "period": "2026-04",
+      "metric": "cartera",
+      "detail": "Sin mapeo de cartera para esta BU (códigos F-only 10103*)"
+    },
+    {
+      "severity": "kpi_map",
+      "bu": "I",
+      "period": "2026-05",
+      "metric": "cartera",
+      "detail": "Sin mapeo de cartera para esta BU (códigos F-only 10103*)"
+    },
+    {
+      "severity": "kpi_map",
+      "bu": "I",
+      "period": "2026-06",
+      "metric": "cartera",
+      "detail": "Sin mapeo de cartera para esta BU (códigos F-only 10103*)"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "S",
+      "period": "2023-01",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "S",
+      "period": "2023-02",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "S",
+      "period": "2023-03",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "S",
+      "period": "2023-04",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "S",
+      "period": "2023-05",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "S",
+      "period": "2023-06",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "S",
+      "period": "2023-07",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "S",
+      "period": "2023-08",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "S",
+      "period": "2023-09",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "S",
+      "period": "2023-10",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "S",
+      "period": "2023-11",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "S",
+      "period": "2023-12",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "S",
+      "period": "2024-01",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "S",
+      "period": "2024-02",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "S",
+      "period": "2024-03",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "S",
+      "period": "2024-04",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "S",
+      "period": "2024-05",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "S",
+      "period": "2024-06",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "S",
+      "period": "2024-07",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "S",
+      "period": "2024-08",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "S",
+      "period": "2024-09",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "S",
+      "period": "2024-10",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "S",
+      "period": "2024-11",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "S",
+      "period": "2024-12",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "S",
+      "period": "2025-01",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "S",
+      "period": "2025-02",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "S",
+      "period": "2025-03",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "S",
+      "period": "2025-04",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "S",
+      "period": "2025-05",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "S",
+      "period": "2025-06",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "S",
+      "period": "2025-07",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "S",
+      "period": "2025-08",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "S",
+      "period": "2025-09",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "S",
+      "period": "2025-10",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "S",
+      "period": "2025-11",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_gap",
+      "bu": "S",
+      "period": "2025-12",
+      "metric": "activo",
+      "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "missing_periods",
+      "bu": "F",
+      "period": "2025-06,2025-07,2025-08,2025-09,2025-10,2025-11,2025-12",
+      "metric": "1",
+      "detail": "ACTIVO — faltan 7 períodos desde 2025-06"
+    },
+    {
+      "severity": "missing_periods",
+      "bu": "L",
+      "period": "2025-06,2025-07,2025-08,2025-09,2025-10,2025-11,2025-12",
+      "metric": "1",
+      "detail": "ACTIVO — faltan 7 períodos desde 2025-06"
+    },
+    {
+      "severity": "missing_periods",
+      "bu": "L",
+      "period": "2026-01,2026-03,2026-04,2026-05,2026-06",
+      "metric": "202",
+      "detail": "PASIVO NO CORRIENTE — faltan 5 períodos desde 2025-06"
+    },
+    {
+      "severity": "missing_periods",
+      "bu": "I",
+      "period": "2025-06,2025-07,2025-08,2025-09,2025-10,2025-11,2025-12",
+      "metric": "1",
+      "detail": "ACTIVO — faltan 7 períodos desde 2025-06"
+    },
+    {
+      "severity": "missing_periods",
+      "bu": "S",
+      "period": "2025-06,2025-07,2025-08,2025-09,2025-10,2025-11,2025-12",
+      "metric": "1",
+      "detail": "ACTIVO — faltan 7 períodos desde 2025-06"
+    }
+  ]
+}

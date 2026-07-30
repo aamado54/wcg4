@@ -36,3 +36,16 @@ class FinancieroInstitucionalTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "Estados financieros")
         self.assertContains(resp, "Utilidad contable")
+
+    def test_export_tabla_xlsx(self):
+        from django.contrib.auth import get_user_model
+
+        User = get_user_model()
+        user = User.objects.create_user("fi_x", password="x")
+        self.client.force_login(user)
+        resp = self.client.get(reverse("risk:financiero_export_tabla"))
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn(
+            "spreadsheetml",
+            resp.get("Content-Type", ""),
+        )

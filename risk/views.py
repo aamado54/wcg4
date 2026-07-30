@@ -241,6 +241,26 @@ def financiero_institucional(request):
 
 
 @login_required
+def financiero_export_tabla(request):
+    """Descarga Excel: una fila por cuenta, columnas = períodos (+ KPIs y advertencias)."""
+    from pathlib import Path
+
+    from django.http import FileResponse, Http404
+
+    from .financiero.quality import tabla_xlsx_path
+
+    path = tabla_xlsx_path()
+    if not path:
+        raise Http404("Tabla Excel no disponible")
+    return FileResponse(
+        path.open("rb"),
+        as_attachment=True,
+        filename="estados_financieros_tabla.xlsx",
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+
+
+@login_required
 def importar(request):
     return redirect("imports:import_hub")
 

@@ -57,6 +57,15 @@
     background: #1e4d3a; color: #fff; border-color: #1e4d3a;
   }
   .fi-empty { text-align: center; padding: 2.5rem 1.5rem; color: var(--wcg-muted); }
+  .fi-warn {
+    margin: 0 0 1rem; padding: 0.85rem 1.1rem;
+    background: #fbf6e9; border: 1px solid #e5d7a8; border-left: 3px solid #a67c2a;
+    border-radius: var(--wcg-radius); font-size: 0.84rem; color: #5c4a1a;
+  }
+  .fi-warn h2 { font-size: 0.88rem; font-weight: 700; margin: 0 0 0.45rem; color: #7a6320; }
+  .fi-warn ul { margin: 0; padding-left: 1.1rem; }
+  .fi-warn li { margin-bottom: 0.3rem; }
+  .fi-warn .meta { font-size: 0.75rem; color: #8a7a4a; margin-top: 0.5rem; }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
 {% endblock %}
@@ -69,8 +78,10 @@
       <p class="fi-sub">Histórico wc-mod5c + importación wcup2 (últimos meses) · unidades {{ board.unit }}. Distinción utilidad contable vs gerencial (disciplina qf).</p>
     </div>
     <div class="d-flex gap-1 flex-wrap">
+      {% if board.has_tabla_xlsx %}
+      <a href="{% url 'risk:financiero_export_tabla' %}" class="btn btn-sm btn-primary">Descargar tabla Excel</a>
+      {% endif %}
       <a href="{% url 'risk:comando_balon' %}" class="btn btn-sm btn-outline-secondary">← Comando Balón</a>
-      <a href="{% url 'risk:evaluacion_clientes' %}" class="btn btn-sm btn-outline-secondary">Evaluación clientes</a>
     </div>
   </div>
 
@@ -91,6 +102,18 @@
   {% else %}
 
   <div class="fi-story">{{ board.story }}</div>
+
+  {% if board.data_warnings %}
+  <div class="fi-warn">
+    <h2>Advertencias de datos ({{ board.warnings_count }} hallazgos)</h2>
+    <ul>
+      {% for w in board.data_warnings %}
+      <li>{{ w.text }}</li>
+      {% endfor %}
+    </ul>
+    <p class="meta">Revise la hoja <em>Advertencias</em> y <em>Datos</em> del Excel. Los huecos de mapeo (p. ej. Cartera L/I, Activo cuenta 1 en 2025) alteran KPIs hasta que se corrija la importación.</p>
+  </div>
+  {% endif %}
 
   <div class="row g-2 mb-3">
     {% for c in board.summary_cards %}

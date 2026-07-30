@@ -68,6 +68,9 @@ class FinancieroBoard:
     chart_activo: dict = field(default_factory=dict)
     chart_util: dict = field(default_factory=dict)
     chart_riesgo: dict = field(default_factory=dict)
+    data_warnings: list = field(default_factory=list)
+    warnings_count: int = 0
+    has_tabla_xlsx: bool = False
 
 
 def _last_n(periods: list[str], n: int = 12) -> list[str]:
@@ -75,7 +78,9 @@ def _last_n(periods: list[str], n: int = 12) -> list[str]:
 
 
 def _kpi(data: dict, bu: str, period: str) -> dict:
-    return ((data.get("kpis") or {}).get(bu) or {}).get(period) or {}
+    from .quality import enrich_kpi_row
+
+    return enrich_kpi_row(((data.get("kpis") or {}).get(bu) or {}).get(period) or {})
 
 
 def build_financiero_board(data: dict[str, Any], bu: str = "T") -> FinancieroBoard:
@@ -138,10 +143,10 @@ def build_financiero_board(data: dict[str, Any], bu: str = "T") -> FinancieroBoa
         },
         {
             "label": "Cartera (aprox.)",
-            "value": _fmt(cartera),
-            "hint": "Cuentas 10103*",
+            "value": _fmt(cartera) if cartera else "—",
+            "hint": "F:10103 · L/I: ver advertencias",
             "delta": None,
-            "tone": "neutral",
+            "tone": "warn" if not cartera else "neutral",
         },
         {
             "label": "Utilidad contable",
@@ -310,6 +315,11 @@ def build_financiero_board(data: dict[str, Any], bu: str = "T") -> FinancieroBoa
         f"ROE {_pct(roe) or 'n/d'}; liquidez {_n(liq):.2f}×."
     )
 
+    from .quality import load_warnings, summarize_warnings, tabla_xlsx_path
+
+    warn_raw = load_warnings()
+    warn_bullets = summarize_warnings(warn_raw)
+
     return FinancieroBoard(
         status="ok",
         unit=data.get("unit") or "000 quetzales",
@@ -335,4 +345,7 @@ def build_financiero_board(data: dict[str, Any], bu: str = "T") -> FinancieroBoa
         chart_activo=chart_activo,
         chart_util=chart_util,
         chart_riesgo=chart_riesgo,
+        data_warnings=warn_bullets,
+        warnings_count=int(warn_raw.get("count") or 0),
+        has_tabla_xlsx=tabla_xlsx_path() is not None,
     )
