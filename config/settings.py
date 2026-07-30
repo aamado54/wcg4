@@ -80,6 +80,7 @@ INSTALLED_APPS = [
     'risk',
     'pgo',
     'reports',
+    'gerencia',
 
     # WCG One (coexistencia de modelos / módulos)
     'apps.portal.apps.PortalConfig',

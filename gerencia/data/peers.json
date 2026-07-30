@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "as_of": "2025-12",
+  "currency_note": "Ratios unitarios (×); no montos. Referencias ilustrativas para comparación gerencial.",
+  "peers": [
+    {
+      "name": "WCG (Total)",
+      "kind": "self",
+      "country": "GT",
+      "period": "live",
+      "liquidez": null,
+      "apalancamiento": null,
+      "note": "Serie institucional propia (combined_series)."
+    },
+    {
+      "name": "Financiera factoraje A (peer)",
+      "kind": "peer",
+      "country": "GT",
+      "period": "2025-12",
+      "liquidez": 1.45,
+      "apalancamiento": 1.65,
+      "note": "NBFI corta; cartera dominante en AC."
+    },
+    {
+      "name": "Leasing B (peer)",
+      "kind": "peer",
+      "country": "GT",
+      "period": "2025-12",
+      "liquidez": 1.15,
+      "apalancamiento": 2.05,
+      "note": "Más activo no corriente; liquidez más baja es esperable."
+    },
+    {
+      "name": "Factoraje regional C",
+      "kind": "peer",
+      "country": "SV",
+      "period": "2025-12",
+      "liquidez": 1.70,
+      "apalancamiento": 1.40,
+      "note": "Perfil conservador de fondeo."
+    },
+    {
+      "name": "NBFI mixta D",
+      "kind": "peer",
+      "country": "HN",
+      "period": "2025-06",
+      "liquidez": 1.25,
+      "apalancamiento": 2.35,
+      "note": "Apalancamiento alto; útil como techo de alerta."
+    },
+    {
+      "name": "Banca comercial (ref.)",
+      "kind": "reference",
+      "country": "GT",
+      "period": "2025-12",
+      "liquidez": 1.05,
+      "apalancamiento": 8.50,
+      "note": "No comparable 1:1; solo ancla de que bancos operan con más apalancamiento."
+    }
+  ]
+}

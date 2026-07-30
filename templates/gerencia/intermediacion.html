@@ -1,0 +1,108 @@
+{% extends "base_wcg.html" %}
+{% block title %}Intermediación — Centro Gerencial{% endblock %}
+{% block extra_head %}
+{% include "gerencia/_styles.html" %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
+{% endblock %}
+{% block content %}
+<div class="ge-wrap mx-auto mt-2 mb-4">
+  <div class="mb-2">
+    <div class="ge-kicker">Centro Gerencial · núcleo del negocio</div>
+    <h1 class="ge-title">Intermediación financiera</h1>
+    <p class="ge-sub">Colocación → captación → margen → overhead → utilidad. Inspirado en RIntGer (wc-mod5c).</p>
+  </div>
+
+  {% include "gerencia/_nav.html" %}
+
+  <form method="get" class="row g-2 ge-ctrl align-items-end mb-3">
+    <div class="col-auto">
+      <label>Unidad</label>
+      <select name="bu" class="form-select form-select-sm" onchange="this.form.submit()">
+        <option value="T" {% if bu == "T" %}selected{% endif %}>Total WCG</option>
+        <option value="F" {% if bu == "F" %}selected{% endif %}>Factoraje</option>
+        <option value="L" {% if bu == "L" %}selected{% endif %}>Leasing</option>
+      </select>
+    </div>
+    <div class="col-auto">
+      <label>Meses</label>
+      <select name="months" class="form-select form-select-sm" onchange="this.form.submit()">
+        <option value="6" {% if months == 6 %}selected{% endif %}>6</option>
+        <option value="12" {% if months == 12 %}selected{% endif %}>12</option>
+        <option value="18" {% if months == 18 %}selected{% endif %}>18</option>
+        <option value="24" {% if months == 24 %}selected{% endif %}>24</option>
+      </select>
+    </div>
+    <div class="col-auto">
+      <label>Utilidad</label>
+      <select name="mode" class="form-select form-select-sm" onchange="this.form.submit()">
+        <option value="gerencial" {% if mode == "gerencial" %}selected{% endif %}>Gerencial (post div.)</option>
+        <option value="contable" {% if mode == "contable" %}selected{% endif %}>Contable</option>
+      </select>
+    </div>
+    {% if board.periods_available %}
+    <div class="col-auto">
+      <label>Hasta</label>
+      <select name="end" class="form-select form-select-sm" onchange="this.form.submit()">
+        {% for p in board.periods_available %}
+        <option value="{{ p }}" {% if end == p %}selected{% endif %}>{{ p }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    {% endif %}
+  </form>
+
+  {% if board.status != "ok" %}
+  <div class="ge-panel"><div class="ge-panel-b text-muted">Sin datos financieros institucionales.</div></div>
+  {% else %}
+  <div class="ge-story">{{ board.story }}</div>
+
+  <div class="row g-3 mb-3">
+    {% for sec in board.sections %}
+    <div class="col-md-6 col-xl">
+      <div class="ge-panel h-100">
+        <div class="ge-panel-h">
+          <span class="ge-sec-letter">{{ sec.id }}</span>{{ sec.title }}
+          <div class="small text-muted fw-normal mt-1">{{ sec.subtitle }}</div>
+        </div>
+        <div class="ge-panel-b">
+          {% for met in sec.metrics %}
+          <div class="mb-2">
+            <div class="small text-muted">{{ met.label }}</div>
+            <div class="fw-bold" style="font-size:1.15rem;letter-spacing:-0.02em;">{{ met.value }}</div>
+            <div class="small text-muted">{{ met.hint }}</div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="ge-panel">
+    <div class="ge-panel-h">Evolución comparativa · {{ board.bu_label }}</div>
+    <div class="ge-panel-b"><div class="ge-chart"><canvas id="geInterChart"></canvas></div></div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+(function(){
+  const raw = {{ chart_json|safe }};
+  if (!raw.labels || !window.Chart) return;
+  new Chart(document.getElementById('geInterChart'), {
+    type: 'line',
+    data: raw,
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: { legend: { labels: { font: { size: 11 } } } },
+      scales: {
+        y: { title: { display: true, text: 'Coloc./Capt.', font: { size: 10 } }, ticks: { font: { size: 10 } } },
+        y1: { position: 'right', grid: { drawOnChartArea: false }, title: { display: true, text: 'Margen/Util.', font: { size: 10 } }, ticks: { font: { size: 10 } } }
+      }
+    }
+  });
+})();
+</script>
+{% endblock %}

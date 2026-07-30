@@ -1,0 +1,118 @@
+{% extends "base_wcg.html" %}
+{% block title %}Liquidez — Centro Gerencial{% endblock %}
+{% block extra_head %}
+{% include "gerencia/_styles.html" %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
+{% endblock %}
+{% block content %}
+<div class="ge-wrap mx-auto mt-2 mb-4">
+  <div class="mb-2">
+    <div class="ge-kicker">Centro Gerencial · con bandas de referencia</div>
+    <h1 class="ge-title">Liquidez y solvencia</h1>
+    <p class="ge-sub">Ratios con zona óptima para NBFI factoraje/leasing, peers y detección de saltos estructurales.</p>
+  </div>
+  {% include "gerencia/_nav.html" %}
+
+  <div class="ge-bu mb-2">
+    <a href="?bu=T" class="{% if bu == 'T' %}active{% endif %}">Total</a>
+    <a href="?bu=F" class="{% if bu == 'F' %}active{% endif %}">Factoraje</a>
+    <a href="?bu=L" class="{% if bu == 'L' %}active{% endif %}">Leasing</a>
+  </div>
+
+  {% if board.status != "ok" %}
+  <div class="ge-panel"><div class="ge-panel-b text-muted">Sin datos.</div></div>
+  {% else %}
+  <div class="ge-story">{{ board.story }}</div>
+  {% if board.break_note %}<div class="ge-break">{{ board.break_note }}</div>{% endif %}
+
+  <div class="row g-3 mb-3">
+    {% for c in board.cards %}
+    <div class="col-md-4 col-lg">
+      <div class="ge-stat is-{{ c.tone }}">
+        <div class="n">{{ c.display }}</div>
+        <div class="l">{{ c.label }}</div>
+        <div class="z">Zona: {{ c.zone }}{% if c.band %} · {{ c.band }}{% endif %}</div>
+        <div class="m">{{ c.meaning }}</div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="ge-panel">
+    <div class="ge-panel-h">Evolución · bandas óptimas de liquidez (líneas guía)</div>
+    <div class="ge-panel-b"><div class="ge-chart"><canvas id="geLiqChart"></canvas></div></div>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-lg-7">
+      <div class="ge-panel">
+        <div class="ge-panel-h">Peers de referencia (liquidez / apalancamiento)</div>
+        <div class="ge-panel-b table-responsive">
+          <table class="table table-sm ge-table mb-0">
+            <thead><tr><th>Institución</th><th>País</th><th>Período</th><th class="text-end">Liquidez</th><th class="text-end">Apalan.</th><th>Nota</th></tr></thead>
+            <tbody>
+              {% for p in board.peers %}
+              <tr {% if p.kind == 'self' %}class="table-success"{% endif %}>
+                <td>{{ p.name }}</td>
+                <td>{{ p.country }}</td>
+                <td>{{ p.period }}</td>
+                <td class="text-end">{% if p.liquidez != None %}{{ p.liquidez|floatformat:2 }}×{% else %}—{% endif %}</td>
+                <td class="text-end">{% if p.apalancamiento != None %}{{ p.apalancamiento|floatformat:2 }}×{% else %}—{% endif %}</td>
+                <td class="small text-muted">{{ p.note }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-5">
+      <div class="ge-panel">
+        <div class="ge-panel-h">Calificador Z NBFI (histórico)</div>
+        <div class="ge-panel-b"><div class="ge-chart"><canvas id="geZChart"></canvas></div></div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+(function(){
+  if (!window.Chart) return;
+  const raw = {{ chart_json|safe }};
+  const z = {{ z_json|safe }};
+  if (raw.labels) {
+    const ds = (raw.datasets || []).slice();
+    const guides = raw.guides_liq || [];
+    guides.forEach(g => {
+      ds.push({
+        label: g.label, data: raw.labels.map(() => g.value),
+        borderColor: g.color || '#2f5c4e44', borderDash: [4,4], pointRadius: 0,
+        yAxisID: 'y', borderWidth: 1, fill: false
+      });
+    });
+    new Chart(document.getElementById('geLiqChart'), {
+      type: 'line',
+      data: { labels: raw.labels, datasets: ds },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: { legend: { labels: { font: { size: 10 }, boxWidth: 12 } } },
+        scales: {
+          y: { title: { display: true, text: 'Liquidez / Ácida', font: { size: 10 } } },
+          y1: { position: 'right', grid: { drawOnChartArea: false }, title: { display: true, text: 'Apalan.', font: { size: 10 } } }
+        }
+      }
+    });
+  }
+  if (z.labels) {
+    new Chart(document.getElementById('geZChart'), {
+      type: 'line',
+      data: { labels: z.labels, datasets: [{ label: 'Z NBFI', data: z.data, borderColor: '#1e4d3a', tension: 0.25 }] },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+    });
+  }
+})();
+</script>
+{% endblock %}

@@ -12,6 +12,8 @@ key.txt
 key.txt.pub
 uploads/
 data/
+!gerencia/data/
+!gerencia/data/**
 *.diff
 output.txt
 dbcontents.txt

@@ -1,0 +1,95 @@
+{% extends "base_wcg.html" %}
+{% block title %}What-if — Centro Gerencial{% endblock %}
+{% block extra_head %}{% include "gerencia/_styles.html" %}{% endblock %}
+{% block content %}
+<div class="ge-wrap mx-auto mt-2 mb-4">
+  <div class="mb-2">
+    <div class="ge-kicker">Centro Gerencial · Control simplificado</div>
+    <h1 class="ge-title">What-if</h1>
+    <p class="ge-sub">Pocos drivers (celdas amarillas) → proyección a 12 meses. Guarde escenarios favoritos.</p>
+  </div>
+  {% include "gerencia/_nav.html" %}
+
+  <form method="post" class="row g-3">
+    {% csrf_token %}
+    <input type="hidden" name="bu" value="{{ bu }}">
+    <div class="col-lg-5">
+      <div class="ge-panel">
+        <div class="ge-panel-h">Drivers (ajustables)</div>
+        <div class="ge-panel-b ge-ctrl">
+          <div class="mb-2">
+            <label>Crecimiento cartera Factoraje (anual)</label>
+            <input class="form-control form-control-sm ge-yellow" name="growth_cartera_f" type="number" step="0.01" value="{{ drivers.growth_cartera_f }}">
+          </div>
+          <div class="mb-2">
+            <label>Crecimiento cartera Leasing (anual)</label>
+            <input class="form-control form-control-sm ge-yellow" name="growth_cartera_l" type="number" step="0.01" value="{{ drivers.growth_cartera_l }}">
+          </div>
+          <div class="mb-2">
+            <label>Tasa activa Factoraje</label>
+            <input class="form-control form-control-sm ge-yellow" name="rate_activa_f" type="number" step="0.001" value="{{ drivers.rate_activa_f }}">
+          </div>
+          <div class="mb-2">
+            <label>Tasa activa Leasing</label>
+            <input class="form-control form-control-sm ge-yellow" name="rate_activa_l" type="number" step="0.001" value="{{ drivers.rate_activa_l }}">
+          </div>
+          <div class="mb-2">
+            <label>Tasa pasiva inversionistas</label>
+            <input class="form-control form-control-sm ge-yellow" name="rate_pasiva_inv" type="number" step="0.001" value="{{ drivers.rate_pasiva_inv }}">
+          </div>
+          <div class="mb-2">
+            <label>Tasa pasiva bancos</label>
+            <input class="form-control form-control-sm ge-yellow" name="rate_pasiva_bancos" type="number" step="0.001" value="{{ drivers.rate_pasiva_bancos }}">
+          </div>
+          <div class="mb-3">
+            <label>Crecimiento overhead</label>
+            <input class="form-control form-control-sm ge-yellow" name="growth_overhead" type="number" step="0.01" value="{{ drivers.growth_overhead }}">
+          </div>
+          <div class="d-flex flex-wrap gap-2">
+            <button class="btn btn-sm btn-primary" type="submit" name="action" value="run">Calcular</button>
+            <button class="btn btn-sm btn-outline-secondary" type="submit" name="action" value="save">Guardar escenario</button>
+          </div>
+          <div class="mt-3">
+            <label>Nombre al guardar</label>
+            <input class="form-control form-control-sm" name="scenario_name" placeholder="Escenario A">
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-7">
+      {% if board.status == "ok" %}
+      <div class="ge-panel">
+        <div class="ge-panel-h">Resultado · {{ board.bu_label }} · base {{ board.base_period }} → +12m</div>
+        <div class="ge-panel-b table-responsive">
+          <table class="table table-sm ge-table">
+            <thead><tr><th>Concepto</th><th class="text-end">Base</th><th class="text-end">Proyectado</th></tr></thead>
+            <tbody>
+              {% for r in board.summary_rows %}
+              <tr><td>{{ r.label }}</td><td class="text-end">{{ r.base }}</td><td class="text-end fw-semibold">{{ r.proj }}</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      {% endif %}
+      <div class="ge-panel">
+        <div class="ge-panel-h">Escenarios guardados</div>
+        <div class="ge-panel-b">
+          {% if scenarios %}
+          <ul class="list-unstyled mb-0">
+            {% for sc in scenarios %}
+            <li class="d-flex justify-content-between align-items-center py-1 border-bottom">
+              <span>{{ sc.name }} <span class="small text-muted">· {{ sc.updated_at|date:"Y-m-d H:i" }}</span></span>
+              <a class="btn btn-sm btn-outline-secondary" href="{% url 'gerencia:load_scenario' sc.pk %}">Cargar</a>
+            </li>
+            {% endfor %}
+          </ul>
+          {% else %}
+          <p class="text-muted small mb-0">Aún no hay escenarios guardados.</p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </form>
+</div>
+{% endblock %}

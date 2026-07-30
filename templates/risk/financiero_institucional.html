@@ -93,6 +93,7 @@
       {% if board.has_tabla_xlsx %}
       <a href="{% url 'risk:financiero_export_tabla' %}" class="btn btn-sm btn-primary">Descargar tabla Excel</a>
       {% endif %}
+      <a href="{% url 'gerencia:liquidez' %}" class="btn btn-sm btn-outline-primary">Centro Gerencial · Liquidez</a>
       <a href="{% url 'risk:comando_balon' %}" class="btn btn-sm btn-outline-secondary">← Comando Balón</a>
     </div>
   </div>
@@ -280,8 +281,16 @@
     if (window.Chart) {
       new Chart(document.getElementById('fiActivo'), { type: 'line', data: a, options: opt });
       new Chart(document.getElementById('fiUtil'), { type: 'line', data: u, options: opt });
+      const rDs = (r.datasets || []).slice();
+      (r.guides_liq || []).forEach(g => {
+        rDs.push({
+          label: g.label, data: (r.labels || []).map(() => g.value),
+          borderColor: g.color || '#2f5c4e44', borderDash: [4,4], pointRadius: 0,
+          yAxisID: 'y', borderWidth: 1, fill: false
+        });
+      });
       new Chart(document.getElementById('fiRiesgo'), {
-        type: 'line', data: r,
+        type: 'line', data: { labels: r.labels, datasets: rDs },
         options: {
           ...opt,
           scales: {

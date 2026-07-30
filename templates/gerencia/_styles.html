@@ -1,0 +1,69 @@
+<style>
+  .ge-wrap { max-width: 1180px; }
+  .ge-kicker {
+    font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--wcg-muted); font-weight: 600; margin-bottom: 0.35rem;
+  }
+  .ge-title { font-size: 1.35rem; font-weight: 700; letter-spacing: -0.02em; margin: 0; color: var(--wcg-ink); }
+  .ge-sub { font-size: 0.82rem; color: var(--wcg-muted); margin: 0.35rem 0 0; max-width: 48rem; line-height: 1.45; }
+  .ge-story {
+    margin: 0.85rem 0 1rem; padding: 0.85rem 1.1rem;
+    background: linear-gradient(135deg, #f4f7f5 0%, #eef2f6 100%);
+    border: 1px solid var(--wcg-line); border-left: 3px solid #1e4d3a;
+    border-radius: var(--wcg-radius); font-size: 0.9rem; line-height: 1.45;
+  }
+  .ge-nav {
+    display: flex; flex-wrap: wrap; gap: 0.35rem; margin: 0 0 1rem;
+    padding: 0.35rem; background: #eef3f0; border: 1px solid #d5e0d8;
+    border-radius: 10px;
+  }
+  .ge-nav a {
+    padding: 0.35rem 0.75rem; border-radius: 7px; font-size: 0.8rem; font-weight: 600;
+    text-decoration: none; color: #3d5a4a; background: transparent;
+  }
+  .ge-nav a:hover { background: rgba(255,255,255,0.7); color: #1e4d3a; }
+  .ge-nav a.active { background: #1e4d3a; color: #fff; }
+  .ge-stat {
+    background: var(--wcg-surface); border: 1px solid var(--wcg-line);
+    border-radius: var(--wcg-radius); padding: 0.85rem 1rem;
+    box-shadow: var(--wcg-shadow); height: 100%;
+  }
+  .ge-stat .n { font-size: 1.35rem; font-weight: 700; letter-spacing: -0.03em; line-height: 1.1; }
+  .ge-stat .l { font-size: 0.72rem; color: var(--wcg-muted); margin-top: 0.3rem; font-weight: 500; }
+  .ge-stat .z { font-size: 0.72rem; margin-top: 0.2rem; font-weight: 600; }
+  .ge-stat .m { font-size: 0.75rem; color: var(--wcg-muted); margin-top: 0.45rem; line-height: 1.35; }
+  .ge-stat.is-ok .n { color: #2f5c4e; }
+  .ge-stat.is-warn .n { color: #7a6320; }
+  .ge-stat.is-risk .n { color: #8a3a34; }
+  .ge-panel {
+    background: var(--wcg-surface); border: 1px solid var(--wcg-line);
+    border-radius: var(--wcg-radius); box-shadow: var(--wcg-shadow); margin-bottom: 1rem;
+  }
+  .ge-panel-h {
+    padding: 0.7rem 1rem; border-bottom: 1px solid var(--wcg-line);
+    font-weight: 600; font-size: 0.88rem;
+  }
+  .ge-panel-b { padding: 0.75rem 1rem 1rem; }
+  .ge-chart { height: 280px; position: relative; }
+  .ge-sec-letter {
+    display: inline-flex; width: 1.5rem; height: 1.5rem; align-items: center; justify-content: center;
+    border-radius: 6px; background: #1e4d3a; color: #fff; font-size: 0.75rem; font-weight: 700;
+    margin-right: 0.4rem;
+  }
+  .ge-ctrl label { font-size: 0.72rem; color: var(--wcg-muted); font-weight: 600; display:block; margin-bottom:0.15rem; }
+  .ge-ctrl .form-control, .ge-ctrl .form-select { font-size: 0.85rem; }
+  .ge-yellow { background: #fff8dc !important; border-color: #e6d58a !important; }
+  .ge-table th { font-size: 0.72rem; color: var(--wcg-muted); }
+  .ge-table td { font-size: 0.84rem; vertical-align: middle; }
+  .ge-break {
+    margin: 0 0 1rem; padding: 0.75rem 1rem;
+    background: #fbf6e9; border: 1px solid #e5d7a8; border-left: 3px solid #a67c2a;
+    border-radius: var(--wcg-radius); font-size: 0.86rem; color: #5c4a1a;
+  }
+  .ge-bu a {
+    display: inline-block; padding: 0.28rem 0.65rem; margin: 0 0.15rem 0.25rem 0;
+    border-radius: 6px; border: 1px solid var(--wcg-line); font-size: 0.78rem;
+    color: var(--wcg-muted); text-decoration: none; background: #f7f9fb;
+  }
+  .ge-bu a.active { background: #1e4d3a; color: #fff; border-color: #1e4d3a; }
+</style>

@@ -1,0 +1,5 @@
+<nav class="ge-nav" aria-label="Centro Gerencial">
+  {% for item in nav %}
+  <a href="{% url item.url_name %}{% if bu %}?bu={{ bu }}{% endif %}" class="{% if item.active %}active{% endif %}">{{ item.label }}</a>
+  {% endfor %}
+</nav>

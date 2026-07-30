@@ -322,6 +322,9 @@
               <li class="nav-item">
                 <a class="nav-link{% if '/risk/' in request.path %} active{% endif %}" href="{% url 'risk:comando_balon' %}"><span class="wcg-mod-ico" aria-hidden="true">⚽</span> Balón de Riesgo</a>
               </li>
+              <li class="nav-item">
+                <a class="nav-link{% if '/gerencia/' in request.path %} active{% endif %}" href="{% url 'gerencia:home' %}"><span class="wcg-mod-ico" aria-hidden="true">🧭</span> Centro Gerencial</a>
+              </li>
             </ul>
             <ul class="navbar-nav wcg-nav-secondary align-items-lg-center gap-lg-1">
               <li class="nav-item dropdown">

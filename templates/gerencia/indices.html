@@ -1,0 +1,83 @@
+{% extends "base_wcg.html" %}
+{% block title %}Índices — Centro Gerencial{% endblock %}
+{% block extra_head %}
+{% include "gerencia/_styles.html" %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
+{% endblock %}
+{% block content %}
+<div class="ge-wrap mx-auto mt-2 mb-4">
+  <div class="mb-2">
+    <div class="ge-kicker">Centro Gerencial · catálogo</div>
+    <h1 class="ge-title">Índices estratégicos</h1>
+    <p class="ge-sub">Tabla con significación + chart. Solo los ratios que aplican al negocio de intermediación.</p>
+  </div>
+  {% include "gerencia/_nav.html" %}
+  <div class="ge-bu mb-2">
+    <a href="?bu=T" class="{% if bu == 'T' %}active{% endif %}">Total</a>
+    <a href="?bu=F" class="{% if bu == 'F' %}active{% endif %}">Factoraje</a>
+    <a href="?bu=L" class="{% if bu == 'L' %}active{% endif %}">Leasing</a>
+  </div>
+  {% if board.status != "ok" %}
+  <div class="ge-panel"><div class="ge-panel-b text-muted">Sin datos.</div></div>
+  {% else %}
+  <div class="ge-panel">
+    <div class="ge-panel-h">{{ board.bu_label }} · {{ board.period }} · {{ board.unit }}</div>
+    <div class="ge-panel-b table-responsive">
+      <table class="table table-sm ge-table align-middle">
+        <thead>
+          <tr>
+            <th>Índice</th>
+            <th class="text-end">Valor</th>
+            <th>Zona</th>
+            <th class="text-end">Δ mes</th>
+            <th>Significación</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in board.rows %}
+          <tr>
+            <td class="fw-semibold">{{ r.label }}</td>
+            <td class="text-end ge-tone-{{ r.tone }}">{{ r.display }}</td>
+            <td><span class="ge-tone-{{ r.tone }}">{{ r.zone }}</span></td>
+            <td class="text-end">{% if r.delta != None %}{{ r.delta|floatformat:1 }}%{% else %}—{% endif %}</td>
+            <td class="small text-muted">{{ r.meaning }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="ge-panel">
+    <div class="ge-panel-h">Series seleccionadas</div>
+    <div class="ge-panel-b"><div class="ge-chart"><canvas id="geIdxChart"></canvas></div></div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+(function(){
+  const s = {{ series_json|safe }};
+  if (!s.labels || !window.Chart) return;
+  new Chart(document.getElementById('geIdxChart'), {
+    type: 'line',
+    data: {
+      labels: s.labels,
+      datasets: [
+        { label: 'Liquidez', data: s.liquidez, borderColor: '#2f5c4e', yAxisID: 'y', tension: 0.25 },
+        { label: 'Ácida', data: s.acida, borderColor: '#2f6f9f', yAxisID: 'y', borderDash: [4,3], tension: 0.25 },
+        { label: 'Apalancamiento', data: s.apalancamiento, borderColor: '#8a3a34', yAxisID: 'y1', tension: 0.25 },
+        { label: 'Z', data: s.z_score, borderColor: '#8a6d3b', yAxisID: 'y1', tension: 0.25 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: {
+        y: { title: { display: true, text: 'Liq/Ácida', font: { size: 10 } } },
+        y1: { position: 'right', grid: { drawOnChartArea: false }, title: { display: true, text: 'Apa/Z', font: { size: 10 } } }
+      }
+    }
+  });
+})();
+</script>
+{% endblock %}

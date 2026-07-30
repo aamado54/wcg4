@@ -1,0 +1,72 @@
+{
+  "version": 1,
+  "institution_profile": "NBFI factoraje/leasing — centroamérica",
+  "notes": "Bandas orientativas para WCG (factoraje + leasing). Ajustables; no son límites regulatorios.",
+  "ratios": {
+    "liquidez": {
+      "label": "Liquidez (AC/PC)",
+      "unit": "×",
+      "low_critical": 1.05,
+      "low_warn": 1.20,
+      "high_warn": 2.10,
+      "high_critical": 2.60,
+      "optimal_low": 1.30,
+      "optimal_high": 1.85,
+      "meaning_low": "Tensión de liquidez: activo corriente insuficiente frente a obligaciones de corto plazo.",
+      "meaning_high": "Exceso de liquidez: posible capital ocioso o crecimiento de cartera bajo.",
+      "meaning_ok": "Zona razonable para una financiera de factoraje/leasing de corto plazo."
+    },
+    "apalancamiento": {
+      "label": "Apalancamiento (Pasivo/Patrimonio)",
+      "unit": "×",
+      "low_critical": 0.40,
+      "low_warn": 0.70,
+      "high_warn": 2.20,
+      "high_critical": 3.00,
+      "optimal_low": 0.90,
+      "optimal_high": 1.90,
+      "meaning_low": "Poco apalancamiento: puede indicar subuso de capacidad de fondeo.",
+      "meaning_high": "Apalancamiento elevado: vigilar fondeo bancario y preferentes vs patrimonio.",
+      "meaning_ok": "Estructura de fondeo típica de NBFI de colocación corta."
+    },
+    "acida": {
+      "label": "Prueba ácida adaptada",
+      "unit": "×",
+      "low_critical": 0.95,
+      "low_warn": 1.10,
+      "high_warn": 2.00,
+      "high_critical": 2.50,
+      "optimal_low": 1.15,
+      "optimal_high": 1.75,
+      "meaning_low": "Liquidez rápida débil (cartera + efectivo proxy vs PC).",
+      "meaning_high": "Buffer líquido alto respecto al pasivo corriente.",
+      "meaning_ok": "Cobertura rápida adecuada para el ciclo de factoraje."
+    },
+    "deuda_patrimonio": {
+      "label": "Deuda gerencial / Patrimonio",
+      "unit": "×",
+      "low_critical": 0.50,
+      "low_warn": 0.80,
+      "high_warn": 2.50,
+      "high_critical": 3.50,
+      "optimal_low": 1.00,
+      "optimal_high": 2.20,
+      "meaning_low": "Poca deuda gerencial relativa al patrimonio.",
+      "meaning_high": "Deuda (pasivo + preferentes est.) elevada vs patrimonio.",
+      "meaning_ok": "Equilibrio fondeo/capital típico del negocio."
+    },
+    "z_score": {
+      "label": "Calificador Z (NBFI WCG)",
+      "unit": "",
+      "low_critical": 1.20,
+      "low_warn": 1.80,
+      "high_warn": 4.50,
+      "high_critical": 6.00,
+      "optimal_low": 2.20,
+      "optimal_high": 3.80,
+      "meaning_low": "Zona de estrés estructural (liquidez, utilidad o capital).",
+      "meaning_high": "Holgura alta; revisar si el crecimiento de cartera está rezagado.",
+      "meaning_ok": "Perfil financiero estable para la institución."
+    }
+  }
+}

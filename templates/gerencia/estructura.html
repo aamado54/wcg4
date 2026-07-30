@@ -1,0 +1,62 @@
+{% extends "base_wcg.html" %}
+{% block title %}Estructura — Centro Gerencial{% endblock %}
+{% block extra_head %}
+{% include "gerencia/_styles.html" %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
+{% endblock %}
+{% block content %}
+<div class="ge-wrap mx-auto mt-2 mb-4">
+  <div class="mb-2">
+    <div class="ge-kicker">Centro Gerencial · fondeo y activos</div>
+    <h1 class="ge-title">Estructura y endeudamiento</h1>
+    <p class="ge-sub">Perfil de pasivos, patrimonio, activos y deuda gerencial (pasivo + preferentes est.).</p>
+  </div>
+  {% include "gerencia/_nav.html" %}
+  <div class="ge-bu mb-2">
+    <a href="?bu=T" class="{% if bu == 'T' %}active{% endif %}">Total</a>
+    <a href="?bu=F" class="{% if bu == 'F' %}active{% endif %}">Factoraje</a>
+    <a href="?bu=L" class="{% if bu == 'L' %}active{% endif %}">Leasing</a>
+  </div>
+  {% if board.status != "ok" %}
+  <div class="ge-panel"><div class="ge-panel-b text-muted">Sin datos.</div></div>
+  {% else %}
+  <div class="ge-story">{{ board.story }}</div>
+  <div class="row g-3 mb-3">
+    {% for c in board.cards %}
+    <div class="col-md">
+      <div class="ge-stat {% if c.tone %}is-{{ c.tone }}{% endif %}">
+        <div class="n">{{ c.display }}</div>
+        <div class="l">{{ c.label }}</div>
+        <div class="z">{{ c.hint }}</div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  <div class="row g-3">
+    <div class="col-lg-4"><div class="ge-panel"><div class="ge-panel-h">Fondeo vs patrimonio</div><div class="ge-panel-b"><div class="ge-chart"><canvas id="cFondeo"></canvas></div></div></div></div>
+    <div class="col-lg-4"><div class="ge-panel"><div class="ge-panel-h">Activos</div><div class="ge-panel-b"><div class="ge-chart"><canvas id="cActivos"></canvas></div></div></div></div>
+    <div class="col-lg-4"><div class="ge-panel"><div class="ge-panel-h">Deuda gerencial / Pat.</div><div class="ge-panel-b"><div class="ge-chart"><canvas id="cDeuda"></canvas></div></div></div></div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+(function(){
+  if (!window.Chart) return;
+  const opt = { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { font: { size: 10 } } } } };
+  const f = {{ chart_fondeo_json|safe }};
+  const a = {{ chart_activos_json|safe }};
+  const d = {{ chart_deuda_json|safe }};
+  if (f.labels) new Chart(document.getElementById('cFondeo'), { type: 'line', data: f, options: opt });
+  if (a.labels) new Chart(document.getElementById('cActivos'), { type: 'line', data: a, options: opt });
+  if (d.labels) {
+    const ds = (d.datasets || []).slice();
+    (d.guides || []).forEach(g => {
+      ds.push({ label: g.label, data: d.labels.map(() => g.value), borderColor: g.color, borderDash: [4,4], pointRadius: 0, borderWidth: 1 });
+    });
+    new Chart(document.getElementById('cDeuda'), { type: 'line', data: { labels: d.labels, datasets: ds }, options: opt });
+  }
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,104 @@
+{% extends "base_wcg.html" %}
+{% load wcg_format %}
+{% block title %}Detalle — Centro Gerencial{% endblock %}
+{% block extra_head %}{% include "gerencia/_styles.html" %}{% endblock %}
+{% block content %}
+<div class="ge-wrap mx-auto mt-2 mb-4">
+  <div class="mb-2">
+    <div class="ge-kicker">Centro Gerencial · reportes secundarios</div>
+    <h1 class="ge-title">Detalle</h1>
+    <p class="ge-sub">Trimestral (RTrim), series mensuales de intermediación e índices. Consulta ocasional.</p>
+  </div>
+  {% include "gerencia/_nav.html" %}
+
+  <form method="get" class="row g-2 ge-ctrl mb-3">
+    <div class="col-auto">
+      <label>Unidad</label>
+      <select name="bu" class="form-select form-select-sm" onchange="this.form.submit()">
+        <option value="T" {% if bu == "T" %}selected{% endif %}>Total</option>
+        <option value="F" {% if bu == "F" %}selected{% endif %}>Factoraje</option>
+        <option value="L" {% if bu == "L" %}selected{% endif %}>Leasing</option>
+      </select>
+    </div>
+    <div class="col-auto">
+      <label>Modo</label>
+      <select name="mode" class="form-select form-select-sm" onchange="this.form.submit()">
+        <option value="gerencial" {% if mode == "gerencial" %}selected{% endif %}>Gerencial</option>
+        <option value="contable" {% if mode == "contable" %}selected{% endif %}>Contable</option>
+      </select>
+    </div>
+  </form>
+
+  <div class="ge-panel">
+    <div class="ge-panel-h">Resumen trimestral</div>
+    <div class="ge-panel-b table-responsive">
+      <table class="table table-sm ge-table">
+        <thead><tr><th>Trimestre</th><th>Fin</th><th class="text-end">Colocaciones</th><th class="text-end">Margen</th><th class="text-end">Utilidad</th></tr></thead>
+        <tbody>
+          {% for r in trim.rows %}
+          <tr>
+            <td>{{ r.quarter }}</td>
+            <td>{{ r.end_period }}</td>
+            <td class="text-end">{{ r.colocaciones|floatformat:0 }}</td>
+            <td class="text-end">{{ r.margen_bruto|floatformat:0 }}</td>
+            <td class="text-end">{{ r.utilidad|floatformat:0 }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="5" class="text-muted">Sin datos</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="ge-panel">
+    <div class="ge-panel-h">Índices · últimos períodos</div>
+    <div class="ge-panel-b table-responsive">
+      <table class="table table-sm ge-table">
+        <thead><tr><th>Índice</th><th class="text-end">Valor</th><th>Nota</th></tr></thead>
+        <tbody>
+          {% for r in idx.rows %}
+          <tr>
+            <td>{{ r.label }}</td>
+            <td class="text-end">{{ r.display }}</td>
+            <td class="small text-muted">{{ r.note }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {% if inter.series %}
+  <div class="ge-panel">
+    <div class="ge-panel-h">Intermediación mensual (detalle)</div>
+    <div class="ge-panel-b table-responsive">
+      <table class="table table-sm ge-table">
+        <thead>
+          <tr>
+            <th>Período</th>
+            <th class="text-end">Coloc.</th>
+            <th class="text-end">Capt.</th>
+            <th class="text-end">Margen</th>
+            <th class="text-end">Overhead</th>
+            <th class="text-end">Utilidad</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in inter.series %}
+          <tr>
+            <td>{{ s.period }}</td>
+            <td class="text-end">{{ s.colocaciones|floatformat:0 }}</td>
+            <td class="text-end">{{ s.captaciones|floatformat:0 }}</td>
+            <td class="text-end">{{ s.margen_bruto|floatformat:0 }}</td>
+            <td class="text-end">{{ s.overhead_neto|floatformat:0 }}</td>
+            <td class="text-end">{{ s.utilidad|floatformat:0 }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,39 @@
+{% extends "base_wcg.html" %}
+{% block title %}Comando — Centro Gerencial{% endblock %}
+{% block extra_head %}{% include "gerencia/_styles.html" %}{% endblock %}
+{% block content %}
+<div class="ge-wrap mx-auto mt-2 mb-4">
+  <div class="mb-2">
+    <div class="ge-kicker">Centro Gerencial · pulso ejecutivo</div>
+    <h1 class="ge-title">Comando</h1>
+    <p class="ge-sub">Señales cruzadas de intermediación, liquidez, riesgo, PGO y CRM — estilo suite, con datos reales de wcg4.</p>
+  </div>
+  {% include "gerencia/_nav.html" %}
+
+  <div class="row g-3 mb-3">
+    {% for s in board.signals %}
+    <div class="col-md-4">
+      <a href="{{ s.href }}" class="text-decoration-none text-reset">
+        <div class="ge-stat is-{{ s.tone }}">
+          <div class="l">{{ s.domain }}</div>
+          <div class="n">{{ s.value }}</div>
+          <div class="l">{{ s.title }}</div>
+          <div class="m">{{ s.detail }}</div>
+        </div>
+      </a>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="ge-panel">
+    <div class="ge-panel-h">Narrativa flash{% if board.period %} · {{ board.period }}{% endif %}</div>
+    <div class="ge-panel-b">
+      <ol class="mb-0" style="padding-left:1.2rem;">
+        {% for line in board.narrative %}
+        <li class="mb-2">{{ line }}</li>
+        {% endfor %}
+      </ol>
+    </div>
+  </div>
+</div>
+{% endblock %}

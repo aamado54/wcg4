@@ -14,6 +14,7 @@ urlpatterns = [
     path("risk/", include("risk.urls")),
     path("pgo/", include("pgo.urls")),
     path("reports/", include("reports.urls")),
+    path("gerencia/", include("gerencia.urls")),
 
     # Entry: splash → menú
     path("", portal_views.splash, name="splash"),

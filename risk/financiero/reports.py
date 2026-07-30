@@ -248,6 +248,26 @@ def build_financiero_board(data: dict[str, Any], bu: str = "T") -> FinancieroBoa
             },
         ],
     }
+    # Bandas óptimas desde Centro Gerencial (si el módulo está disponible)
+    try:
+        from gerencia.calc.bands import band_chart_guides, evaluate_ratio
+
+        chart_riesgo["guides_liq"] = band_chart_guides("liquidez")
+        chart_riesgo["guides_apa"] = band_chart_guides("apalancamiento")
+        liq_ev = evaluate_ratio("liquidez", float(liq) if liq is not None else None)
+        apa_ev = evaluate_ratio("apalancamiento", float(apa) if apa is not None else None)
+        strategy_notes_band = [
+            f"Liquidez {_n(liq):.2f}× → zona «{liq_ev.get('zone')}» "
+            f"(óptimo {liq_ev['bands'].get('optimal_low')}–{liq_ev['bands'].get('optimal_high')}×). "
+            f"{liq_ev.get('meaning')}",
+            f"Apalancamiento {_n(apa):.2f}× → zona «{apa_ev.get('zone')}» "
+            f"(óptimo {apa_ev['bands'].get('optimal_low')}–{apa_ev['bands'].get('optimal_high')}×). "
+            f"{apa_ev.get('meaning')}",
+        ]
+    except Exception:  # noqa: BLE001
+        strategy_notes_band = []
+        chart_riesgo["guides_liq"] = []
+        chart_riesgo["guides_apa"] = []
 
     # Risk table last 6 recent months for selected BU
     risk_periods = recent[-6:] if recent else focus[-6:]
@@ -296,6 +316,7 @@ def build_financiero_board(data: dict[str, Any], bu: str = "T") -> FinancieroBoa
         "Utilidad contable vs gerencial: misma disciplina que qf/wc_engine — la gerencial resta el costo a inversionistas.",
         "Importación reciente cubre ene–jun 2026 (BG+ER por F/L/I/S) vía wcup2 sobre wcsource.",
         "El extracto qf aporta tasas/crecimientos de control para contrastar trayectoria proyectada 2026.",
+        *strategy_notes_band,
     ]
     if _n(liq) < 1.15:
         strategy_notes.append("Señal de riesgo: liquidez Total bajo 1.15× — revisar pasivo corriente vs activo líquido.")
