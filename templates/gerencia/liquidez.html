@@ -28,8 +28,17 @@
   {% if board.status != "ok" %}
   <div class="ge-panel"><div class="ge-panel-b text-muted">Sin datos.</div></div>
   {% else %}
-  <div class="ge-story">{{ board.story }}</div>
-  {% if board.break_note %}<div class="ge-break">{{ board.break_note }}</div>{% endif %}
+  {% if board.story or board.break_note %}
+  <div class="mb-2">
+    <button type="button" class="btn btn-sm btn-outline-secondary" id="geLiqNotesBtn" aria-expanded="false">
+      Ver notas
+    </button>
+    <div id="geLiqNotes" class="ge-help-panel mt-2" style="margin-top:0.5rem;">
+      {% if board.story %}<div class="ge-story mb-0" style="margin:0;">{{ board.story }}</div>{% endif %}
+      {% if board.break_note %}<div class="ge-break mb-0" style="margin:0.65rem 0 0;">{{ board.break_note }}</div>{% endif %}
+    </div>
+  </div>
+  {% endif %}
 
   <div class="row g-3 mb-3">
     {% for c in board.cards %}
@@ -85,6 +94,15 @@
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+  const notesBtn = document.getElementById('geLiqNotesBtn');
+  const notesPanel = document.getElementById('geLiqNotes');
+  if (notesBtn && notesPanel) {
+    notesBtn.addEventListener('click', function () {
+      const open = notesPanel.classList.toggle('open');
+      notesBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      notesBtn.textContent = open ? 'Ocultar notas' : 'Ver notas';
+    });
+  }
   if (!window.Chart) return;
   const raw = {{ chart_json|safe }};
   const z = {{ z_json|safe }};

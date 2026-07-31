@@ -26,7 +26,14 @@
   {% if board.status != "ok" %}
   <div class="ge-panel"><div class="ge-panel-b text-muted">Sin datos.</div></div>
   {% else %}
-  <div class="ge-story">{{ board.story }}</div>
+  {% if board.story %}
+  <div class="mb-2">
+    <button type="button" class="btn btn-sm btn-outline-secondary" id="geEstNotesBtn" aria-expanded="false">Ver notas</button>
+    <div id="geEstNotes" class="ge-help-panel mt-2">
+      <div class="ge-story mb-0" style="margin:0;">{{ board.story }}</div>
+    </div>
+  </div>
+  {% endif %}
   <div class="row g-3 mb-3">
     {% for c in board.cards %}
     <div class="col-md">
@@ -49,6 +56,15 @@
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+  const notesBtn = document.getElementById('geEstNotesBtn');
+  const notesPanel = document.getElementById('geEstNotes');
+  if (notesBtn && notesPanel) {
+    notesBtn.addEventListener('click', function () {
+      const open = notesPanel.classList.toggle('open');
+      notesBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      notesBtn.textContent = open ? 'Ocultar notas' : 'Ver notas';
+    });
+  }
   if (!window.Chart) return;
   const opt = { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { font: { size: 10 } } } } };
   const f = {{ chart_fondeo_json|safe }};
