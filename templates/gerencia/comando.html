@@ -1,39 +1,124 @@
 {% extends "base_wcg.html" %}
-{% block title %}Comando — Centro Gerencial{% endblock %}
-{% block extra_head %}{% include "gerencia/_styles.html" %}{% endblock %}
+{% block title %}Comando — plataforma de lanzamiento{% endblock %}
+{% block extra_head %}
+{% include "gerencia/_styles.html" %}
+<style>
+  .cmd-page {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0.5rem 0 2rem;
+  }
+  .cmd-hero {
+    background: linear-gradient(145deg, #0f1a30 0%, #1a2744 55%, #243556 100%);
+    color: #e8eef8;
+    border-radius: 14px;
+    padding: 1.35rem 1.5rem 1.25rem;
+    margin-bottom: 1.1rem;
+    border: 1px solid #2a3f66;
+  }
+  .cmd-hero h1 {
+    font-size: 1.55rem; font-weight: 700; letter-spacing: -0.03em; margin: 0 0 0.35rem;
+  }
+  .cmd-hero p { margin: 0; opacity: 0.88; font-size: 0.92rem; max-width: 40rem; line-height: 1.45; }
+  .cmd-hint {
+    margin-top: 0.85rem; font-size: 0.8rem; font-weight: 600;
+    color: #c9a227; letter-spacing: 0.02em;
+  }
+  .cmd-tile {
+    display: block; text-decoration: none; color: inherit;
+    background: #fff; border: 1px solid #d7dee8; border-radius: 12px;
+    padding: 1.05rem 1.1rem; height: 100%;
+    box-shadow: 0 8px 0 #c5d0dc, 0 12px 28px rgba(15,26,48,0.08);
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+  }
+  .cmd-tile:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 0 #b7c4d2, 0 16px 32px rgba(15,26,48,0.12);
+    color: inherit;
+  }
+  .cmd-tile:active {
+    transform: translateY(4px);
+    box-shadow: 0 2px 0 #a8b8c8, 0 4px 12px rgba(15,26,48,0.08);
+  }
+  .cmd-tile .dom { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: #6b7a8d; font-weight: 700; }
+  .cmd-tile .val { font-size: 1.7rem; font-weight: 700; letter-spacing: -0.03em; margin: 0.25rem 0; color: #1a2744; }
+  .cmd-tile.is-ok .val { color: #2f5c4e; }
+  .cmd-tile.is-warn .val { color: #7a6320; }
+  .cmd-tile.is-risk .val { color: #8a3a34; }
+  .cmd-tile .ttl { font-size: 0.95rem; font-weight: 600; color: #2a3441; }
+  .cmd-tile .det { font-size: 0.8rem; color: #6b7a8d; margin-top: 0.25rem; }
+  .cmd-tile .go { font-size: 0.78rem; font-weight: 600; color: #3d5a73; margin-top: 0.65rem; }
+  .cmd-narr {
+    margin-top: 1rem; background: #f4f6fa; border: 1px dashed #b7c9d8;
+    border-radius: 12px; padding: 1rem 1.15rem;
+  }
+</style>
+{% endblock %}
 {% block content %}
-<div class="ge-wrap mx-auto mt-2 mb-4">
-  <div class="mb-2">
-    <div class="ge-kicker">Centro Gerencial · pulso ejecutivo</div>
-    <h1 class="ge-title">Comando</h1>
-    <p class="ge-sub">Señales cruzadas de intermediación, liquidez, riesgo, PGO y CRM — estilo suite, con datos reales de wcg4.</p>
-  </div>
+<div class="cmd-page">
   {% include "gerencia/_nav.html" %}
 
-  <div class="row g-3 mb-3">
+  <div class="cmd-hero">
+    <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap">
+      <div>
+        <div style="font-size:0.7rem;letter-spacing:0.12em;text-transform:uppercase;opacity:0.7;font-weight:600;">Plataforma de lanzamiento</div>
+        <h1>Comando</h1>
+        <p>
+          No es un reporte más: es el tablero de despegue. Cada cifra lo lleva al módulo donde
+          profundiza. Sirve para empezar la revisión gerencial en un solo vistazo.
+        </p>
+        <div class="cmd-hint">Pulse cualquier cifra para abrir el detalle →</div>
+      </div>
+      <button type="button" class="ge-help-btn" id="cmdHelpBtn" title="Por qué este Comando" aria-expanded="false"
+        style="border-color:#5a6f94;background:#1a2744;color:#e8eef8;">?</button>
+    </div>
+    <div class="ge-help-panel" id="cmdHelp" style="background:#132038;border-color:#2a3f66;color:#d7e0ef;">
+      <p class="mb-2"><strong>Por qué existe el Comando y qué muestra</strong></p>
+      <ul class="mb-0" style="padding-left:1.1rem;">
+        <li><strong>Intermediación / margen</strong> — salud del negocio núcleo; lleva a Intermediación.</li>
+        <li><strong>Liquidez / Z</strong> — solvencia de corto plazo; lleva a Liquidez.</li>
+        <li><strong>Alertas del Balón</strong> — fuego operativo en cartera; lleva a Riesgo.</li>
+        <li><strong>Tickets PGO</strong> — fricción operativa diaria; lleva a PGO.</li>
+        <li><strong>Entidades CRM</strong> — base comercial; lleva a CRM.</li>
+        <li><strong>Apalancamiento</strong> — estructura de fondeo; lleva a Estructura.</li>
+      </ul>
+      <p class="mb-0 mt-2">
+        Estas seis señales cubren negocio, solvencia, riesgo, operación y comercial sin saturar.
+        La narrativa flash debajo resume el mismo pulso en texto.
+      </p>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-2">
     {% for s in board.signals %}
-    <div class="col-md-4">
-      <a href="{{ s.href }}" class="text-decoration-none text-reset">
-        <div class="ge-stat is-{{ s.tone }}">
-          <div class="l">{{ s.domain }}</div>
-          <div class="n">{{ s.value }}</div>
-          <div class="l">{{ s.title }}</div>
-          <div class="m">{{ s.detail }}</div>
-        </div>
+    <div class="col-md-6 col-lg-4">
+      <a href="{{ s.href }}" class="cmd-tile is-{{ s.tone }}">
+        <div class="dom">{{ s.domain }}</div>
+        <div class="val">{{ s.value }}</div>
+        <div class="ttl">{{ s.title }}</div>
+        <div class="det">{{ s.detail }}</div>
+        <div class="go">Abrir →</div>
       </a>
     </div>
     {% endfor %}
   </div>
 
-  <div class="ge-panel">
-    <div class="ge-panel-h">Narrativa flash{% if board.period %} · {{ board.period }}{% endif %}</div>
-    <div class="ge-panel-b">
-      <ol class="mb-0" style="padding-left:1.2rem;">
-        {% for line in board.narrative %}
-        <li class="mb-2">{{ line }}</li>
-        {% endfor %}
-      </ol>
-    </div>
+  <div class="cmd-narr">
+    <div class="fw-semibold mb-2" style="font-size:0.88rem;">Narrativa flash{% if board.period %} · {{ board.period }}{% endif %}</div>
+    <ol class="mb-0" style="padding-left:1.2rem;font-size:0.9rem;">
+      {% for line in board.narrative %}
+      <li class="mb-2">{{ line }}</li>
+      {% endfor %}
+    </ol>
   </div>
 </div>
+{% endblock %}
+{% block extra_js %}
+<script>
+document.getElementById('cmdHelpBtn')?.addEventListener('click', function () {
+  const p = document.getElementById('cmdHelp');
+  const open = p.classList.toggle('open');
+  this.setAttribute('aria-expanded', open ? 'true' : 'false');
+});
+</script>
 {% endblock %}

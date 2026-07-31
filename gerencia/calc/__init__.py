@@ -8,9 +8,10 @@ from risk.financiero.reader import load_combined
 
 from .comando import build_comando
 from .indices import build_indices_catalog
-from .intermediacion import build_intermediacion
+from .intermediacion import _build_slices, build_intermediacion
 from .liquidez import build_estructura_board, build_liquidez_board
-from .whatif import DEFAULT_DRIVERS, run_whatif
+from .utils import rates_from_meta
+from .whatif import DEFAULT_DRIVERS, drivers_as_pct_display, format_pct, parse_pct, run_whatif
 
 
 def load_finance() -> dict[str, Any]:
@@ -45,35 +46,29 @@ def board_whatif(**kwargs) -> dict[str, Any]:
 
 
 def board_trimestral(bu: str = "T", mode: str = "gerencial") -> dict[str, Any]:
-    """Agrega intermediación a trimestres calendario (pasivo / lectura)."""
     data = load_finance()
     periods = list(data.get("periods") or [])
     if not periods:
         return {"status": "empty", "rows": []}
 
-    from .intermediacion import _intermediation_slice
-    from .utils import rates_from_meta
-
     rates = rates_from_meta(data)
-    # group YYYY-Qn
-    buckets: dict[str, list[str]] = {}
-    for p in periods:
-        y, m = p.split("-")[0], int(p.split("-")[1])
-        q = (m - 1) // 3 + 1
-        key = f"{y}-Q{q}"
-        buckets.setdefault(key, []).append(p)
+    slices = _build_slices(data, bu, periods, rates, mode)
+    buckets: dict[str, list] = {}
+    for s in slices:
+        y, m = s["period"].split("-")[0], int(s["period"].split("-")[1])
+        key = f"{y}-Q{(m - 1) // 3 + 1}"
+        buckets.setdefault(key, []).append(s)
 
     rows = []
-    for qkey, ps in list(buckets.items())[-8:]:
-        end = ps[-1]
-        sl = _intermediation_slice(data, bu, end, rates, mode)
+    for qkey in list(buckets.keys())[-10:]:
+        ps = buckets[qkey]
         rows.append(
             {
                 "quarter": qkey,
-                "end_period": end,
-                "colocaciones": sl["colocaciones"],
-                "margen_bruto": sl["margen_bruto"],
-                "utilidad": sl["utilidad"],
+                "end_period": ps[-1]["period"],
+                "colocaciones": ps[-1]["colocaciones"],
+                "margen_bruto": sum(x["margen_bruto"] for x in ps),
+                "utilidad": sum(x["utilidad"] for x in ps),
                 "months_in_q": len(ps),
             }
         )
@@ -82,6 +77,9 @@ def board_trimestral(bu: str = "T", mode: str = "gerencial") -> dict[str, Any]:
 
 __all__ = [
     "DEFAULT_DRIVERS",
+    "drivers_as_pct_display",
+    "format_pct",
+    "parse_pct",
     "load_finance",
     "board_intermediacion",
     "board_liquidez",

@@ -20,6 +20,31 @@ DEFAULT_DRIVERS = {
 }
 
 
+def format_pct(fraction: float) -> str:
+    """10% → '10'; 5.3% → '5.3'; sin ceros de relleno."""
+    pct = float(fraction) * 100.0
+    text = f"{pct:.10f}".rstrip("0").rstrip(".")
+    return text if text else "0"
+
+
+def parse_pct(raw: str | float | None, fallback: float) -> float:
+    """Acepta '10' o '10%' o 0.10; interpreta números ≥1 (y ≠ fracción típica) como %."""
+    if raw is None or raw == "":
+        return fallback
+    try:
+        s = str(raw).strip().replace("%", "").replace(",", ".")
+        v = float(s)
+    except (TypeError, ValueError):
+        return fallback
+    # Si el usuario escribe 10 → 10%; si escribe 0.18 → puede ser 0.18% o 18%?
+    # Convención UI: siempre porcentaje (10 = 10%).
+    return v / 100.0
+
+
+def drivers_as_pct_display(drivers: dict[str, float]) -> dict[str, str]:
+    return {k: format_pct(v) for k, v in drivers.items()}
+
+
 def run_whatif(data: dict, drivers: dict[str, float] | None = None, bu: str = "T") -> dict[str, Any]:
     periods = list(data.get("periods") or [])
     if not periods:
@@ -37,9 +62,24 @@ def run_whatif(data: dict, drivers: dict[str, float] | None = None, bu: str = "T
         "pasiva_bancos_l": float(d["rate_pasiva_bancos"]),
     }
 
-    base = _intermediation_slice(data, bu, latest, base_rates, "gerencial")
+    all_p = periods
+    prev = all_p[-2] if len(all_p) >= 2 else None
+    prev_m = (
+        derived_metrics(kpi_row(data, bu, prev), bu, prev, base_rates)
+        if prev
+        else {}
+    )
+    base = _intermediation_slice(
+        data,
+        bu,
+        latest,
+        base_rates,
+        "gerencial",
+        prev_period=prev,
+        prev_util_c=prev_m.get("utilidades"),
+        prev_util_g=prev_m.get("util_gerencial"),
+    )
 
-    # Proyectar un "mes+12" simplificado: cartera crece, fondeo acompaña ~80% del crecimiento
     g = float(d["growth_cartera_f"]) if bu != "L" else float(d["growth_cartera_l"])
     if bu == "T":
         g = 0.6 * float(d["growth_cartera_f"]) + 0.4 * float(d["growth_cartera_l"])
@@ -57,8 +97,7 @@ def run_whatif(data: dict, drivers: dict[str, float] | None = None, bu: str = "T
     overhead = base["overhead_neto"] * (1 + float(d["growth_overhead"]))
     util = margen - overhead
 
-    m = derived_metrics(kpi_row(data, bu, latest), bu, latest, rates)
-    # Liquidez proyectada naive: AC crece con cartera, PC con captación parcial
+    m = derived_metrics(kpi_row(data, bu, latest), bu, latest, rates, vista="gerencial")
     ac0 = float(m.get("activo_corriente") or 0)
     pc0 = float(m.get("pasivo_corriente") or 1)
     ac1 = ac0 * (1 + g * 0.9)
@@ -71,6 +110,7 @@ def run_whatif(data: dict, drivers: dict[str, float] | None = None, bu: str = "T
         "bu_label": BU_LABEL.get(bu, bu),
         "base_period": latest,
         "drivers": d,
+        "drivers_pct": drivers_as_pct_display(d),
         "base": {
             "cartera": base["colocaciones"],
             "margen": base["margen_bruto"],

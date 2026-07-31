@@ -12,10 +12,16 @@
     <p class="ge-sub">Perfil de pasivos, patrimonio, activos y deuda gerencial (pasivo + preferentes est.).</p>
   </div>
   {% include "gerencia/_nav.html" %}
-  <div class="ge-bu mb-2">
-    <a href="?bu=T" class="{% if bu == 'T' %}active{% endif %}">Total</a>
-    <a href="?bu=F" class="{% if bu == 'F' %}active{% endif %}">Factoraje</a>
-    <a href="?bu=L" class="{% if bu == 'L' %}active{% endif %}">Leasing</a>
+  <div class="d-flex flex-wrap gap-3 align-items-center mb-2">
+    <div class="ge-bu">
+      <a href="?bu=T&amp;vista={{ vista }}" class="{% if bu == 'T' %}active{% endif %}">Total</a>
+      <a href="?bu=F&amp;vista={{ vista }}" class="{% if bu == 'F' %}active{% endif %}">Factoraje</a>
+      <a href="?bu=L&amp;vista={{ vista }}" class="{% if bu == 'L' %}active{% endif %}">Leasing</a>
+    </div>
+    <div class="ge-vista">
+      <a href="?bu={{ bu }}&amp;vista=contable" class="{% if vista == 'contable' %}active{% endif %}">Vista contable</a>
+      <a href="?bu={{ bu }}&amp;vista=gerencial" class="{% if vista == 'gerencial' %}active{% endif %}">Vista gerencial (preferentes = deuda)</a>
+    </div>
   </div>
   {% if board.status != "ok" %}
   <div class="ge-panel"><div class="ge-panel-b text-muted">Sin datos.</div></div>

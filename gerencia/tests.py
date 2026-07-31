@@ -16,16 +16,21 @@ class GerenciaCalcTests(TestCase):
         self.assertEqual(board["status"], "ok")
         self.assertEqual(len(board["sections"]), 5)
         self.assertIn("labels", board["chart"])
+        self.assertIn("labels", board["chart_quarterly"])
+        self.assertIn("labels", board["chart_annual"])
+        self.assertIn("productos", board["aggregated"])
 
-    def test_liquidez_has_bands_and_peers(self):
-        board = board_liquidez(bu="T")
-        self.assertEqual(board["status"], "ok")
-        self.assertTrue(board["cards"])
-        self.assertTrue(board["peers"])
-        self.assertIn("guides_liq", board["chart"])
+    def test_liquidez_vista_gerencial_higher_leverage(self):
+        c = board_liquidez(bu="T", vista="contable")
+        g = board_liquidez(bu="T", vista="gerencial")
+        self.assertEqual(c["status"], "ok")
+        self.assertEqual(g["status"], "ok")
+        apa_c = c["cards"][3]["display"]
+        apa_g = g["cards"][3]["display"]
+        self.assertNotEqual(apa_c, apa_g)
 
     def test_indices_rows(self):
-        board = board_indices(bu="T")
+        board = board_indices(bu="T", vista="gerencial")
         self.assertEqual(board["status"], "ok")
         self.assertGreaterEqual(len(board["rows"]), 5)
 

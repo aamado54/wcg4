@@ -9,7 +9,10 @@
   <div class="mb-2">
     <div class="ge-kicker">Centro Gerencial · núcleo del negocio</div>
     <h1 class="ge-title">Intermediación financiera</h1>
-    <p class="ge-sub">Colocación → captación → margen → overhead → utilidad. Inspirado en RIntGer (wc-mod5c).</p>
+    <p class="ge-sub">
+      Los cuadros C–E acumulan productos, costos, margen, overhead y utilidad del período elegido
+      (terminando en la fecha indicada). Colocaciones y captaciones son saldos al cierre.
+    </p>
   </div>
 
   {% include "gerencia/_nav.html" %}
@@ -24,12 +27,13 @@
       </select>
     </div>
     <div class="col-auto">
-      <label>Meses</label>
+      <label>Meses del período (acumula C–E)</label>
       <select name="months" class="form-select form-select-sm" onchange="this.form.submit()">
         <option value="6" {% if months == 6 %}selected{% endif %}>6</option>
         <option value="12" {% if months == 12 %}selected{% endif %}>12</option>
         <option value="18" {% if months == 18 %}selected{% endif %}>18</option>
         <option value="24" {% if months == 24 %}selected{% endif %}>24</option>
+        <option value="36" {% if months == 36 %}selected{% endif %}>36</option>
       </select>
     </div>
     <div class="col-auto">
@@ -41,7 +45,7 @@
     </div>
     {% if board.periods_available %}
     <div class="col-auto">
-      <label>Hasta</label>
+      <label>Hasta (fin del período)</label>
       <select name="end" class="form-select form-select-sm" onchange="this.form.submit()">
         {% for p in board.periods_available %}
         <option value="{{ p }}" {% if end == p %}selected{% endif %}>{{ p }}</option>
@@ -79,8 +83,23 @@
   </div>
 
   <div class="ge-panel">
-    <div class="ge-panel-h">Evolución comparativa · {{ board.bu_label }}</div>
+    <div class="ge-panel-h">Evolución mensual · {{ board.bu_label }} · {{ board.start_period }} → {{ board.end_period }}</div>
     <div class="ge-panel-b"><div class="ge-chart"><canvas id="geInterChart"></canvas></div></div>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-lg-6">
+      <div class="ge-panel">
+        <div class="ge-panel-h">Trimestral · últimos 10 trimestres</div>
+        <div class="ge-panel-b"><div class="ge-chart"><canvas id="geInterQ"></canvas></div></div>
+      </div>
+    </div>
+    <div class="col-lg-6">
+      <div class="ge-panel">
+        <div class="ge-panel-h">Anual · 2023–2025 + 2026 (parcial)</div>
+        <div class="ge-panel-b"><div class="ge-chart"><canvas id="geInterA"></canvas></div></div>
+      </div>
+    </div>
   </div>
   {% endif %}
 </div>
@@ -88,21 +107,22 @@
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-  const raw = {{ chart_json|safe }};
-  if (!raw.labels || !window.Chart) return;
-  new Chart(document.getElementById('geInterChart'), {
-    type: 'line',
-    data: raw,
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      interaction: { mode: 'index', intersect: false },
-      plugins: { legend: { labels: { font: { size: 11 } } } },
-      scales: {
-        y: { title: { display: true, text: 'Coloc./Capt.', font: { size: 10 } }, ticks: { font: { size: 10 } } },
-        y1: { position: 'right', grid: { drawOnChartArea: false }, title: { display: true, text: 'Margen/Util.', font: { size: 10 } }, ticks: { font: { size: 10 } } }
-      }
+  if (!window.Chart) return;
+  const opt = {
+    responsive: true, maintainAspectRatio: false,
+    interaction: { mode: 'index', intersect: false },
+    plugins: { legend: { labels: { font: { size: 11 } } } },
+    scales: {
+      y: { title: { display: true, text: 'Coloc./Capt.', font: { size: 10 } }, ticks: { font: { size: 10 } } },
+      y1: { position: 'right', grid: { drawOnChartArea: false }, title: { display: true, text: 'Margen/Util.', font: { size: 10 } }, ticks: { font: { size: 10 } } }
     }
-  });
+  };
+  const raw = {{ chart_json|safe }};
+  const q = {{ chart_q_json|safe }};
+  const a = {{ chart_a_json|safe }};
+  if (raw.labels) new Chart(document.getElementById('geInterChart'), { type: 'line', data: raw, options: opt });
+  if (q.labels) new Chart(document.getElementById('geInterQ'), { type: 'line', data: q, options: opt });
+  if (a.labels) new Chart(document.getElementById('geInterA'), { type: 'line', data: a, options: opt });
 });
 </script>
 {% endblock %}

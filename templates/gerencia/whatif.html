@@ -3,47 +3,86 @@
 {% block extra_head %}{% include "gerencia/_styles.html" %}{% endblock %}
 {% block content %}
 <div class="ge-wrap mx-auto mt-2 mb-4">
-  <div class="mb-2">
-    <div class="ge-kicker">Centro Gerencial · Control simplificado</div>
-    <h1 class="ge-title">What-if</h1>
-    <p class="ge-sub">Pocos drivers (celdas amarillas) → proyección a 12 meses. Guarde escenarios favoritos.</p>
+  <div class="mb-2 d-flex justify-content-between align-items-start gap-2 flex-wrap">
+    <div>
+      <div class="ge-kicker">Centro Gerencial · Control simplificado</div>
+      <h1 class="ge-title">What-if</h1>
+      <p class="ge-sub">Todos los campos son <strong>porcentajes</strong>. Ejemplo: escriba <code>10</code> para 10%.</p>
+    </div>
+    <div>
+      <button type="button" class="ge-help-btn" id="whatifHelpBtn" title="Cómo se calcula" aria-expanded="false">?</button>
+    </div>
   </div>
   {% include "gerencia/_nav.html" %}
 
-  <form method="post" class="row g-3">
+  <div class="ge-help-panel" id="whatifHelp">
+    <p class="mb-2"><strong>Cómo se calcula (y qué tan preciso es)</strong></p>
+    <ul class="mb-0" style="padding-left:1.1rem;">
+      <li>Parte del último mes disponible de estados financieros.</li>
+      <li>Aplica el crecimiento de cartera que usted indica (Factoraje / Leasing; Total pondera ambos).</li>
+      <li>Estima productos = cartera proyectada × tasa activa; costos = fondeo proyectado × tasa pasiva.</li>
+      <li>El fondeo se asume que crece ~80% de lo que crece la cartera.</li>
+      <li>Overhead parte del residual actual y crece con el % que usted pone.</li>
+      <li>Utilidad proyectada ≈ margen − overhead. Liquidez es una aproximación simple de AC/PC.</li>
+      <li><strong>No es un modelo contable completo</strong>: es un what-if gerencial rápido, útil para orientación, no para presupuesto oficial.</li>
+    </ul>
+  </div>
+
+  <form method="post" class="row g-3 mt-1">
     {% csrf_token %}
     <input type="hidden" name="bu" value="{{ bu }}">
     <div class="col-lg-5">
       <div class="ge-panel">
-        <div class="ge-panel-h">Drivers (ajustables)</div>
+        <div class="ge-panel-h">Drivers (% anual / tasas %)</div>
         <div class="ge-panel-b ge-ctrl">
           <div class="mb-2">
-            <label>Crecimiento cartera Factoraje (anual)</label>
-            <input class="form-control form-control-sm ge-yellow" name="growth_cartera_f" type="number" step="0.01" value="{{ drivers.growth_cartera_f }}">
+            <label>Crecimiento cartera Factoraje</label>
+            <div class="ge-pct-wrap">
+              <input class="form-control form-control-sm ge-yellow" name="growth_cartera_f" type="text" inputmode="decimal" value="{{ drivers_pct.growth_cartera_f }}">
+              <span class="ge-pct-suf">%</span>
+            </div>
           </div>
           <div class="mb-2">
-            <label>Crecimiento cartera Leasing (anual)</label>
-            <input class="form-control form-control-sm ge-yellow" name="growth_cartera_l" type="number" step="0.01" value="{{ drivers.growth_cartera_l }}">
+            <label>Crecimiento cartera Leasing</label>
+            <div class="ge-pct-wrap">
+              <input class="form-control form-control-sm ge-yellow" name="growth_cartera_l" type="text" inputmode="decimal" value="{{ drivers_pct.growth_cartera_l }}">
+              <span class="ge-pct-suf">%</span>
+            </div>
           </div>
           <div class="mb-2">
             <label>Tasa activa Factoraje</label>
-            <input class="form-control form-control-sm ge-yellow" name="rate_activa_f" type="number" step="0.001" value="{{ drivers.rate_activa_f }}">
+            <div class="ge-pct-wrap">
+              <input class="form-control form-control-sm ge-yellow" name="rate_activa_f" type="text" inputmode="decimal" value="{{ drivers_pct.rate_activa_f }}">
+              <span class="ge-pct-suf">%</span>
+            </div>
           </div>
           <div class="mb-2">
             <label>Tasa activa Leasing</label>
-            <input class="form-control form-control-sm ge-yellow" name="rate_activa_l" type="number" step="0.001" value="{{ drivers.rate_activa_l }}">
+            <div class="ge-pct-wrap">
+              <input class="form-control form-control-sm ge-yellow" name="rate_activa_l" type="text" inputmode="decimal" value="{{ drivers_pct.rate_activa_l }}">
+              <span class="ge-pct-suf">%</span>
+            </div>
           </div>
           <div class="mb-2">
             <label>Tasa pasiva inversionistas</label>
-            <input class="form-control form-control-sm ge-yellow" name="rate_pasiva_inv" type="number" step="0.001" value="{{ drivers.rate_pasiva_inv }}">
+            <div class="ge-pct-wrap">
+              <input class="form-control form-control-sm ge-yellow" name="rate_pasiva_inv" type="text" inputmode="decimal" value="{{ drivers_pct.rate_pasiva_inv }}">
+              <span class="ge-pct-suf">%</span>
+            </div>
           </div>
           <div class="mb-2">
             <label>Tasa pasiva bancos</label>
-            <input class="form-control form-control-sm ge-yellow" name="rate_pasiva_bancos" type="number" step="0.001" value="{{ drivers.rate_pasiva_bancos }}">
+            <div class="ge-pct-wrap">
+              <input class="form-control form-control-sm ge-yellow" name="rate_pasiva_bancos" type="text" inputmode="decimal" value="{{ drivers_pct.rate_pasiva_bancos }}">
+              <span class="ge-pct-suf">%</span>
+            </div>
           </div>
           <div class="mb-3">
             <label>Crecimiento overhead</label>
-            <input class="form-control form-control-sm ge-yellow" name="growth_overhead" type="number" step="0.01" value="{{ drivers.growth_overhead }}">
+            <div class="ge-pct-wrap">
+              <input class="form-control form-control-sm ge-yellow" name="growth_overhead" type="text" inputmode="decimal" value="{{ drivers_pct.growth_overhead }}">
+              <span class="ge-pct-suf">%</span>
+            </div>
           </div>
           <div class="d-flex flex-wrap gap-2">
             <button class="btn btn-sm btn-primary" type="submit" name="action" value="run">Calcular</button>
@@ -92,4 +131,13 @@
     </div>
   </form>
 </div>
+{% endblock %}
+{% block extra_js %}
+<script>
+document.getElementById('whatifHelpBtn')?.addEventListener('click', function () {
+  const p = document.getElementById('whatifHelp');
+  const open = p.classList.toggle('open');
+  this.setAttribute('aria-expanded', open ? 'true' : 'false');
+});
+</script>
 {% endblock %}

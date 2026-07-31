@@ -36,8 +36,11 @@ def _structural_break_note(labels: list[str], liq: list, apa: list) -> str | Non
     )
 
 
-def build_liquidez_board(data: dict, bu: str = "T", months: int = 14) -> dict[str, Any]:
-    catalog = build_indices_catalog(data, bu=bu, periods=months)
+def build_liquidez_board(
+    data: dict, bu: str = "T", months: int = 14, vista: str = "contable"
+) -> dict[str, Any]:
+    vista = "gerencial" if vista == "gerencial" else "contable"
+    catalog = build_indices_catalog(data, bu=bu, periods=months, vista=vista)
     if catalog.get("status") != "ok":
         return {"status": "empty"}
 
@@ -83,6 +86,12 @@ def build_liquidez_board(data: dict, bu: str = "T", months: int = 14) -> dict[st
         "guides_apa": band_chart_guides("apalancamiento"),
     }
 
+    vista_note = (
+        "Vista contable: preferentes dentro del patrimonio."
+        if vista == "contable"
+        else "Vista gerencial: preferentes/pagarés como deuda (salen del patrimonio)."
+    )
+
     cards = [
         {
             "label": liq_ev["label"],
@@ -109,7 +118,7 @@ def build_liquidez_board(data: dict, bu: str = "T", months: int = 14) -> dict[st
             "band": "—",
         },
         {
-            "label": apa_ev["label"],
+            "label": apa_ev["label"] + (" · gerencial" if vista == "gerencial" else " · contable"),
             "display": f"{m['apalancamiento']:.2f}×" if m.get("apalancamiento") is not None else "—",
             "tone": apa_ev["tone"],
             "zone": apa_ev["zone"],
@@ -130,6 +139,7 @@ def build_liquidez_board(data: dict, bu: str = "T", months: int = 14) -> dict[st
         "status": "ok",
         "bu": bu,
         "bu_label": BU_LABEL.get(bu, bu),
+        "vista": vista,
         "period": catalog["period"],
         "unit": catalog["unit"],
         "cards": cards,
@@ -137,41 +147,67 @@ def build_liquidez_board(data: dict, bu: str = "T", months: int = 14) -> dict[st
         "chart": chart,
         "break_note": break_note,
         "z_series": {"labels": labels, "data": series["z_score"]},
+        "inv_proxy": m.get("inv_proxy"),
+        "patrimonio_books": m.get("patrimonio_books"),
+        "patrimonio": m.get("patrimonio"),
         "story": (
-            f"Liquidez y solvencia · {BU_LABEL.get(bu, bu)} · {catalog['period']}. "
-            "Cada indicador se interpreta contra bandas NBFI factoraje/leasing, no solo contra sí mismo."
+            f"Liquidez y solvencia · {BU_LABEL.get(bu, bu)} · {catalog['period']} · {vista_note} "
+            "Cada indicador se interpreta contra bandas NBFI factoraje/leasing."
         ),
     }
 
 
-def build_estructura_board(data: dict, bu: str = "T", months: int = 14) -> dict[str, Any]:
+def build_estructura_board(
+    data: dict, bu: str = "T", months: int = 14, vista: str = "contable"
+) -> dict[str, Any]:
+    vista = "gerencial" if vista == "gerencial" else "contable"
     periods = list(data.get("periods") or [])
     if not periods:
         return {"status": "empty"}
     focus = last_n(periods, months)
     rates = rates_from_meta(data)
     latest = focus[-1]
-    m = derived_metrics(kpi_row(data, bu, latest), bu, latest, rates)
+    m = derived_metrics(kpi_row(data, bu, latest), bu, latest, rates, vista=vista)
 
     labels = focus
-    pas_c = [n(derived_metrics(kpi_row(data, bu, p), bu, p, rates).get("pasivo_corriente")) for p in focus]
-    pas_nc = [n(derived_metrics(kpi_row(data, bu, p), bu, p, rates).get("pasivo_no_corriente")) for p in focus]
-    pat = [n(derived_metrics(kpi_row(data, bu, p), bu, p, rates).get("patrimonio")) for p in focus]
-    ac = [n(derived_metrics(kpi_row(data, bu, p), bu, p, rates).get("activo_corriente")) for p in focus]
-    act = [n(derived_metrics(kpi_row(data, bu, p), bu, p, rates).get("activo")) for p in focus]
+
+    def series_metric(key: str) -> list:
+        return [
+            n(derived_metrics(kpi_row(data, bu, p), bu, p, rates, vista=vista).get(key))
+            for p in focus
+        ]
+
+    pas_c = series_metric("pasivo_corriente")
+    # En gerencial el "pasivo no corriente gerencial" incluye preferentes
+    if vista == "gerencial":
+        pas_nc = [
+            n(derived_metrics(kpi_row(data, bu, p), bu, p, rates, vista=vista).get("pasivo_no_corriente"))
+            + n(derived_metrics(kpi_row(data, bu, p), bu, p, rates, vista=vista).get("inv_proxy"))
+            for p in focus
+        ]
+        pas_nc_label = "PNC + preferentes est."
+    else:
+        pas_nc = series_metric("pasivo_no_corriente")
+        pas_nc_label = "Pasivo no corriente"
+    pat = series_metric("patrimonio")
+    ac = series_metric("activo_corriente")
+    act = series_metric("activo")
     deuda_g = [
-        derived_metrics(kpi_row(data, bu, p), bu, p, rates).get("deuda_gerencial_patrimonio") for p in focus
+        derived_metrics(kpi_row(data, bu, p), bu, p, rates, vista=vista).get("deuda_patrimonio")
+        for p in focus
     ]
 
-    deuda_ev = evaluate_ratio("deuda_patrimonio", m.get("deuda_gerencial_patrimonio"))
-    short_share = (n(m.get("pasivo_corriente")) / n(m.get("pasivo_total"))) if n(m.get("pasivo_total")) else None
+    deuda_ev = evaluate_ratio("deuda_patrimonio", m.get("deuda_patrimonio"))
+    short_share = (
+        (n(m.get("pasivo_corriente")) / n(m.get("pasivo_total"))) if n(m.get("pasivo_total")) else None
+    )
 
     chart_fondeo = {
         "labels": labels,
         "datasets": [
             {"label": "Pasivo corriente", "data": pas_c, "borderColor": "#8a3a34", "tension": 0.25},
-            {"label": "Pasivo no corriente", "data": pas_nc, "borderColor": "#8a6d3b", "tension": 0.25},
-            {"label": "Patrimonio", "data": pat, "borderColor": "#1e4d3a", "tension": 0.25},
+            {"label": pas_nc_label, "data": pas_nc, "borderColor": "#8a6d3b", "tension": 0.25},
+            {"label": "Patrimonio (vista)", "data": pat, "borderColor": "#1e4d3a", "tension": 0.25},
         ],
     }
     chart_activos = {
@@ -185,7 +221,7 @@ def build_estructura_board(data: dict, bu: str = "T", months: int = 14) -> dict[
         "labels": labels,
         "datasets": [
             {
-                "label": "Deuda gerencial / Patrimonio",
+                "label": "Deuda / Patrimonio (vista)",
                 "data": deuda_g,
                 "borderColor": "#5b7c99",
                 "tension": 0.25,
@@ -194,10 +230,17 @@ def build_estructura_board(data: dict, bu: str = "T", months: int = 14) -> dict[
         "guides": band_chart_guides("deuda_patrimonio"),
     }
 
+    vista_note = (
+        "Contable: libros tal cual."
+        if vista == "contable"
+        else "Gerencial: preferentes/pagarés como deuda."
+    )
+
     return {
         "status": "ok",
         "bu": bu,
         "bu_label": BU_LABEL.get(bu, bu),
+        "vista": vista,
         "period": latest,
         "unit": data.get("unit") or "000 quetzales",
         "cards": [
@@ -206,34 +249,30 @@ def build_estructura_board(data: dict, bu: str = "T", months: int = 14) -> dict[
                 "display": f"{n(m.get('pasivo_total'))/n(m.get('patrimonio')):.2f}×"
                 if n(m.get("patrimonio"))
                 else "—",
-                "hint": "Pasivo / Patrimonio",
+                "hint": vista_note,
             },
             {
-                "label": "Deuda gerencial / Pat.",
-                "display": f"{m['deuda_gerencial_patrimonio']:.2f}×"
-                if m.get("deuda_gerencial_patrimonio") is not None
-                else "—",
+                "label": "Deuda / Pat. (vista)",
+                "display": f"{m['deuda_patrimonio']:.2f}×" if m.get("deuda_patrimonio") is not None else "—",
                 "hint": deuda_ev["zone"],
                 "tone": deuda_ev["tone"],
             },
             {
-                "label": "% pasivo corto plazo",
-                "display": f"{short_share*100:.0f}%" if short_share is not None else "—",
-                "hint": "Perfil de endeudamiento",
+                "label": "Preferentes est. (proxy)",
+                "display": fmt(m.get("inv_proxy")),
+                "hint": "en deuda si vista gerencial",
             },
             {
-                "label": "AC / Activo total",
-                "display": f"{n(m.get('activo_corriente'))/n(m.get('activo'))*100:.0f}%"
-                if n(m.get("activo"))
-                else "—",
-                "hint": "Composición de activos",
+                "label": "% pasivo corto / deuda vista",
+                "display": f"{short_share*100:.0f}%" if short_share is not None else "—",
+                "hint": "Perfil de endeudamiento",
             },
             {
                 "label": "Cobertura intereses (est.)",
                 "display": f"{m['cobertura_intereses']:.2f}×"
                 if m.get("cobertura_intereses") is not None
                 else "—",
-                "hint": "Utilidad / interés est.",
+                "hint": "Utilidad vista / costo fin.",
             },
         ],
         "chart_fondeo": chart_fondeo,
@@ -241,7 +280,6 @@ def build_estructura_board(data: dict, bu: str = "T", months: int = 14) -> dict[
         "chart_deuda": chart_deuda,
         "deuda_eval": deuda_ev,
         "story": (
-            f"Estructura de fondeo y activos · {BU_LABEL.get(bu, bu)} · {latest}. "
-            "Preferentes se tratan como deuda gerencial para el análisis de intermediación."
+            f"Estructura de fondeo y activos · {BU_LABEL.get(bu, bu)} · {latest} · {vista_note}"
         ),
     }
