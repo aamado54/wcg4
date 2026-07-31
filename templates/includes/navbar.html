@@ -23,9 +23,11 @@
         <li class="nav-item">
           <a class="nav-link{% if '/crm/' in request.path %} active{% endif %}" href="{% url 'wcgone_crm:entidad_list' %}"><span class="wcg-mod-ico" aria-hidden="true">👥</span> CRM</a>
         </li>
+        {% if can_access_risk_gerencia %}
         <li class="nav-item">
           <a class="nav-link{% if '/risk/' in request.path %} active{% endif %}" href="{% url 'wcgone_risk:comando_balon' %}"><span class="wcg-mod-ico" aria-hidden="true">⚽</span> Balón de Riesgo</a>
         </li>
+        {% endif %}
       </ul>
       <ul class="navbar-nav wcg-nav-secondary align-items-lg-center">
         {% if user.is_authenticated %}

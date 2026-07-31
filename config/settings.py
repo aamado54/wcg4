@@ -116,6 +116,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'core.access.wcg_access',
             ],
         },
     },
@@ -187,5 +188,19 @@ WCG_EVALUACION_RIESGO_XLSX = Path(
 LOGIN_URL = '/accounts/login/'
 LOGIN_REDIRECT_URL = '/panel/'
 LOGOUT_REDIRECT_URL = '/accounts/login/'
+
+# Solo estos usuarios ven / pueden entrar a Balón de Riesgo y Centro Gerencial.
+# Override con env: WCG_RISK_GERENCIA_USERNAMES=caa,gsoler
+WCG_RISK_GERENCIA_USERNAMES = [
+    u.strip()
+    for u in os.environ.get("WCG_RISK_GERENCIA_USERNAMES", "caa,gsoler").split(",")
+    if u.strip()
+]
+# Único(s) superusuario(s) tras apply_access_policy.
+WCG_SUPERUSER_USERNAMES = [
+    u.strip()
+    for u in os.environ.get("WCG_SUPERUSER_USERNAMES", "caa").split(",")
+    if u.strip()
+]
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

@@ -10,6 +10,8 @@ from pathlib import Path
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
+
+from core.access import can_access_ops
 from django.core.management import call_command
 from django.shortcuts import redirect, render
 from django.urls import reverse
@@ -164,7 +166,7 @@ def _admin_period_context(year: int, month: int) -> dict:
 
 
 @login_required
-@user_passes_test(lambda u: u.is_superuser)
+@user_passes_test(can_access_ops)
 def admin_smart_recalc(request):
     """Botón único: recalcula en orden todo lo pendiente (todos los períodos)."""
     period = parse_admin_period(request)
@@ -207,7 +209,7 @@ def admin_smart_recalc(request):
 
 
 @login_required
-@user_passes_test(lambda u: u.is_superuser)
+@user_passes_test(can_access_ops)
 def admin_hub(request):
     """Punto de entrada legado: redirige al tablero mensual."""
     period = parse_admin_period(request)
@@ -215,7 +217,7 @@ def admin_hub(request):
 
 
 @login_required
-@user_passes_test(lambda u: u.is_superuser)
+@user_passes_test(can_access_ops)
 def admin_monthly(request):
     period = parse_admin_period(request)
     year, month = period.year, period.month
@@ -322,7 +324,7 @@ def admin_monthly(request):
 
 
 @login_required
-@user_passes_test(lambda u: u.is_superuser)
+@user_passes_test(can_access_ops)
 def admin_manual_edit(request):
     period = parse_admin_period(request)
     year, month = period.year, period.month
@@ -419,7 +421,7 @@ def admin_manual_edit(request):
 
 
 @login_required
-@user_passes_test(lambda u: u.is_superuser)
+@user_passes_test(can_access_ops)
 def admin_ingresos_year(request):
     """Matriz anual: 12 meses × 4 UNEs + TC (captura de ingresos reales)."""
     period = parse_admin_period(request)
@@ -504,7 +506,7 @@ def admin_ingresos_year(request):
 
 
 @login_required
-@user_passes_test(lambda u: u.is_superuser)
+@user_passes_test(can_access_ops)
 def admin_monthly_log(request):
     period = parse_admin_period(request)
     year, month = period.year, period.month
@@ -523,7 +525,7 @@ def admin_monthly_log(request):
 
 
 @login_required
-@user_passes_test(lambda u: u.is_superuser)
+@user_passes_test(can_access_ops)
 def admin_new_clients_browse(request):
     period = parse_admin_period(request)
 
@@ -573,7 +575,7 @@ def admin_new_clients_browse(request):
 
 
 @login_required
-@user_passes_test(lambda u: u.is_superuser)
+@user_passes_test(can_access_ops)
 def admin_new_clients_une(request):
     period = parse_admin_period(request)
 
@@ -618,7 +620,7 @@ def admin_new_clients_une(request):
 
 
 @login_required
-@user_passes_test(lambda u: u.is_superuser)
+@user_passes_test(can_access_ops)
 def legacy_run_recalc_pgc(request):
     """Compatibilidad con URLs/formularios antiguos de recálculo."""
     year, month = parse_period(request)
@@ -647,7 +649,7 @@ def legacy_run_recalc_pgc(request):
 
 
 @login_required
-@user_passes_test(lambda u: u.is_superuser)
+@user_passes_test(can_access_ops)
 def legacy_run_recalc_investment(request):
     """Compatibilidad con URLs/formularios antiguos de recálculo Investment."""
     year, month = parse_period(request)
@@ -676,7 +678,7 @@ def legacy_run_recalc_investment(request):
 
 
 @login_required
-@user_passes_test(lambda u: u.is_superuser)
+@user_passes_test(can_access_ops)
 def redirect_manual_results(request):
     """Legacy URL: /admin-hub/ingresos-manual-capture → matriz anual de ingresos."""
     period = parse_admin_period(request)
@@ -684,7 +686,7 @@ def redirect_manual_results(request):
 
 
 @login_required
-@user_passes_test(lambda u: u.is_superuser)
+@user_passes_test(can_access_ops)
 def redirect_manual_fx(request):
     year, month = parse_period(request)
     return redirect_admin_manual(year, month, "fx")

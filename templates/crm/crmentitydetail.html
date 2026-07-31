@@ -39,7 +39,9 @@
         <div class="mt-3 d-flex flex-wrap gap-1">
           <a class="btn btn-sm btn-primary" href="{% url 'crm:nueva_interaccion' entidad.codigo %}">Nueva interacción</a>
           <a class="btn btn-sm btn-outline-primary" href="{% url 'crm:nueva_tarea' entidad.codigo %}">Nueva tarea</a>
+          {% if can_access_risk_gerencia %}
           <a class="btn btn-sm btn-outline-secondary" href="{% url 'risk:cliente_detail' entidad.codigo %}">Ver en Riesgo</a>
+          {% endif %}
         </div>
       </div>
     </div>

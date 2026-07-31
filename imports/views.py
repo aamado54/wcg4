@@ -8,6 +8,7 @@ from django.core.management import call_command
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 
+from core.access import can_access_ops
 from core.wcg_models import DataImportBatch
 from pgc.admin_utils import parse_period
 
@@ -173,7 +174,7 @@ def duplicates_review(request):
 
 
 @login_required
-@user_passes_test(lambda u: u.is_superuser)
+@user_passes_test(can_access_ops)
 def process_new_clients(request, file_id):
     upload = get_object_or_404(FileUpload, id=file_id)
 
@@ -213,7 +214,7 @@ def process_new_clients(request, file_id):
 
 
 @login_required
-@user_passes_test(lambda u: u.is_superuser)
+@user_passes_test(can_access_ops)
 def process_cross_sale(request, file_id):
     upload = get_object_or_404(FileUpload, id=file_id)
 
@@ -245,7 +246,7 @@ def process_cross_sale(request, file_id):
 
 
 @login_required
-@user_passes_test(lambda u: u.is_superuser)
+@user_passes_test(can_access_ops)
 def process_station_times(request, file_id):
     upload = get_object_or_404(FileUpload, id=file_id)
     if request.method == "POST":

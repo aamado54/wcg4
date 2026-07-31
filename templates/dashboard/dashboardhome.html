@@ -225,6 +225,7 @@
         <p>Clientes, contactos, productos y seguimiento comercial.</p>
         <span class="go">Entrar →</span>
       </a>
+      {% if can_access_risk_gerencia %}
       <a class="menu-card" href="{% url 'risk:comando_balon' %}">
         <span class="menu-emoji" aria-hidden="true">⚽</span>
         <h2>Balón de Riesgo</h2>
@@ -237,6 +238,7 @@
         <p>Intermediación, liquidez con bandas, estructura, comando y what-if.</p>
         <span class="go">Entrar →</span>
       </a>
+      {% endif %}
     </div>
 
     <div class="menu-foot">

@@ -1,5 +1,3 @@
-from django.contrib.auth.decorators import login_required
-from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Count, Max, Q
 from django.shortcuts import redirect, render
 from django.utils import timezone
@@ -7,12 +5,13 @@ from django.views.generic import DetailView, ListView
 
 from apps.core.exports import csv_response
 from apps.core.models import Entidad
+from core.access import RiskGerenciaRequiredMixin, risk_gerencia_required
 
 from .models import RiskOperacion, RiskOperationSnapshot
 from .selectors import snapshot_queryset, snapshot_summary
 
 
-@login_required
+@risk_gerencia_required
 def comando_balon(request):
     qs = snapshot_queryset(request)
     context = {
@@ -27,7 +26,7 @@ def comando_balon(request):
     return render(request, "wcgone/risk/comando_balon.html", context)
 
 
-@login_required
+@risk_gerencia_required
 def export_comando_balon_csv(request):
     qs = snapshot_queryset(request)
     rows = []
@@ -61,7 +60,7 @@ def export_comando_balon_csv(request):
     )
 
 
-class ClienteListView(LoginRequiredMixin, ListView):
+class ClienteListView(RiskGerenciaRequiredMixin, ListView):
     model = Entidad
     template_name = "wcgone/risk/cliente_list.html"
     context_object_name = "clientes"
@@ -92,7 +91,7 @@ class ClienteListView(LoginRequiredMixin, ListView):
         return context
 
 
-class ClienteDetailView(LoginRequiredMixin, DetailView):
+class ClienteDetailView(RiskGerenciaRequiredMixin, DetailView):
     model = Entidad
     template_name = "wcgone/risk/cliente_detail.html"
     context_object_name = "cliente"
@@ -119,7 +118,7 @@ class ClienteDetailView(LoginRequiredMixin, DetailView):
         return context
 
 
-class OperacionDetailView(LoginRequiredMixin, DetailView):
+class OperacionDetailView(RiskGerenciaRequiredMixin, DetailView):
     model = RiskOperacion
     template_name = "wcgone/risk/operacion_detail.html"
     context_object_name = "operacion"
@@ -146,11 +145,11 @@ class OperacionDetailView(LoginRequiredMixin, DetailView):
 from django.contrib import messages  # noqa: E402
 from django.shortcuts import redirect, render  # noqa: E402
 
-@login_required
+@risk_gerencia_required
 def importar_snapshots(request):
     return redirect("imports:import_hub")
 
 
-@login_required
+@risk_gerencia_required
 def importar_eeff(request):
     return redirect("imports:import_hub")

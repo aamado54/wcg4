@@ -1,9 +1,10 @@
 import json
 
 from django.contrib import messages
-from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_http_methods
+
+from core.access import risk_gerencia_required
 
 from . import calc as engine
 from .models import GerenciaScenario
@@ -45,12 +46,12 @@ def _crumbs(*labels):
     return crumbs
 
 
-@login_required
+@risk_gerencia_required
 def home(request):
     return redirect("gerencia:intermediacion")
 
 
-@login_required
+@risk_gerencia_required
 def intermediacion(request):
     bu = _bu(request)
     months = int(request.GET.get("months") or 12)
@@ -76,7 +77,7 @@ def intermediacion(request):
     )
 
 
-@login_required
+@risk_gerencia_required
 def liquidez(request):
     bu = _bu(request)
     vista = _vista(request)
@@ -96,7 +97,7 @@ def liquidez(request):
     )
 
 
-@login_required
+@risk_gerencia_required
 def estructura(request):
     bu = _bu(request)
     vista = _vista(request)
@@ -117,7 +118,7 @@ def estructura(request):
     )
 
 
-@login_required
+@risk_gerencia_required
 def comando(request):
     board = engine.board_comando()
     return render(
@@ -131,7 +132,7 @@ def comando(request):
     )
 
 
-@login_required
+@risk_gerencia_required
 def indices(request):
     bu = _bu(request)
     vista = _vista(request)
@@ -150,7 +151,7 @@ def indices(request):
     )
 
 
-@login_required
+@risk_gerencia_required
 @require_http_methods(["GET", "POST"])
 def whatif(request):
     bu = _bu(request)
@@ -203,7 +204,7 @@ def whatif(request):
     )
 
 
-@login_required
+@risk_gerencia_required
 def load_scenario(request, pk: int):
     sc = get_object_or_404(GerenciaScenario, pk=pk)
     request.session["gerencia_whatif"] = {
@@ -219,7 +220,7 @@ def load_scenario(request, pk: int):
     return redirect("gerencia:whatif")
 
 
-@login_required
+@risk_gerencia_required
 def detalle(request):
     bu = _bu(request)
     mode = request.GET.get("mode") or "gerencial"

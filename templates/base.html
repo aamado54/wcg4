@@ -331,7 +331,7 @@
                             <button type="submit">Cambiar de usuario</button>
                         </form>
 
-                        {% if user.is_superuser %}
+                        {% if can_access_ops %}
                             <div class="menu-label">Administración</div>
                             <a href="{% url 'imports:import_hub' %}">Importación General</a>
                             <a href="{% url 'pgc:admin_monthly' %}">Admin PGC (período)</a>

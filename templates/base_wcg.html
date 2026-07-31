@@ -319,12 +319,14 @@
               <li class="nav-item">
                 <a class="nav-link{% if '/crm/' in request.path %} active{% endif %}" href="{% url 'crm:entidad_list' %}"><span class="wcg-mod-ico" aria-hidden="true">👥</span> CRM</a>
               </li>
+              {% if can_access_risk_gerencia %}
               <li class="nav-item">
                 <a class="nav-link{% if '/risk/' in request.path %} active{% endif %}" href="{% url 'risk:comando_balon' %}"><span class="wcg-mod-ico" aria-hidden="true">⚽</span> Balón de Riesgo</a>
               </li>
               <li class="nav-item">
                 <a class="nav-link{% if '/gerencia/' in request.path %} active{% endif %}" href="{% url 'gerencia:home' %}"><span class="wcg-mod-ico" aria-hidden="true">🧭</span> Centro Gerencial</a>
               </li>
+              {% endif %}
             </ul>
             <ul class="navbar-nav wcg-nav-secondary align-items-lg-center gap-lg-1">
               <li class="nav-item dropdown">
@@ -345,10 +347,12 @@
                   </li>
                   <li><a class="dropdown-item" href="{% url 'portal:estado' %}">Estado del sistema</a></li>
                   <li><a class="dropdown-item" href="{% url 'portal:ayuda' %}">Guía de uso</a></li>
-                  {% if user.is_superuser %}
+                  {% if can_access_ops %}
                   <li><hr class="dropdown-divider"></li>
-                  <li><a class="dropdown-item" href="/admin/" target="_blank" rel="noopener">Admin Django</a></li>
                   <li><a class="dropdown-item" href="{% url 'pgc:admin_monthly' %}">Admin PGC (período)</a></li>
+                  {% endif %}
+                  {% if user.is_superuser %}
+                  <li><a class="dropdown-item" href="/admin/" target="_blank" rel="noopener">Admin Django</a></li>
                   {% endif %}
                 </ul>
               </li>

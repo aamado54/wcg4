@@ -19,6 +19,8 @@ from pathlib import Path
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
+
+from core.access import can_access_ops
 from django.http import FileResponse, Http404, JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
@@ -205,8 +207,8 @@ def delete_archives(filenames: list[str]) -> list[str]:
     return deleted
 
 
-def _superuser(user) -> bool:
-    return bool(user.is_superuser)
+def _ops_user(user) -> bool:
+    return can_access_ops(user)
 
 
 @require_GET
@@ -224,7 +226,7 @@ def tv_live_png(request, name: str):
 
 
 @login_required
-@user_passes_test(_superuser)
+@user_passes_test(_ops_user)
 @require_GET
 def tv_archive_png(request, name: str):
     if not is_safe_archive_name(name):
@@ -259,7 +261,7 @@ def tv_charts_upload(request):
 
 
 @login_required
-@user_passes_test(_superuser)
+@user_passes_test(_ops_user)
 def admin_tv_charts(request):
     period = parse_admin_period(request)
 

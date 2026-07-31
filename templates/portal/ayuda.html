@@ -31,7 +31,9 @@
         <li class="list-group-item"><strong>2.</strong> <a href="{% url 'pgc:dashboard' %}">📊 PGC</a> — plan comercial.</li>
         <li class="list-group-item"><strong>3.</strong> <a href="{% url 'pgo:dashboard' %}">⚙️ PGO</a> — tickets y SLA.</li>
         <li class="list-group-item"><strong>4.</strong> <a href="{% url 'crm:entidad_list' %}">👥 CRM</a> — listado, filtros, detalle, export CSV.</li>
+        {% if can_access_risk_gerencia %}
         <li class="list-group-item"><strong>5.</strong> <a href="{% url 'risk:comando_balon' %}">⚽ Comando Balón</a> — mora, alertas, historial.</li>
+        {% endif %}
         <li class="list-group-item"><strong>6.</strong> <a href="{% url 'portal:estado' %}">Estado del sistema</a> — KPIs e importaciones recientes.</li>
         <li class="list-group-item"><strong>7.</strong> <a href="{% url 'imports:import_hub' %}">Administración → Importación</a> — carga unificada.</li>
       </ol>

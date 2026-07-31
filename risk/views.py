@@ -1,12 +1,11 @@
 import json
 
-from django.contrib.auth.decorators import login_required
-from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import HttpResponse
 from django.shortcuts import redirect, render
 from django.utils import timezone
 from django.views.generic import DetailView, ListView
 
+from core.access import RiskGerenciaRequiredMixin, risk_gerencia_required
 from core.wcg_models import Entidad
 
 from .evaluacion import build_portfolio_view, load_evaluacion
@@ -14,7 +13,7 @@ from .models import ProgramacionPago, RiskOperationSnapshot
 from .selectors import latest_snapshots_queryset, snapshot_summary
 
 
-@login_required
+@risk_gerencia_required
 def comando_balon(request):
     qs = latest_snapshots_queryset(request)
     summary = snapshot_summary(qs)
@@ -49,7 +48,7 @@ def comando_balon(request):
     )
 
 
-class ClienteListView(LoginRequiredMixin, ListView):
+class ClienteListView(RiskGerenciaRequiredMixin, ListView):
     model = Entidad
     template_name = "risk/riskclientlist.html"
     context_object_name = "clientes"
@@ -62,7 +61,7 @@ class ClienteListView(LoginRequiredMixin, ListView):
         return Entidad.objects.filter(id__in=ids).order_by("nombre")
 
 
-class ClienteDetailView(LoginRequiredMixin, DetailView):
+class ClienteDetailView(RiskGerenciaRequiredMixin, DetailView):
     model = Entidad
     template_name = "risk/riskclientdetail.html"
     context_object_name = "entidad"
@@ -82,7 +81,7 @@ class ClienteDetailView(LoginRequiredMixin, DetailView):
         return ctx
 
 
-class OperacionDetailView(LoginRequiredMixin, DetailView):
+class OperacionDetailView(RiskGerenciaRequiredMixin, DetailView):
     model = RiskOperationSnapshot
     template_name = "risk/riskoperationdetail.html"
     context_object_name = "snapshot"
@@ -117,7 +116,7 @@ class OperacionDetailView(LoginRequiredMixin, DetailView):
         return ctx
 
 
-@login_required
+@risk_gerencia_required
 def evaluacion_clientes(request):
     """Extensión aislada: evaluación financiera / Z Altman desde plantilla Excel.
 
@@ -186,7 +185,7 @@ def evaluacion_clientes(request):
     )
 
 
-@login_required
+@risk_gerencia_required
 def financiero_institucional(request):
     """Tablero institucional: histórico + importación + contable vs gerencial.
 
@@ -240,7 +239,7 @@ def financiero_institucional(request):
     )
 
 
-@login_required
+@risk_gerencia_required
 def financiero_export_tabla(request):
     """Descarga Excel: una fila por cuenta, columnas = períodos (+ KPIs y advertencias)."""
     from pathlib import Path
@@ -260,12 +259,12 @@ def financiero_export_tabla(request):
     )
 
 
-@login_required
+@risk_gerencia_required
 def importar(request):
     return redirect("imports:import_hub")
 
 
-@login_required
+@risk_gerencia_required
 def export_comando_balon(request):
     import csv
 
