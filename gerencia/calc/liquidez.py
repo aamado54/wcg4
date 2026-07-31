@@ -146,7 +146,17 @@ def build_liquidez_board(
         "peers": peers,
         "chart": chart,
         "break_note": break_note,
-        "z_series": {"labels": labels, "data": series["z_score"]},
+        "z_series": {
+            "labels": labels,
+            "data": series["z_score"],
+            "components": {
+                "kt_a": series.get("z_kt_a") or [],
+                "u_a": series.get("z_u_a") or [],
+                "roe": series.get("z_roe") or [],
+                "pat_pas": series.get("z_pat_pas") or [],
+                "cart_a": series.get("z_cart_a") or [],
+            },
+        },
         "inv_proxy": m.get("inv_proxy"),
         "patrimonio_books": m.get("patrimonio_books"),
         "patrimonio": m.get("patrimonio"),
@@ -160,6 +170,8 @@ def build_liquidez_board(
 def build_estructura_board(
     data: dict, bu: str = "T", months: int = 14, vista: str = "contable"
 ) -> dict[str, Any]:
+    from .indices import build_preferentes_stock
+
     vista = "gerencial" if vista == "gerencial" else "contable"
     periods = list(data.get("periods") or [])
     if not periods:
@@ -167,22 +179,23 @@ def build_estructura_board(
     focus = last_n(periods, months)
     rates = rates_from_meta(data)
     latest = focus[-1]
-    m = derived_metrics(kpi_row(data, bu, latest), bu, latest, rates, vista=vista)
+    pref = build_preferentes_stock(data, bu, periods) if vista == "gerencial" else {}
 
+    def m_at(p: str) -> dict:
+        return derived_metrics(
+            kpi_row(data, bu, p), bu, p, rates, vista=vista, inv_proxy=pref.get(p)
+        )
+
+    m = m_at(latest)
     labels = focus
 
     def series_metric(key: str) -> list:
-        return [
-            n(derived_metrics(kpi_row(data, bu, p), bu, p, rates, vista=vista).get(key))
-            for p in focus
-        ]
+        return [n(m_at(p).get(key)) for p in focus]
 
     pas_c = series_metric("pasivo_corriente")
-    # En gerencial el "pasivo no corriente gerencial" incluye preferentes
     if vista == "gerencial":
         pas_nc = [
-            n(derived_metrics(kpi_row(data, bu, p), bu, p, rates, vista=vista).get("pasivo_no_corriente"))
-            + n(derived_metrics(kpi_row(data, bu, p), bu, p, rates, vista=vista).get("inv_proxy"))
+            n(m_at(p).get("pasivo_no_corriente")) + n(m_at(p).get("inv_proxy"))
             for p in focus
         ]
         pas_nc_label = "PNC + preferentes est."
@@ -192,10 +205,7 @@ def build_estructura_board(
     pat = series_metric("patrimonio")
     ac = series_metric("activo_corriente")
     act = series_metric("activo")
-    deuda_g = [
-        derived_metrics(kpi_row(data, bu, p), bu, p, rates, vista=vista).get("deuda_patrimonio")
-        for p in focus
-    ]
+    deuda_g = [m_at(p).get("deuda_patrimonio") for p in focus]
 
     deuda_ev = evaluate_ratio("deuda_patrimonio", m.get("deuda_patrimonio"))
     short_share = (

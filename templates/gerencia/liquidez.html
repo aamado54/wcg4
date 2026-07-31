@@ -2,6 +2,14 @@
 {% block title %}Liquidez — Centro Gerencial{% endblock %}
 {% block extra_head %}
 {% include "gerencia/_styles.html" %}
+<style>
+  .ge-peers-body td {
+    font-family: "Arial Narrow", "Helvetica Condensed", "Roboto Condensed", "Liberation Sans Narrow", Arial, sans-serif;
+    font-size: 0.84rem;
+    white-space: nowrap;
+  }
+  .ge-z-mode .btn { font-size: 0.75rem; }
+</style>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
 {% endblock %}
 {% block content %}
@@ -65,7 +73,7 @@
         <div class="ge-panel-b table-responsive">
           <table class="table table-sm ge-table mb-0">
             <thead><tr><th>Institución</th><th>País</th><th>Período</th><th class="text-end">Liquidez</th><th class="text-end">Apalan.</th><th>Nota</th></tr></thead>
-            <tbody>
+            <tbody class="ge-peers-body">
               {% for p in board.peers %}
               <tr {% if p.kind == 'self' %}class="table-success"{% endif %}>
                 <td>{{ p.name }}</td>
@@ -73,7 +81,7 @@
                 <td>{{ p.period }}</td>
                 <td class="text-end">{% if p.liquidez != None %}{{ p.liquidez|floatformat:2 }}×{% else %}—{% endif %}</td>
                 <td class="text-end">{% if p.apalancamiento != None %}{{ p.apalancamiento|floatformat:2 }}×{% else %}—{% endif %}</td>
-                <td class="small text-muted">{{ p.note }}</td>
+                <td class="small text-muted" style="white-space:normal;">{{ p.note }}</td>
               </tr>
               {% endfor %}
             </tbody>
@@ -84,7 +92,13 @@
     <div class="col-lg-5">
       <div class="ge-panel">
         <div class="ge-panel-h">Calificador Z NBFI (histórico)</div>
-        <div class="ge-panel-b"><div class="ge-chart"><canvas id="geZChart"></canvas></div></div>
+        <div class="ge-panel-b">
+          <div class="ge-chart"><canvas id="geZChart"></canvas></div>
+          <div class="ge-z-mode d-flex flex-wrap gap-1 mt-2">
+            <button type="button" class="btn btn-sm btn-primary" id="zModeTotal" data-mode="total">Solo Z</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="zModeParts" data-mode="parts">Solo componentes</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -131,11 +145,33 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   }
   if (z.labels) {
-    new Chart(document.getElementById('geZChart'), {
+    const comps = z.components || {};
+    const totalDs = [{ label: 'Z NBFI', data: z.data, borderColor: '#1e4d3a', tension: 0.25, borderWidth: 2 }];
+    const partsDs = [
+      { label: '1.2·KT/A', data: comps.kt_a || [], borderColor: '#2f6f9f', tension: 0.25, borderWidth: 1.5 },
+      { label: '1.4·U/A', data: comps.u_a || [], borderColor: '#8a6d3b', tension: 0.25, borderWidth: 1.5 },
+      { label: '0.8·ROE', data: comps.roe || [], borderColor: '#6b5b7a', tension: 0.25, borderWidth: 1.5 },
+      { label: '0.6·Pat/Pas', data: comps.pat_pas || [], borderColor: '#8a3a34', tension: 0.25, borderWidth: 1.5 },
+      { label: '0.9·Cart/A', data: comps.cart_a || [], borderColor: '#5b7c99', tension: 0.25, borderWidth: 1.5 }
+    ];
+    const zChart = new Chart(document.getElementById('geZChart'), {
       type: 'line',
-      data: { labels: z.labels, datasets: [{ label: 'Z NBFI', data: z.data, borderColor: '#1e4d3a', tension: 0.25 }] },
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+      data: { labels: z.labels, datasets: totalDs },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: true, labels: { font: { size: 10 }, boxWidth: 10 } } }
+      }
     });
+    function setZMode(mode) {
+      const isTotal = mode === 'total';
+      zChart.data.datasets = isTotal ? totalDs : partsDs;
+      zChart.options.plugins.legend.display = !isTotal;
+      zChart.update();
+      document.getElementById('zModeTotal').className = 'btn btn-sm ' + (isTotal ? 'btn-primary' : 'btn-outline-secondary');
+      document.getElementById('zModeParts').className = 'btn btn-sm ' + (!isTotal ? 'btn-primary' : 'btn-outline-secondary');
+    }
+    document.getElementById('zModeTotal')?.addEventListener('click', () => setZMode('total'));
+    document.getElementById('zModeParts')?.addEventListener('click', () => setZMode('parts'));
   }
 });
 </script>
