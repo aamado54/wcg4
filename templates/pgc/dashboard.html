@@ -163,6 +163,8 @@
         </div>
         <div style="align-self:end;">
             <button type="button" id="btn-export-4-charts-svg">Exportación 4 charts</button>
+            <a id="export-4-charts-zip-link" href="#" download style="display:none; margin-left:10px; font-weight:600;">Descargar ZIP (PNG+SVG)</a>
+            <span id="export-4-charts-status" class="muted" style="display:block; margin-top:4px; font-size:0.82rem;"></span>
             {% csrf_token %}
         </div>
     </form>
@@ -932,13 +934,156 @@ document.addEventListener("DOMContentLoaded", function () {
     return yy + "-" + mm + " " + hh + "-" + mi;
   }
 
-  function downloadDataUrl(dataUrl, filename) {
+  function downloadBlob(blob, filename) {
+    const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = dataUrl;
+    a.href = url;
     a.download = filename;
+    a.rel = "noopener";
     document.body.appendChild(a);
     a.click();
     a.remove();
+    setTimeout(function () {
+      try {
+        URL.revokeObjectURL(url);
+      } catch (e) {}
+    }, 2500);
+  }
+
+  async function exportPayloadToBlob(payload, mime) {
+    if (payload instanceof Blob) {
+      return payload;
+    }
+    if (typeof payload === "string" && payload.indexOf("data:") === 0) {
+      const res = await fetch(payload);
+      return await res.blob();
+    }
+    if (typeof payload === "string") {
+      return new Blob([payload], { type: mime || "application/octet-stream" });
+    }
+    throw new Error("Formato de exportación no reconocido.");
+  }
+
+  async function exportPayloadToSvgText(payload) {
+    if (typeof payload === "string" && payload.trim().charAt(0) === "<") {
+      return payload;
+    }
+    if (typeof payload === "string" && payload.indexOf("data:") === 0) {
+      const res = await fetch(payload);
+      return await res.text();
+    }
+    if (payload instanceof Blob) {
+      return await payload.text();
+    }
+    throw new Error("No se pudo obtener el SVG.");
+  }
+
+  // ZIP mínimo (STORE, sin compresión) — evita dependencia CDN y bloqueos de .svg sueltos.
+  function crc32Table() {
+    if (window.__exportCrcTable) return window.__exportCrcTable;
+    const table = new Uint32Array(256);
+    for (let i = 0; i < 256; i++) {
+      let c = i;
+      for (let k = 0; k < 8; k++) {
+        c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+      }
+      table[i] = c >>> 0;
+    }
+    window.__exportCrcTable = table;
+    return table;
+  }
+
+  function crc32(bytes) {
+    const table = crc32Table();
+    let crc = 0 ^ -1;
+    for (let i = 0; i < bytes.length; i++) {
+      crc = (crc >>> 8) ^ table[(crc ^ bytes[i]) & 0xff];
+    }
+    return (crc ^ -1) >>> 0;
+  }
+
+  function u32(n) {
+    return new Uint8Array([n & 255, (n >>> 8) & 255, (n >>> 16) & 255, (n >>> 24) & 255]);
+  }
+
+  function u16(n) {
+    return new Uint8Array([n & 255, (n >>> 8) & 255]);
+  }
+
+  function concatBytes(parts) {
+    let len = 0;
+    parts.forEach(function (p) { len += p.length; });
+    const out = new Uint8Array(len);
+    let off = 0;
+    parts.forEach(function (p) {
+      out.set(p, off);
+      off += p.length;
+    });
+    return out;
+  }
+
+  function buildZipBlob(files) {
+    const localParts = [];
+    const centralParts = [];
+    let offset = 0;
+    const enc = new TextEncoder();
+    files.forEach(function (file) {
+      const nameBytes = enc.encode(file.name);
+      const data = file.data instanceof Uint8Array ? file.data : enc.encode(String(file.data));
+      const crc = crc32(data);
+      const local = concatBytes([
+        u32(0x04034b50),
+        u16(20),
+        u16(0),
+        u16(0),
+        u16(0),
+        u16(0),
+        u32(crc),
+        u32(data.length),
+        u32(data.length),
+        u16(nameBytes.length),
+        u16(0),
+        nameBytes,
+        data,
+      ]);
+      const central = concatBytes([
+        u32(0x02014b50),
+        u16(20),
+        u16(20),
+        u16(0),
+        u16(0),
+        u16(0),
+        u16(0),
+        u32(crc),
+        u32(data.length),
+        u32(data.length),
+        u16(nameBytes.length),
+        u16(0),
+        u16(0),
+        u16(0),
+        u16(0),
+        u32(0),
+        u32(offset),
+        nameBytes,
+      ]);
+      localParts.push(local);
+      centralParts.push(central);
+      offset += local.length;
+    });
+    const centralDir = concatBytes(centralParts);
+    const end = concatBytes([
+      u32(0x06054b50),
+      u16(0),
+      u16(0),
+      u16(files.length),
+      u16(files.length),
+      u32(centralDir.length),
+      u32(offset),
+      u16(0),
+    ]);
+    return new Blob([concatBytes(localParts.concat([centralDir, end]))], {
+      type: "application/zip",
+    });
   }
 
   function getCsrfToken() {
@@ -948,12 +1093,10 @@ document.addEventListener("DOMContentLoaded", function () {
     return match ? decodeURIComponent(match[1]) : "";
   }
 
-  async function uploadExportPngToServer(dataUrl, filename) {
-    const res = await fetch(dataUrl);
-    const blob = await res.blob();
+  async function uploadExportBlobToServer(blob, filename, activateLive) {
     const form = new FormData();
     form.append("file", blob, filename);
-    form.append("activate", "1");
+    form.append("activate", activateLive ? "1" : "0");
     const response = await fetch("{% url 'pgc:tv_charts_upload' %}", {
       method: "POST",
       headers: { "X-CSRFToken": getCsrfToken() },
@@ -981,10 +1124,16 @@ document.addEventListener("DOMContentLoaded", function () {
 
   async function exportFourIncomeChartsSvg() {
     const btnExport = document.getElementById("btn-export-4-charts-svg");
+    const zipLink = document.getElementById("export-4-charts-zip-link");
+    const statusEl = document.getElementById("export-4-charts-status");
     if (!btnExport) return;
 
+    function setStatus(msg) {
+      if (statusEl) statusEl.textContent = msg || "";
+    }
+
     if (typeof Plotly === "undefined" || !Plotly.newPlot || !Plotly.toImage) {
-      alert("Plotly no está disponible; no se pueden exportar los PNG.");
+      alert("Plotly no está disponible; no se pueden exportar los charts.");
       return;
     }
 
@@ -1005,6 +1154,14 @@ document.addEventListener("DOMContentLoaded", function () {
     const originalText = btnExport.textContent;
     btnExport.disabled = true;
     btnExport.textContent = "Generando...";
+    setStatus("Preparando 4 charts (PNG + SVG)...");
+    if (zipLink) {
+      if (zipLink.dataset.objectUrl) {
+        try { URL.revokeObjectURL(zipLink.dataset.objectUrl); } catch (e) {}
+      }
+      zipLink.style.display = "none";
+      zipLink.removeAttribute("href");
+    }
 
     const host = document.createElement("div");
     host.setAttribute("aria-hidden", "true");
@@ -1014,9 +1171,14 @@ document.addEventListener("DOMContentLoaded", function () {
     document.body.appendChild(host);
 
     let serverSaved = 0;
+    const zipFiles = [];
+    const enc = new TextEncoder();
+
     try {
       for (let i = 0; i < configs.length; i++) {
         const cfg = configs[i];
+        btnExport.textContent = "Generando " + cfg.title + "...";
+        setStatus("Generando " + cfg.title + " (" + (i + 1) + "/4)...");
         const series = buildExportIncomeSeries(source.periods, cfg.uneCodes);
         if (!series.labels.length) {
           throw new Error("Serie vacía para " + cfg.title);
@@ -1039,25 +1201,77 @@ document.addEventListener("DOMContentLoaded", function () {
           }
         );
 
-        const dataUrlPng = await Plotly.toImage(gd, {
+        const baseName = "wcg-g" + cfg.fileIndex + " " + stamp;
+        const filenamePng = baseName + ".png";
+        const filenameSvg = baseName + ".svg";
+
+        const pngPayload = await Plotly.toImage(gd, {
           format: "png",
           width: IMAGE_WIDTH,
           height: IMAGE_HEIGHT,
         });
-        const filename = "wcg-g" + cfg.fileIndex + " " + stamp + ".png";
-        downloadDataUrl(dataUrlPng, filename);
-        await uploadExportPngToServer(dataUrlPng, filename);
+        const pngBlob = await exportPayloadToBlob(pngPayload, "image/png");
+        await uploadExportBlobToServer(pngBlob, filenamePng, true);
         serverSaved += 1;
+        zipFiles.push({
+          name: filenamePng,
+          data: new Uint8Array(await pngBlob.arrayBuffer()),
+        });
+
+        const svgPayload = await Plotly.toImage(gd, {
+          format: "svg",
+          width: IMAGE_WIDTH,
+          height: IMAGE_HEIGHT,
+        });
+        const svgText = await exportPayloadToSvgText(svgPayload);
+        if (!svgText || svgText.indexOf("<svg") === -1) {
+          throw new Error("Plotly no devolvió SVG válido para " + cfg.title);
+        }
+        const svgBlob = new Blob([svgText], { type: "image/svg+xml;charset=utf-8" });
+        await uploadExportBlobToServer(svgBlob, filenameSvg, true);
+        serverSaved += 1;
+        zipFiles.push({
+          name: filenameSvg,
+          data: enc.encode(svgText),
+        });
 
         Plotly.purge(gd);
         gd.remove();
-        await sleep(250);
+        await sleep(150);
       }
-      btnExport.textContent = "Listo (" + serverSaved + " en TV)";
-      await sleep(1200);
+
+      btnExport.textContent = "Empaquetando ZIP...";
+      setStatus("Creando ZIP con 4 PNG + 4 SVG...");
+      const zipBlob = buildZipBlob(zipFiles);
+      const zipName = "wcg-charts " + stamp + ".zip";
+      const zipUrl = URL.createObjectURL(zipBlob);
+
+      if (zipLink) {
+        zipLink.href = zipUrl;
+        zipLink.download = zipName;
+        zipLink.dataset.objectUrl = zipUrl;
+        zipLink.textContent = "Descargar " + zipName;
+        zipLink.style.display = "inline";
+      }
+
+      // Una sola descarga automática (sin PNG sueltos previos que bloqueen el ZIP).
+      downloadBlob(zipBlob, zipName);
+
+      btnExport.textContent = "Listo";
+      setStatus(
+        "ZIP listo (" + zipFiles.length + " archivos). Si no bajó solo, pulse el enlace azul."
+      );
+      alert(
+        "Exportación lista.\n\n" +
+          "Se generó un solo archivo ZIP con 4 PNG + 4 SVG.\n" +
+          "Si no aparece en Descargas, pulse el enlace azul junto al botón.\n\n" +
+          "Servidor TV: " + serverSaved + " archivos guardados."
+      );
+      await sleep(800);
     } catch (err) {
       console.error(err);
-      alert((err && err.message) || "Error al generar la exportación de 4 charts PNG.");
+      setStatus("Error: " + ((err && err.message) || "falló la exportación"));
+      alert((err && err.message) || "Error al generar la exportación de 4 charts PNG+SVG.");
     } finally {
       try {
         host.querySelectorAll("div").forEach(function (el) {

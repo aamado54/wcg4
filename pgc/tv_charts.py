@@ -1,12 +1,15 @@
 """
-Charts TV: archivo archivados con sello + copias vivas wcg-g1..g4.png.
+Charts TV: archivo archivados con sello + copias vivas wcg-g1..g4.png|.svg.
 
 Layout en disco (MEDIA_ROOT/tv):
   media/tv/archive/wcg-g1 YY-MM HH-MM.png
+  media/tv/archive/wcg-g1 YY-MM HH-MM.svg
   media/tv/live/wcg-g1.png … wcg-g4.png
+  media/tv/live/wcg-g1.svg … wcg-g4.svg
 
-URL pública (televisor):
+URL pública (televisor / capturador):
   /tv/wcg-g1.png … /tv/wcg-g4.png
+  /tv/wcg-g1.svg … /tv/wcg-g4.svg
 """
 
 from __future__ import annotations
@@ -29,10 +32,14 @@ from django.views.decorators.http import require_GET, require_POST
 from pgc.admin_utils import admin_period_context, parse_admin_period
 
 LIVE_SLOT_COUNT = 4
-LIVE_NAMES = {n: f"wcg-g{n}.png" for n in range(1, LIVE_SLOT_COUNT + 1)}
-# Soporta sello nuevo YY-MM-DD HH-MM y legado YY-MM HH-MM
+LIVE_EXTS = ("png", "svg")
+LIVE_NAMES = {
+    ext: {n: f"wcg-g{n}.{ext}" for n in range(1, LIVE_SLOT_COUNT + 1)}
+    for ext in LIVE_EXTS
+}
+# Soporta sello nuevo YY-MM-DD HH-MM y legado YY-MM HH-MM; PNG o SVG.
 ARCHIVE_NAME_RE = re.compile(
-    r"^wcg-g([1-4]) (\d{2}-\d{2}(?:-\d{2})? \d{2}-\d{2})\.png$"
+    r"^wcg-g([1-4]) (\d{2}-\d{2}(?:-\d{2})? \d{2}-\d{2})\.(png|svg)$"
 )
 
 
@@ -51,21 +58,31 @@ def live_dir() -> Path:
     return tv_root() / "live"
 
 
-def live_path(slot: int) -> Path:
-    if slot not in LIVE_NAMES:
+def live_path(slot: int, ext: str = "png") -> Path:
+    if ext not in LIVE_NAMES:
+        raise ValueError(f"ext inválida: {ext}")
+    if slot not in LIVE_NAMES[ext]:
         raise ValueError(f"slot inválido: {slot}")
-    return live_dir() / LIVE_NAMES[slot]
+    return live_dir() / LIVE_NAMES[ext][slot]
 
 
-def parse_archive_name(name: str) -> tuple[int, str] | None:
+def parse_archive_name(name: str) -> tuple[int, str, str] | None:
     match = ARCHIVE_NAME_RE.match(name)
     if not match:
         return None
-    return int(match.group(1)), match.group(2)
+    return int(match.group(1)), match.group(2), match.group(3)
 
 
 def is_safe_archive_name(name: str) -> bool:
     return parse_archive_name(name) is not None
+
+
+def sibling_archive_name(name: str, new_ext: str) -> str | None:
+    parsed = parse_archive_name(name)
+    if not parsed or new_ext not in LIVE_EXTS:
+        return None
+    slot, stamp, _ext = parsed
+    return f"wcg-g{slot} {stamp}.{new_ext}"
 
 
 @dataclass
@@ -92,12 +109,13 @@ class ArchiveSet:
 
 
 def list_archive_files() -> list[ArchiveFile]:
+    """Lista solo PNG: agrupan los sets de selección TV (SVG viaja como hermano)."""
     items: list[ArchiveFile] = []
     for path in sorted(archive_dir().glob("wcg-g*.png"), key=lambda p: p.stat().st_mtime, reverse=True):
         parsed = parse_archive_name(path.name)
         if not parsed:
             continue
-        slot, stamp = parsed
+        slot, stamp, _ext = parsed
         st = path.stat()
         items.append(
             ArchiveFile(
@@ -125,15 +143,28 @@ def group_archive_sets(files: list[ArchiveFile] | None = None) -> list[ArchiveSe
 
 def live_status() -> list[dict]:
     rows = []
-    for slot, name in LIVE_NAMES.items():
-        path = live_path(slot)
+    for slot in range(1, LIVE_SLOT_COUNT + 1):
+        variants = []
+        for ext in LIVE_EXTS:
+            name = LIVE_NAMES[ext][slot]
+            path = live_path(slot, ext)
+            variants.append(
+                {
+                    "ext": ext,
+                    "name": name,
+                    "exists": path.is_file(),
+                    "size": path.stat().st_size if path.is_file() else 0,
+                    "url": f"/tv/{name}",
+                }
+            )
         rows.append(
             {
                 "slot": slot,
-                "name": name,
-                "exists": path.is_file(),
-                "size": path.stat().st_size if path.is_file() else 0,
-                "url": f"/tv/{name}",
+                "name": LIVE_NAMES["png"][slot],
+                "variants": variants,
+                "exists": any(v["exists"] for v in variants),
+                "png": variants[0],
+                "svg": variants[1],
             }
         )
     return rows
@@ -141,26 +172,28 @@ def live_status() -> list[dict]:
 
 def save_archive_upload(filename: str, raw: bytes, *, activate_live: bool = True) -> dict:
     """
-    Guarda PNG con sello en archive/.
-    Si activate_live=True, también copia/actualiza media/tv/live/wcg-gN.png.
+    Guarda PNG o SVG con sello en archive/.
+    Si activate_live=True, también actualiza media/tv/live/wcg-gN.{png|svg}.
     """
     parsed = parse_archive_name(filename)
     if not parsed:
         raise ValueError(
-            "Nombre inválido. Use: wcg-gN YY-MM HH-MM.png (N=1..4; también acepta YY-MM-DD)."
+            "Nombre inválido. Use: wcg-gN YY-MM HH-MM.png|.svg "
+            "(N=1..4; también acepta YY-MM-DD)."
         )
-    slot, stamp = parsed
+    slot, stamp, ext = parsed
     dest = archive_dir() / filename
     dest.write_bytes(raw)
     live_name = None
     if activate_live:
-        live_dest = live_path(slot)
+        live_dest = live_path(slot, ext)
         live_dest.write_bytes(raw)
-        live_name = LIVE_NAMES[slot]
+        live_name = LIVE_NAMES[ext][slot]
     return {
         "filename": filename,
         "slot": slot,
         "stamp": stamp,
+        "ext": ext,
         "live": live_name,
     }
 
@@ -175,31 +208,52 @@ def promote_latest_complete_set() -> list[str] | None:
 
 
 def copy_archives_to_live(filenames: list[str]) -> list[str]:
-    """Copia archivos de archive → live (sobrescribe). No borra el archivo con sello."""
+    """
+    Copia PNG de archive → live (sobrescribe).
+    Si existe el SVG hermano del mismo sello, también lo copia a live/wcg-gN.svg.
+    """
     copied: list[str] = []
     seen_slots: set[int] = set()
     for name in filenames:
         parsed = parse_archive_name(name)
         if not parsed:
             raise ValueError(f"Nombre no permitido: {name}")
-        slot, _stamp = parsed
+        slot, _stamp, ext = parsed
+        if ext != "png":
+            raise ValueError(
+                f"Seleccione PNG para activar en TV (inválido: {name})."
+            )
         src = archive_dir() / name
         if not src.is_file():
             raise FileNotFoundError(f"No existe en archivo: {name}")
         if slot in seen_slots:
             raise ValueError(f"Seleccionó más de un archivo para wcg-g{slot}.")
         seen_slots.add(slot)
-        dest = live_path(slot)
+        dest = live_path(slot, "png")
         shutil.copy2(src, dest)
-        copied.append(LIVE_NAMES[slot])
+        copied.append(LIVE_NAMES["png"][slot])
+
+        svg_name = sibling_archive_name(name, "svg")
+        if svg_name:
+            svg_src = archive_dir() / svg_name
+            if svg_src.is_file():
+                shutil.copy2(svg_src, live_path(slot, "svg"))
+                copied.append(LIVE_NAMES["svg"][slot])
     return copied
 
 
 def delete_archives(filenames: list[str]) -> list[str]:
+    """Borra los nombres dados; si es PNG, también borra el SVG hermano del mismo sello."""
     deleted: list[str] = []
+    to_delete: list[str] = []
     for name in filenames:
         if not is_safe_archive_name(name):
             raise ValueError(f"Nombre no permitido: {name}")
+        to_delete.append(name)
+        sib = sibling_archive_name(name, "svg")
+        if sib and sib not in to_delete:
+            to_delete.append(sib)
+    for name in to_delete:
         path = archive_dir() / name
         if path.is_file():
             path.unlink()
@@ -213,13 +267,17 @@ def _ops_user(user) -> bool:
 
 @require_GET
 def tv_live_png(request, name: str):
-    """Sirve wcg-g1.png … wcg-g4.png sin autenticación (TV)."""
-    if name not in LIVE_NAMES.values():
+    """Sirve wcg-g1.png|.svg … wcg-g4.png|.svg sin autenticación (TV / capturador)."""
+    allowed = {
+        LIVE_NAMES[ext][n] for ext in LIVE_EXTS for n in range(1, LIVE_SLOT_COUNT + 1)
+    }
+    if name not in allowed:
         raise Http404("Archivo TV no encontrado.")
     path = live_dir() / name
     if not path.is_file():
-        raise Http404("Aún no hay chart vivo para ese slot.")
-    response = FileResponse(path.open("rb"), content_type="image/png")
+        raise Http404("Aún no hay chart vivo para ese slot/formato.")
+    content_type = "image/svg+xml" if name.endswith(".svg") else "image/png"
+    response = FileResponse(path.open("rb"), content_type=content_type)
     response["Cache-Control"] = "no-cache, no-store, must-revalidate"
     response["Pragma"] = "no-cache"
     return response
@@ -234,18 +292,19 @@ def tv_archive_png(request, name: str):
     path = archive_dir() / name
     if not path.is_file():
         raise Http404("Archivo no encontrado.")
-    return FileResponse(path.open("rb"), content_type="image/png")
+    parsed = parse_archive_name(name)
+    content_type = "image/svg+xml" if parsed and parsed[2] == "svg" else "image/png"
+    return FileResponse(path.open("rb"), content_type=content_type)
 
 
 @login_required
 @require_POST
 def tv_charts_upload(request):
-    """Recibe PNG desde Exportación 4 charts → archive/ + live/."""
+    """Recibe PNG/SVG desde Exportación 4 charts → archive/ (+ live/ si activate)."""
     uploaded = request.FILES.get("file") or request.FILES.get("png")
     if not uploaded:
         return JsonResponse({"ok": False, "error": "Falta archivo."}, status=400)
     filename = (uploaded.name or "").strip()
-    # Algunos navegadores envían solo el basename; normalizar espacios.
     filename = Path(filename).name
     activate = (request.POST.get("activate") or "1").strip() != "0"
     try:
@@ -292,7 +351,8 @@ def admin_tv_charts(request):
                     if deleted:
                         messages.success(
                             request,
-                            f"Borrados {len(deleted)} archivo(s) archivado(s).",
+                            f"Borrados {len(deleted)} archivo(s) archivado(s) "
+                            f"(PNG y SVG hermano si existía).",
                         )
                     else:
                         messages.info(request, "Nada que borrar.")
@@ -329,11 +389,15 @@ def admin_tv_charts(request):
         slots = []
         for n in range(1, LIVE_SLOT_COUNT + 1):
             f = aset.files.get(n)
+            svg_name = sibling_archive_name(f.name, "svg") if f else None
+            svg_exists = bool(svg_name and (archive_dir() / svg_name).is_file())
             slots.append(
                 {
                     "slot": n,
                     "file": f,
                     "name": f.name if f else None,
+                    "svg_name": svg_name if svg_exists else None,
+                    "svg_exists": svg_exists,
                     "preview_url": (
                         reverse("pgc:tv_archive_png", kwargs={"name": f.name})
                         if f
@@ -349,10 +413,11 @@ def admin_tv_charts(request):
             }
         )
 
+    live_slots = live_status()
     context = {
         **admin_period_context(period),
-        "live_slots": live_status(),
-        "live_all_empty": not any(s["exists"] for s in live_status()),
+        "live_slots": live_slots,
+        "live_all_empty": not any(s["exists"] for s in live_slots),
         "archive_sets": archive_sets,
         "supports_month_range": False,
     }

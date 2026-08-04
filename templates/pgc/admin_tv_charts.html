@@ -63,6 +63,7 @@
     padding-top: 12px;
     border-top: 1px solid #edf2f7;
   }
+  .tv-ext-note { font-size: 0.75rem; color: #64748b; margin-top: 4px; }
   @media (max-width: 720px) {
     .tv-thumbs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   }
@@ -83,29 +84,41 @@
   <div class="adm-panel" style="margin-bottom:16px;">
     <h3 style="margin-top:0;">Vivos (lectura TV)</h3>
     <p class="muted" style="margin-top:0;">
-      URLs públicas fijas. <strong>Exportación 4 charts</strong> guarda copia con fecha/hora
-      en archivo <em>y</em> actualiza automáticamente los vivos (TV).
+      URLs públicas fijas. <strong>Exportación 4 charts</strong> guarda PNG y SVG con fecha/hora
+      en archivo <em>y</em> actualiza los vivos (misma base de nombre; solo cambia el sufijo
+      <code>.png</code> ↔ <code>.svg</code>).
       Directorio servidor: <code>media/tv/</code> (archive + live).
-      En Railway el disco es efímero: un redeploy borra estos PNG hasta volver a exportar
+      En Railway el disco es efímero: un redeploy borra estos archivos hasta volver a exportar
       (o monte un volumen en <code>media/</code>).
     </p>
     <div class="tv-urls">
       {% for slot in live_slots %}
-      <div>
-        {{ request.scheme }}://{{ request.get_host }}{{ slot.url }}
-        {% if slot.exists %}· listo{% else %}· vacío{% endif %}
+      <div style="margin-bottom:8px;">
+        <strong>g{{ slot.slot }}</strong><br>
+        {% for v in slot.variants %}
+        {{ request.scheme }}://{{ request.get_host }}{{ v.url }}
+        {% if v.exists %}· listo{% else %}· vacío{% endif %}<br>
+        {% endfor %}
       </div>
       {% endfor %}
     </div>
     <div class="tv-live-grid">
       {% for slot in live_slots %}
       <div class="tv-card">
-        <strong>{{ slot.name }}</strong>
-        {% if slot.exists %}
-        <img src="{{ slot.url }}?v={{ slot.size }}" alt="{{ slot.name }}">
+        <strong>{{ slot.png.name }}</strong>
+        {% if slot.png.exists %}
+        <img src="{{ slot.png.url }}?v={{ slot.png.size }}" alt="{{ slot.png.name }}">
         {% else %}
-        <div class="tv-missing">Sin archivo</div>
+        <div class="tv-missing">Sin PNG</div>
         {% endif %}
+        <div class="tv-ext-note">
+          SVG:
+          {% if slot.svg.exists %}
+          <a href="{{ slot.svg.url }}" target="_blank" rel="noopener">{{ slot.svg.name }}</a>
+          {% else %}
+          vacío
+          {% endif %}
+        </div>
       </div>
       {% endfor %}
     </div>
@@ -122,13 +135,14 @@
     <h3 style="margin-top:0;">Archivo (nombres con fecha/hora)</h3>
     <p class="muted" style="margin-top:0;">
       Marque PNG y use <em>Copiar a TV</em> o <em>Borrar seleccionados</em>.
-      O active un set completo g1–g4 de un sello.
+      Al activar un set, si existe el SVG hermano del mismo sello también se copia a
+      <code>live/wcg-gN.svg</code>.
     </p>
 
     {% if not archive_sets %}
     <p class="muted">
       Aún no hay PNG archivados. Use <strong>Exportación 4 charts</strong> en el Tablero principal;
-      se descargan localmente y también se guardan aquí (archivo + vivos).
+      se descargan localmente (PNG + SVG) y también se guardan aquí (archivo + vivos).
       Si está en Railway y acaba de redesplegar, el disco se vació: vuelva a exportar.
     </p>
     {% else %}
@@ -166,6 +180,9 @@
               g{{ s.slot }}
             </label>
             <img src="{{ s.preview_url }}" alt="{{ s.name }}">
+            <div class="tv-ext-note">
+              {% if s.svg_exists %}+ SVG hermano{% else %}sin SVG{% endif %}
+            </div>
             {% else %}
             <div class="tv-slot-label muted">g{{ s.slot }}</div>
             <div class="tv-missing">falta</div>
@@ -185,7 +202,7 @@
           class="adm-btn adm-btn-secondary"
           name="action"
           value="delete"
-          onclick="return confirm('¿Borrar los PNG archivados seleccionados? Los vivos no se tocan.');"
+          onclick="return confirm('¿Borrar los PNG seleccionados y su SVG hermano si existe? Los vivos no se tocan.');"
         >Borrar seleccionados</button>
       </div>
     </form>
