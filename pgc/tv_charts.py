@@ -10,26 +10,31 @@ Layout en disco (MEDIA_ROOT/tv):
 URL pública (televisor / capturador):
   /tv/wcg-g1.png … /tv/wcg-g4.png
   /tv/wcg-g1.svg … /tv/wcg-g4.svg
+
+Permanencia: cada vivo también se guarda en Postgres (TvLiveChart). Tras un
+redeploy que vacíe el disco, se rehidrata live/ desde la DB automáticamente.
 """
 
 from __future__ import annotations
 
+import logging
 import re
-import shutil
 from dataclasses import dataclass
 from pathlib import Path
 
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
-
-from core.access import can_access_ops
-from django.http import FileResponse, Http404, JsonResponse
+from django.db import OperationalError, ProgrammingError
+from django.http import FileResponse, Http404, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_GET, require_POST
 
+from core.access import can_access_ops
 from pgc.admin_utils import admin_period_context, parse_admin_period
+
+logger = logging.getLogger(__name__)
 
 LIVE_SLOT_COUNT = 4
 LIVE_EXTS = ("png", "svg")
@@ -64,6 +69,122 @@ def live_path(slot: int, ext: str = "png") -> Path:
     if slot not in LIVE_NAMES[ext]:
         raise ValueError(f"slot inválido: {slot}")
     return live_dir() / LIVE_NAMES[ext][slot]
+
+
+def parse_live_name(name: str) -> tuple[int, str] | None:
+    for ext in LIVE_EXTS:
+        for slot, live_name in LIVE_NAMES[ext].items():
+            if live_name == name:
+                return slot, ext
+    return None
+
+
+def persist_live_to_db(slot: int, ext: str, raw: bytes, stamp: str = "") -> None:
+    """Guarda/actualiza el respaldo en Postgres. No falla la petición si la tabla aún no existe."""
+    try:
+        from pgc.models import TvLiveChart
+
+        TvLiveChart.objects.update_or_create(
+            slot=slot,
+            ext=ext,
+            defaults={
+                "content": raw,
+                "stamp": stamp or "",
+                "byte_size": len(raw),
+            },
+        )
+    except (OperationalError, ProgrammingError) as exc:
+        logger.warning("TvLiveChart persist skipped (%s)", exc)
+
+
+def write_live_bytes(slot: int, ext: str, raw: bytes, stamp: str = "") -> str:
+    """Escribe disco live/ + respaldo Postgres. Devuelve el nombre vivo."""
+    live_dir()
+    dest = live_path(slot, ext)
+    dest.write_bytes(raw)
+    persist_live_to_db(slot, ext, raw, stamp=stamp)
+    return LIVE_NAMES[ext][slot]
+
+
+def load_live_from_db(slot: int, ext: str) -> bytes | None:
+    try:
+        from pgc.models import TvLiveChart
+
+        row = TvLiveChart.objects.filter(slot=slot, ext=ext).only("content").first()
+        if not row or not row.content:
+            return None
+        return bytes(row.content)
+    except (OperationalError, ProgrammingError):
+        return None
+
+
+def ensure_live_on_disk(slot: int, ext: str) -> bool:
+    """Si falta el archivo en disco, rehidrata desde Postgres. True si el archivo queda disponible."""
+    path = live_path(slot, ext)
+    if path.is_file() and path.stat().st_size > 0:
+        return True
+    raw = load_live_from_db(slot, ext)
+    if not raw:
+        return False
+    live_dir()
+    path.write_bytes(raw)
+    return True
+
+
+def seed_db_from_disk() -> int:
+    """Si hay vivos en disco y faltan en DB, los copia a Postgres. Devuelve cuántos sembrados."""
+    seeded = 0
+    for ext in LIVE_EXTS:
+        for slot in range(1, LIVE_SLOT_COUNT + 1):
+            path = live_path(slot, ext)
+            if not path.is_file():
+                continue
+            raw = path.read_bytes()
+            if not raw:
+                continue
+            existing = load_live_from_db(slot, ext)
+            if existing:
+                continue
+            persist_live_to_db(slot, ext, raw)
+            seeded += 1
+    return seeded
+
+
+def rehydrate_live_from_db() -> int:
+    """Reescribe live/ desde Postgres cuando falte el archivo. Devuelve cuántos restaurados."""
+    restored = 0
+    for ext in LIVE_EXTS:
+        for slot in range(1, LIVE_SLOT_COUNT + 1):
+            path = live_path(slot, ext)
+            if path.is_file() and path.stat().st_size > 0:
+                continue
+            if ensure_live_on_disk(slot, ext):
+                restored += 1
+    return restored
+
+
+def bootstrap_tv_persistence() -> dict:
+    """Sembrar DB desde disco si hace falta, luego rehidratar disco desde DB."""
+    seeded = seed_db_from_disk()
+    restored = rehydrate_live_from_db()
+    return {"seeded": seeded, "restored": restored}
+
+
+def db_backup_status() -> dict:
+    """Conteo de respaldos en Postgres para el admin."""
+    try:
+        from pgc.models import TvLiveChart
+
+        rows = list(TvLiveChart.objects.all().only("slot", "ext", "byte_size", "updated_at"))
+        by_key = {(r.slot, r.ext): r for r in rows}
+        return {
+            "available": True,
+            "count": len(rows),
+            "complete": len(rows) >= LIVE_SLOT_COUNT * len(LIVE_EXTS),
+            "by_key": by_key,
+        }
+    except (OperationalError, ProgrammingError):
+        return {"available": False, "count": 0, "complete": False, "by_key": {}}
 
 
 def parse_archive_name(name: str) -> tuple[int, str, str] | None:
@@ -142,12 +263,17 @@ def group_archive_sets(files: list[ArchiveFile] | None = None) -> list[ArchiveSe
 
 
 def live_status() -> list[dict]:
+    db_status = db_backup_status()
+    by_key = db_status.get("by_key") or {}
     rows = []
     for slot in range(1, LIVE_SLOT_COUNT + 1):
         variants = []
         for ext in LIVE_EXTS:
             name = LIVE_NAMES[ext][slot]
+            # Rehidrata en silencio para que el admin muestre la verdad usable.
+            ensure_live_on_disk(slot, ext)
             path = live_path(slot, ext)
+            db_row = by_key.get((slot, ext))
             variants.append(
                 {
                     "ext": ext,
@@ -155,6 +281,8 @@ def live_status() -> list[dict]:
                     "exists": path.is_file(),
                     "size": path.stat().st_size if path.is_file() else 0,
                     "url": f"/tv/{name}",
+                    "db_backed": bool(db_row),
+                    "db_updated": db_row.updated_at if db_row else None,
                 }
             )
         rows.append(
@@ -173,7 +301,7 @@ def live_status() -> list[dict]:
 def save_archive_upload(filename: str, raw: bytes, *, activate_live: bool = True) -> dict:
     """
     Guarda PNG o SVG con sello en archive/.
-    Si activate_live=True, también actualiza media/tv/live/wcg-gN.{png|svg}.
+    Si activate_live=True, también actualiza media/tv/live/ + Postgres.
     """
     parsed = parse_archive_name(filename)
     if not parsed:
@@ -186,9 +314,7 @@ def save_archive_upload(filename: str, raw: bytes, *, activate_live: bool = True
     dest.write_bytes(raw)
     live_name = None
     if activate_live:
-        live_dest = live_path(slot, ext)
-        live_dest.write_bytes(raw)
-        live_name = LIVE_NAMES[ext][slot]
+        live_name = write_live_bytes(slot, ext, raw, stamp=stamp)
     return {
         "filename": filename,
         "slot": slot,
@@ -209,8 +335,8 @@ def promote_latest_complete_set() -> list[str] | None:
 
 def copy_archives_to_live(filenames: list[str]) -> list[str]:
     """
-    Copia PNG de archive → live (sobrescribe).
-    Si existe el SVG hermano del mismo sello, también lo copia a live/wcg-gN.svg.
+    Copia PNG de archive → live + Postgres.
+    Si existe el SVG hermano del mismo sello, también lo copia.
     """
     copied: list[str] = []
     seen_slots: set[int] = set()
@@ -218,7 +344,7 @@ def copy_archives_to_live(filenames: list[str]) -> list[str]:
         parsed = parse_archive_name(name)
         if not parsed:
             raise ValueError(f"Nombre no permitido: {name}")
-        slot, _stamp, ext = parsed
+        slot, stamp, ext = parsed
         if ext != "png":
             raise ValueError(
                 f"Seleccione PNG para activar en TV (inválido: {name})."
@@ -229,16 +355,16 @@ def copy_archives_to_live(filenames: list[str]) -> list[str]:
         if slot in seen_slots:
             raise ValueError(f"Seleccionó más de un archivo para wcg-g{slot}.")
         seen_slots.add(slot)
-        dest = live_path(slot, "png")
-        shutil.copy2(src, dest)
-        copied.append(LIVE_NAMES["png"][slot])
+        raw = src.read_bytes()
+        copied.append(write_live_bytes(slot, "png", raw, stamp=stamp))
 
         svg_name = sibling_archive_name(name, "svg")
         if svg_name:
             svg_src = archive_dir() / svg_name
             if svg_src.is_file():
-                shutil.copy2(svg_src, live_path(slot, "svg"))
-                copied.append(LIVE_NAMES["svg"][slot])
+                copied.append(
+                    write_live_bytes(slot, "svg", svg_src.read_bytes(), stamp=stamp)
+                )
     return copied
 
 
@@ -268,15 +394,30 @@ def _ops_user(user) -> bool:
 @require_GET
 def tv_live_png(request, name: str):
     """Sirve wcg-g1.png|.svg … wcg-g4.png|.svg sin autenticación (TV / capturador)."""
-    allowed = {
-        LIVE_NAMES[ext][n] for ext in LIVE_EXTS for n in range(1, LIVE_SLOT_COUNT + 1)
-    }
-    if name not in allowed:
+    parsed_live = parse_live_name(name)
+    if not parsed_live:
         raise Http404("Archivo TV no encontrado.")
-    path = live_dir() / name
-    if not path.is_file():
-        raise Http404("Aún no hay chart vivo para ese slot/formato.")
-    content_type = "image/svg+xml" if name.endswith(".svg") else "image/png"
+    slot, ext = parsed_live
+    path = live_path(slot, ext)
+    if not path.is_file() or path.stat().st_size == 0:
+        # Disco vacío (redeploy): rehidratar desde Postgres.
+        if not ensure_live_on_disk(slot, ext):
+            try:
+                promote_latest_complete_set()
+            except Exception as exc:
+                logger.warning("promote_latest_complete_set failed: %s", exc)
+            if not ensure_live_on_disk(slot, ext) and not (
+                path.is_file() and path.stat().st_size > 0
+            ):
+                raw = load_live_from_db(slot, ext)
+                if not raw:
+                    raise Http404("Aún no hay chart vivo para ese slot/formato.")
+                content_type = "image/svg+xml" if ext == "svg" else "image/png"
+                response = HttpResponse(raw, content_type=content_type)
+                response["Cache-Control"] = "no-cache, no-store, must-revalidate"
+                response["Pragma"] = "no-cache"
+                return response
+    content_type = "image/svg+xml" if ext == "svg" else "image/png"
     response = FileResponse(path.open("rb"), content_type=content_type)
     response["Cache-Control"] = "no-cache, no-store, must-revalidate"
     response["Pragma"] = "no-cache"
@@ -414,11 +555,13 @@ def admin_tv_charts(request):
         )
 
     live_slots = live_status()
+    db_status = db_backup_status()
     context = {
         **admin_period_context(period),
         "live_slots": live_slots,
         "live_all_empty": not any(s["exists"] for s in live_slots),
         "archive_sets": archive_sets,
+        "tv_db_backup": db_status,
         "supports_month_range": False,
     }
     return render(request, "pgc/admin_tv_charts.html", context)

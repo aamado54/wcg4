@@ -310,3 +310,26 @@ class AdminManualEditLog(TimeStampedModel):
 
     def __str__(self):
         return f"{self.year}-{self.month:02d} {self.entity_type}.{self.field_name}"
+
+
+class TvLiveChart(models.Model):
+    """
+    Copia persistente (Postgres) de los charts vivos TV.
+    Sobrevive redeploys de Railway aunque el disco media/ se vacíe.
+    """
+
+    slot = models.PositiveSmallIntegerField()
+    ext = models.CharField(max_length=4)  # png | svg
+    content = models.BinaryField()
+    stamp = models.CharField(max_length=32, blank=True, default="")
+    byte_size = models.PositiveIntegerField(default=0)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ("slot", "ext")
+        ordering = ["slot", "ext"]
+        verbose_name = "Chart TV vivo (respaldo)"
+        verbose_name_plural = "Charts TV vivos (respaldo)"
+
+    def __str__(self):
+        return f"wcg-g{self.slot}.{self.ext} ({self.byte_size} B)"

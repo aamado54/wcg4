@@ -87,9 +87,16 @@
       URLs públicas fijas. <strong>Exportación 4 charts</strong> guarda PNG y SVG con fecha/hora
       en archivo <em>y</em> actualiza los vivos (misma base de nombre; solo cambia el sufijo
       <code>.png</code> ↔ <code>.svg</code>).
+      Además se guardan en <strong>Postgres</strong> (respaldo): si Railway vacía el disco,
+      las TV se rehidratan solas desde la base.
       Directorio servidor: <code>media/tv/</code> (archive + live).
-      En Railway el disco es efímero: un redeploy borra estos archivos hasta volver a exportar
-      (o monte un volumen en <code>media/</code>).
+      {% if tv_db_backup.available %}
+      Respaldo DB ahora:
+      <strong>{{ tv_db_backup.count }}/8</strong>
+      {% if tv_db_backup.complete %}· completo{% else %}· incompleto (exporte de nuevo una vez){% endif %}.
+      {% else %}
+      Respaldo DB: pendiente de migración.
+      {% endif %}
     </p>
     <div class="tv-urls">
       {% for slot in live_slots %}
@@ -118,6 +125,8 @@
           {% else %}
           vacío
           {% endif %}
+          · DB PNG:{% if slot.png.db_backed %} sí{% else %} no{% endif %}
+          · DB SVG:{% if slot.svg.db_backed %} sí{% else %} no{% endif %}
         </div>
       </div>
       {% endfor %}
