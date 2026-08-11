@@ -14,4 +14,6 @@ urlpatterns = [
     path("whatif/", views.whatif, name="whatif"),
     path("whatif/escenario/<int:pk>/", views.load_scenario, name="load_scenario"),
     path("detalle/", views.detalle, name="detalle"),
+    path("ccy/", views.set_ccy, name="set_ccy"),
+    path("ajustes/", views.config, name="config"),
 ]

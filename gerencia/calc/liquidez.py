@@ -6,8 +6,9 @@ from typing import Any
 
 from .bands import band_chart_guides, evaluate_ratio
 from .indices import build_indices_catalog, derived_metrics
+from .money import fmt_money, fx_factor, scale_chart, unit_label
 from .peers import peers_with_self
-from .utils import BU_LABEL, fmt, kpi_row, last_n, n, rates_from_meta
+from .utils import BU_LABEL, kpi_row, last_n, n, rates_from_meta
 
 
 def _structural_break_note(labels: list[str], liq: list, apa: list) -> str | None:
@@ -37,10 +38,18 @@ def _structural_break_note(labels: list[str], liq: list, apa: list) -> str | Non
 
 
 def build_liquidez_board(
-    data: dict, bu: str = "T", months: int = 14, vista: str = "contable"
+    data: dict,
+    bu: str = "T",
+    months: int = 14,
+    vista: str = "contable",
+    strict: bool = False,
+    ccy: str = "GTQ",
+    fx: float | None = None,
 ) -> dict[str, Any]:
     vista = "gerencial" if vista == "gerencial" else "contable"
-    catalog = build_indices_catalog(data, bu=bu, periods=months, vista=vista)
+    catalog = build_indices_catalog(
+        data, bu=bu, periods=months, vista=vista, strict=strict
+    )
     if catalog.get("status") != "ok":
         return {"status": "empty"}
 
@@ -87,9 +96,14 @@ def build_liquidez_board(
     }
 
     vista_note = (
-        "Vista contable: preferentes dentro del patrimonio."
+        "Vista contable: estados financieros tal cual (cuenta 302)."
         if vista == "contable"
-        else "Vista gerencial: preferentes/pagarés como deuda (salen del patrimonio)."
+        else (
+            "Vista gerencial estricta: dividendos preferentes como costo financiero "
+            "y 301010106 como pasivo a 1 año."
+            if strict
+            else "Vista gerencial: misma estructura de libros; utilidad resta Δ anticipos de dividendos (102020301)."
+        )
     )
 
     cards = [
@@ -111,10 +125,10 @@ def build_liquidez_board(
         },
         {
             "label": "Capital de trabajo",
-            "display": fmt(m.get("capital_trabajo")),
+            "display": fmt_money(m.get("capital_trabajo"), ccy, fx),
             "tone": "ok" if n(m.get("capital_trabajo")) > 0 else "risk",
             "zone": "positivo" if n(m.get("capital_trabajo")) > 0 else "negativo",
-            "meaning": "AC − PC. Buffer de corto plazo (000 QTZ).",
+            "meaning": f"AC − PC. Buffer de corto plazo ({unit_label(ccy)}).",
             "band": "—",
         },
         {
@@ -141,10 +155,10 @@ def build_liquidez_board(
         "bu_label": BU_LABEL.get(bu, bu),
         "vista": vista,
         "period": catalog["period"],
-        "unit": catalog["unit"],
+        "unit": unit_label(ccy),
         "cards": cards,
         "peers": peers,
-        "chart": chart,
+        "chart": scale_chart(chart, fx_factor(ccy, fx)),
         "break_note": break_note,
         "z_series": {
             "labels": labels,
@@ -168,8 +182,15 @@ def build_liquidez_board(
 
 
 def build_estructura_board(
-    data: dict, bu: str = "T", months: int = 14, vista: str = "contable"
+    data: dict,
+    bu: str = "T",
+    months: int = 14,
+    vista: str = "contable",
+    strict: bool = False,
+    ccy: str = "GTQ",
+    fx: float | None = None,
 ) -> dict[str, Any]:
+    from .accounts import div_pref_ytd
     from .indices import build_preferentes_stock
 
     vista = "gerencial" if vista == "gerencial" else "contable"
@@ -179,11 +200,18 @@ def build_estructura_board(
     focus = last_n(periods, months)
     rates = rates_from_meta(data)
     latest = focus[-1]
-    pref = build_preferentes_stock(data, bu, periods) if vista == "gerencial" else {}
+    pref = build_preferentes_stock(data, bu, periods)
 
     def m_at(p: str) -> dict:
         return derived_metrics(
-            kpi_row(data, bu, p), bu, p, rates, vista=vista, inv_proxy=pref.get(p)
+            kpi_row(data, bu, p),
+            bu,
+            p,
+            rates,
+            vista=vista,
+            inv_proxy=pref.get(p, 0.0),
+            div_ytd=div_pref_ytd(data, bu, p),
+            strict=strict,
         )
 
     m = m_at(latest)
@@ -193,15 +221,8 @@ def build_estructura_board(
         return [n(m_at(p).get(key)) for p in focus]
 
     pas_c = series_metric("pasivo_corriente")
-    if vista == "gerencial":
-        pas_nc = [
-            n(m_at(p).get("pasivo_no_corriente")) + n(m_at(p).get("inv_proxy"))
-            for p in focus
-        ]
-        pas_nc_label = "PNC + preferentes est."
-    else:
-        pas_nc = series_metric("pasivo_no_corriente")
-        pas_nc_label = "Pasivo no corriente"
+    pas_nc = series_metric("pasivo_no_corriente")
+    pas_nc_label = "Pasivo no corriente"
     pat = series_metric("patrimonio")
     ac = series_metric("activo_corriente")
     act = series_metric("activo")
@@ -243,7 +264,11 @@ def build_estructura_board(
     vista_note = (
         "Contable: libros tal cual."
         if vista == "contable"
-        else "Gerencial: preferentes/pagarés como deuda."
+        else (
+            "Estricta: 301010106 (inversionistas preferentes) en pasivo a 1 año."
+            if strict
+            else "Gerencial: libros iguales; utilidad con costo de dividendos preferentes."
+        )
     )
 
     return {
@@ -252,7 +277,7 @@ def build_estructura_board(
         "bu_label": BU_LABEL.get(bu, bu),
         "vista": vista,
         "period": latest,
-        "unit": data.get("unit") or "000 quetzales",
+        "unit": unit_label(ccy),
         "cards": [
             {
                 "label": "Financiamiento vs patrimonio",
@@ -268,9 +293,9 @@ def build_estructura_board(
                 "tone": deuda_ev["tone"],
             },
             {
-                "label": "Preferentes est. (proxy)",
-                "display": fmt(m.get("inv_proxy")),
-                "hint": "en deuda si vista gerencial",
+                "label": "Inversionistas preferentes (301010106)",
+                "display": fmt_money(m.get("inv_proxy"), ccy, fx),
+                "hint": "pasivo a 1 año si vista estricta",
             },
             {
                 "label": "% pasivo corto / deuda vista",
@@ -285,8 +310,8 @@ def build_estructura_board(
                 "hint": "Utilidad vista / costo fin.",
             },
         ],
-        "chart_fondeo": chart_fondeo,
-        "chart_activos": chart_activos,
+        "chart_fondeo": scale_chart(chart_fondeo, fx_factor(ccy, fx)),
+        "chart_activos": scale_chart(chart_activos, fx_factor(ccy, fx)),
         "chart_deuda": chart_deuda,
         "deuda_eval": deuda_ev,
         "story": (

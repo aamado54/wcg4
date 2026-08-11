@@ -20,8 +20,9 @@
     </div>
     <div class="ge-vista">
       <a href="?bu={{ bu }}&amp;vista=contable" class="{% if vista == 'contable' %}active{% endif %}">Vista contable</a>
-      <a href="?bu={{ bu }}&amp;vista=gerencial" class="{% if vista == 'gerencial' %}active{% endif %}">Vista gerencial (preferentes = deuda)</a>
+      <a href="?bu={{ bu }}&amp;vista=gerencial" class="{% if vista == 'gerencial' %}active{% endif %}">Vista gerencial</a>
     </div>
+    {% if strict_gerencial %}<span class="ge-strict-note">Estricta ON · preferentes en pasivo a 1 año</span>{% endif %}
   </div>
   {% if board.status != "ok" %}
   <div class="ge-panel"><div class="ge-panel-b text-muted">Sin datos.</div></div>

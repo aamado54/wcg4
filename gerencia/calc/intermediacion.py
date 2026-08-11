@@ -5,8 +5,10 @@ from __future__ import annotations
 from collections import defaultdict
 from typing import Any
 
+from .accounts import div_pref_month, div_pref_ytd, funding_detail, preferentes_stock
 from .indices import derived_metrics
-from .utils import BU_LABEL, fmt, kpi_row, last_n, n, rates_from_meta
+from .money import fmt_money, fx_factor, scale_chart, unit_label
+from .utils import BU_LABEL, kpi_row, n, rates_from_meta
 
 
 def _rates_for_bu(data: dict, bu: str, period: str, rates: dict) -> tuple[float, float]:
@@ -48,12 +50,15 @@ def _intermediation_slice(
     prev_util_g: float | None = None,
 ) -> dict[str, Any]:
     row = kpi_row(data, bu, period)
-    m = derived_metrics(row, bu, period, rates, vista="contable")
+    pref = preferentes_stock(data, bu, period)
+    div_y = div_pref_ytd(data, bu, period)
+    m = derived_metrics(
+        row, bu, period, rates, vista="contable", inv_proxy=pref, div_ytd=div_y, strict=False
+    )
     cartera = n(m.get("cartera"))
     pasivo = n(m.get("pasivo_books"))
     pat = n(m.get("patrimonio_books"))
-    inv = n(m.get("inv_proxy"))
-    captacion = pasivo + inv
+    captacion = pasivo + pref
 
     activa, pasiva = _rates_for_bu(data, bu, period, rates)
 
@@ -63,11 +68,12 @@ def _intermediation_slice(
     margen_mes = productos_mes - costos_mes
 
     util_c = n(m.get("utilidades"))
-    util_g = n(m.get("util_gerencial"))
+    util_g = util_c - div_y
     util_flow_c = _util_flow(prev_period, prev_util_c, period, util_c)
     util_flow_g = _util_flow(prev_period, prev_util_g, period, util_g)
     util_flow = util_flow_g if mode == "gerencial" else util_flow_c
-    overhead_mes = margen_mes - util_flow
+    # Overhead es residuo operativo: margen − flujo contable. No absorbe dividendos.
+    overhead_mes = margen_mes - util_flow_c
 
     return {
         "period": period,
@@ -86,6 +92,8 @@ def _intermediation_slice(
         "tasa_activa": activa,
         "tasa_pasiva": pasiva,
         "patrimonio": pat,
+        "preferentes": pref,
+        "div_pref_mes": div_pref_month(data, bu, period),
         "spread": activa - pasiva,
     }
 
@@ -175,6 +183,8 @@ def build_intermediacion(
     months: int = 12,
     end_period: str | None = None,
     mode: str = "gerencial",
+    ccy: str = "GTQ",
+    fx: float | None = None,
 ) -> dict[str, Any]:
     periods = list(data.get("periods") or [])
     if not periods:
@@ -208,13 +218,15 @@ def build_intermediacion(
         return (a - b) / abs(b)
 
     n_m = len(slices)
+    unit = unit_label(ccy)
+    fm = lambda v: fmt_money(v, ccy, fx)
     sections = [
         {
             "id": "A",
             "title": "Colocaciones",
             "subtitle": f"Saldo al cierre · {latest['period']}",
             "metrics": [
-                {"label": "Saldo cartera", "value": fmt(latest["colocaciones"]), "hint": "000 QTZ · stock"},
+                {"label": "Saldo cartera", "value": fm(latest["colocaciones"]), "hint": f"{unit} · stock"},
                 {"label": "Tasa activa (est.)", "value": f"{latest['tasa_activa']*100:.1f}%", "hint": "Control qf"},
                 {
                     "label": "Δ saldo en el período",
@@ -228,9 +240,9 @@ def build_intermediacion(
         {
             "id": "B",
             "title": "Captaciones",
-            "subtitle": "Fondeo gerencial al cierre (pasivo + preferentes est.)",
+            "subtitle": "Fondeo al cierre (pasivo + inversionistas preferentes 301010106)",
             "metrics": [
-                {"label": "Fondeo total", "value": fmt(latest["captaciones"]), "hint": "000 QTZ · stock"},
+                {"label": "Fondeo total", "value": fm(latest["captaciones"]), "hint": f"{unit} · stock"},
                 {"label": "Tasa pasiva (est.)", "value": f"{latest['tasa_pasiva']*100:.1f}%", "hint": "Bancos+inv."},
                 {"label": "Spread", "value": f"{latest['spread']*100:.1f} pp", "hint": "Activa − pasiva"},
             ],
@@ -240,17 +252,17 @@ def build_intermediacion(
             "title": "Margen bruto",
             "subtitle": f"Suma de {n_m} mes(es) terminando en {latest['period']}",
             "metrics": [
-                {"label": "Productos del período", "value": fmt(agg["productos"]), "hint": f"{n_m} meses acum."},
-                {"label": "Costos fondeo del período", "value": fmt(agg["costos"]), "hint": "est. acum."},
-                {"label": "Margen bruto del período", "value": fmt(agg["margen_bruto"]), "hint": "Intermediación"},
+                {"label": "Productos del período", "value": fm(agg["productos"]), "hint": f"{n_m} meses acum."},
+                {"label": "Costos fondeo del período", "value": fm(agg["costos"]), "hint": "est. acum."},
+                {"label": "Margen bruto del período", "value": fm(agg["margen_bruto"]), "hint": "Intermediación"},
             ],
         },
         {
             "id": "D",
             "title": "Overhead neto",
-            "subtitle": f"Residuo acum. {n_m} mes(es) (margen − utilidad del período)",
+            "subtitle": f"Residuo acum. {n_m} mes(es) (margen − utilidad contable del período)",
             "metrics": [
-                {"label": "Overhead del período", "value": fmt(agg["overhead_neto"]), "hint": "000 QTZ"},
+                {"label": "Overhead del período", "value": fm(agg["overhead_neto"]), "hint": unit},
                 {
                     "label": "% del margen",
                     "value": f"{(agg['overhead_neto']/agg['margen_bruto']*100):.0f}%"
@@ -268,9 +280,9 @@ def build_intermediacion(
                 f"suma de flujos mensuales ({n_m} meses)"
             ),
             "metrics": [
-                {"label": "Utilidad del período", "value": fmt(agg["utilidad"]), "hint": mode},
-                {"label": "Flujo contable acum.", "value": fmt(agg["util_flow_c"]), "hint": "MoM"},
-                {"label": "Flujo gerencial acum.", "value": fmt(agg["util_flow_g"]), "hint": "post inv."},
+                {"label": "Utilidad del período", "value": fm(agg["utilidad"]), "hint": mode},
+                {"label": "Flujo contable acum.", "value": fm(agg["util_flow_c"]), "hint": "MoM"},
+                {"label": "Flujo gerencial acum.", "value": fm(agg["util_flow_g"]), "hint": "post div. pref."},
             ],
         },
     ]
@@ -323,11 +335,19 @@ def build_intermediacion(
     y_keys = [y for y in ("2023", "2024", "2025", "2026") if y in ymap]
     chart_annual = _chart_from_buckets([(k, ymap[k]) for k in y_keys])
 
+    fac = fx_factor(ccy, fx)
+    detalle = funding_detail(data, bu, window)
+    for group in ("preferentes", "pagares", "bancos"):
+        for row in detalle.get(group) or []:
+            row["display"] = fm(row.get("amount"))
+    detalle["totals_display"] = {k: fm(v) for k, v in (detalle.get("totals") or {}).items()}
+
     story = (
         f"{BU_LABEL.get(bu, bu)} · período {window[0]} → {window[-1]} ({n_m} meses) · modo {mode}. "
         f"Productos, costos, margen, overhead y utilidad de los cuadros C–E son "
         f"acumulados de ese período. Colocaciones y captaciones son saldos al cierre. "
-        f"Margen acum. {fmt(agg['margen_bruto'])}; utilidad acum. {fmt(agg['utilidad'])} (000 QTZ)."
+        f"Margen acum. {fm(agg['margen_bruto'])}; utilidad acum. {fm(agg['utilidad'])} ({unit}). "
+        f"Overhead = margen − utilidad contable (no incluye dividendos preferentes)."
     )
 
     return {
@@ -340,13 +360,15 @@ def build_intermediacion(
         "end_period": window[-1],
         "start_period": window[0],
         "periods_available": periods,
-        "unit": data.get("unit") or "000 quetzales",
+        "unit": unit,
+        "ccy": ccy,
         "sections": sections,
         "latest": latest,
         "aggregated": agg,
         "series": slices,
-        "chart": chart,
-        "chart_quarterly": chart_quarterly,
-        "chart_annual": chart_annual,
+        "chart": scale_chart(chart, fac),
+        "chart_quarterly": scale_chart(chart_quarterly, fac),
+        "chart_annual": scale_chart(chart_annual, fac),
+        "fondeo_detalle": detalle,
         "story": story,
     }

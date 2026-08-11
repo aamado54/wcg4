@@ -4,46 +4,14 @@ from __future__ import annotations
 
 from typing import Any
 
+from .accounts import div_pref_ytd, preferentes_stock
 from .bands import evaluate_ratio
 from .utils import BU_LABEL, delta, kpi_row, month_of, n, rates_from_meta
 
-# Semilla inicial: porción del patrimonio tratada como preferentes / pagarés.
-INV_SHARE = {"T": 0.45, "F": 0.45, "L": 0.25, "I": 0.15, "S": 0.15}
-
 
 def build_preferentes_stock(data: dict, bu: str, periods: list[str]) -> dict[str, float]:
-    """Stock de preferentes/pagarés estimado período a período.
-
-    Regla gerencial:
-    - Arranque: INV_SHARE × patrimonio.
-    - Si el patrimonio sube y el pasivo de libros no sube (típico de emitir
-      preferentes/pagarés clasificados como capital), el 100% del Δpatrimonio
-      se suma a preferentes (no infla el patrimonio gerencial).
-    - En otros casos se mantiene el stock y se acota a [0, patrimonio].
-    """
-    share = INV_SHARE.get(bu, 0.35)
-    out: dict[str, float] = {}
-    prev_pat = prev_pas = prev_inv = None
-    for p in periods:
-        row = kpi_row(data, bu, p)
-        pat = n(row.get("patrimonio"))
-        pas = n(row.get("pasivo_corriente")) + n(row.get("pasivo_no_corriente"))
-        if prev_pat is None:
-            inv = pat * share
-        else:
-            dpat = pat - prev_pat
-            if dpat > 0 and pas <= (prev_pas or 0) + 1e-6:
-                # Emisión tipo preferentes/pagaré en patrimonio: todo el aumento es deuda gerencial.
-                inv = (prev_inv or 0.0) + dpat
-            elif dpat < 0:
-                # Reducción de patrimonio: baja preferentes proporcionalmente al stock previo.
-                inv = max(0.0, (prev_inv or 0.0) + dpat * share)
-            else:
-                inv = prev_inv or (pat * share)
-            inv = min(max(inv, 0.0), pat)
-        out[p] = inv
-        prev_pat, prev_pas, prev_inv = pat, pas, inv
-    return out
+    """Stock real 301010106 (Inversionistas Factoraje / Leasing)."""
+    return {p: preferentes_stock(data, bu, p) for p in periods}
 
 
 def derived_metrics(
@@ -53,42 +21,48 @@ def derived_metrics(
     rates: dict[str, float],
     vista: str = "contable",
     inv_proxy: float | None = None,
+    div_ytd: float | None = None,
+    strict: bool = False,
 ) -> dict[str, float | None]:
-    """vista: 'contable' | 'gerencial'. inv_proxy opcional (stock preferentes)."""
+    """vista: 'contable' | 'gerencial'.
+
+    Gerencial normal: solo resta dividendos preferentes (102020301 Δ≥0) de la 302.
+    Gerencial estricta: además reclasifica 301010106 de patrimonio a pasivo a 1 año.
+    """
     vista = "gerencial" if vista == "gerencial" else "contable"
 
     ac = n(row.get("activo_corriente"))
-    pc = n(row.get("pasivo_corriente"))
+    pc_books = n(row.get("pasivo_corriente"))
     pnc = n(row.get("pasivo_no_corriente"))
     pat_books = n(row.get("patrimonio"))
     act = n(row.get("activo")) or (ac + n(row.get("activo_no_corriente")))
     util = n(row.get("utilidades"))
     cartera = n(row.get("cartera"))
 
-    share = INV_SHARE.get(bu, 0.35)
-    if inv_proxy is None:
-        inv_proxy = pat_books * share
-    else:
-        inv_proxy = float(inv_proxy)
+    pref = float(inv_proxy) if inv_proxy is not None else 0.0
+    if div_ytd is None:
+        div_ytd = 0.0
+    util_g = util - float(div_ytd)
 
-    pas_i = rates["pasiva_inv_f"] if bu != "L" else rates["pasiva_inv_l"]
-    m = month_of(period)
-    div_ytd = inv_proxy * pas_i * (m / 12.0)
-    util_g = util - div_ytd
-
-    pasivo_books = pc + pnc
-    if vista == "gerencial":
-        patrimonio = max(pat_books - inv_proxy, 1.0)
-        pasivo_total = pasivo_books + inv_proxy
+    pasivo_books = pc_books + pnc
+    reclasifica = vista == "gerencial" and strict
+    if reclasifica:
+        patrimonio = max(pat_books - pref, 1.0)
+        pc = pc_books + pref
+        pasivo_total = pasivo_books + pref
+        util_view = util_g
+    elif vista == "gerencial":
+        patrimonio = pat_books if pat_books else 1.0
+        pc = pc_books
+        pasivo_total = pasivo_books
         util_view = util_g
     else:
         patrimonio = pat_books if pat_books else 1.0
+        pc = pc_books
         pasivo_total = pasivo_books
         util_view = util
 
-    liq = row.get("liquidez")
-    if liq is None and pc:
-        liq = ac / pc
+    liq = (ac / pc) if pc else row.get("liquidez")
     apa = (pasivo_total / patrimonio) if patrimonio else None
     acida = (ac * 0.85 / pc) if pc else None
     kt = ac - pc
@@ -97,8 +71,9 @@ def derived_metrics(
     bank_share = 0.55
     fondeo_bancos = pasivo_books * bank_share
     pas_b = rates["pasiva_bancos_f"] if bu != "L" else rates["pasiva_bancos_l"]
-    interes_bancos = fondeo_bancos * pas_b * (m / 12.0)
-    interes_inv = div_ytd if vista == "gerencial" else 0.0
+    mes = month_of(period)
+    interes_bancos = fondeo_bancos * pas_b * (mes / 12.0)
+    interes_inv = float(div_ytd) if vista == "gerencial" else 0.0
     interes_est = interes_bancos + interes_inv
     cobertura = (util_view / interes_est) if interes_est else None
 
@@ -119,6 +94,7 @@ def derived_metrics(
         "activo": act,
         "activo_corriente": ac,
         "pasivo_corriente": pc,
+        "pasivo_corriente_books": pc_books,
         "pasivo_no_corriente": pnc,
         "pasivo_total": pasivo_total,
         "pasivo_books": pasivo_books,
@@ -139,8 +115,8 @@ def derived_metrics(
         "z_parts": z_parts,
         "roa": roa,
         "roe": roe_v,
-        "inv_proxy": inv_proxy,
-        "div_pref_ytd": div_ytd,
+        "inv_proxy": pref,
+        "div_pref_ytd": float(div_ytd),
         "interes_est_ytd": interes_est,
     }
 
@@ -150,14 +126,14 @@ def build_indices_catalog(
     bu: str = "T",
     periods: int = 14,
     vista: str = "contable",
+    strict: bool = False,
 ) -> dict[str, Any]:
     all_periods = list(data.get("periods") or [])
     if not all_periods:
         return {"status": "empty", "rows": [], "series": {}, "period": None}
 
     vista = "gerencial" if vista == "gerencial" else "contable"
-    # Preferentes stock needs full history for the rule Δpat + pasivo↓
-    pref_stock = build_preferentes_stock(data, bu, all_periods) if vista == "gerencial" else {}
+    pref_stock = build_preferentes_stock(data, bu, all_periods)
 
     focus = all_periods[-periods:] if len(all_periods) > periods else all_periods
     latest = focus[-1]
@@ -165,8 +141,16 @@ def build_indices_catalog(
     rates = rates_from_meta(data)
 
     def metrics_at(p: str) -> dict:
-        inv = pref_stock.get(p) if vista == "gerencial" else None
-        return derived_metrics(kpi_row(data, bu, p), bu, p, rates, vista=vista, inv_proxy=inv)
+        return derived_metrics(
+            kpi_row(data, bu, p),
+            bu,
+            p,
+            rates,
+            vista=vista,
+            inv_proxy=pref_stock.get(p, 0.0),
+            div_ytd=div_pref_ytd(data, bu, p),
+            strict=strict,
+        )
 
     cur = metrics_at(latest)
     prv = metrics_at(prev) if prev else {}
@@ -174,7 +158,11 @@ def build_indices_catalog(
     apa_note = (
         "Pasivo contable / Patrimonio contable."
         if vista == "contable"
-        else "Pasivo + preferentes/pagarés est. / Patrimonio neto. Emisiones con pasivo↓ se reclasifican 100% a deuda."
+        else (
+            "Pasivo + 301010106 (preferentes) / Patrimonio neto. Vista gerencial estricta."
+            if strict
+            else "Mismos saldos de libros; la utilidad resta dividendos preferentes (102020301)."
+        )
     )
     catalog_keys = [
         ("liquidez", "Liquidez (AC/PC)", "Relación circulante. Para factoraje/leasing corto, 1.3–1.85× suele ser razonable."),
@@ -262,6 +250,7 @@ def build_indices_catalog(
         "bu": bu,
         "bu_label": BU_LABEL.get(bu, bu),
         "vista": vista,
+        "strict": strict,
         "period": latest,
         "prev_period": prev,
         "unit": data.get("unit") or "000 quetzales",

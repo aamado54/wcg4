@@ -1,0 +1,40 @@
+{% extends "base_wcg.html" %}
+{% block title %}Ajustes — Centro Gerencial{% endblock %}
+{% block extra_head %}{% include "gerencia/_styles.html" %}{% endblock %}
+{% block content %}
+<div class="ge-wrap mx-auto mt-2 mb-4">
+  <div class="mb-2">
+    <div class="ge-kicker">Administración · Centro Gerencial</div>
+    <h1 class="ge-title">Ajustes de interpretación</h1>
+    <p class="ge-sub">Estos switches aplican a todo el Centro Gerencial.</p>
+  </div>
+  {% include "gerencia/_nav.html" %}
+
+  <div class="ge-panel">
+    <div class="ge-panel-h">Vista gerencial estricta</div>
+    <div class="ge-panel-b">
+      <p class="small mb-3">
+        <strong>Vista gerencial (normal):</strong> los estados quedan como en libros.
+        La única diferencia es restar de la utilidad (302) el costo de preferentes:
+        <code>max(0, Δ 102020301)</code> en Factoraje y Leasing.
+        El overhead no cambia.
+      </p>
+      <p class="small mb-3">
+        <strong>Vista gerencial estricta:</strong> además, el saldo de
+        <strong>301010106</strong> (Inversionistas Factoraje / Leasing — acciones preferentes)
+        sale del patrimonio y entra a <strong>pasivo a 1 año</strong>.
+        Índices, gráficos y estructura se recalculan con esa reclasificación.
+      </p>
+      <form method="post">
+        {% csrf_token %}
+        <div class="form-check form-switch mb-3">
+          <input class="form-check-input" type="checkbox" role="switch" id="strictSw"
+                 name="strict_gerencial" {% if settings_obj.strict_gerencial %}checked{% endif %}>
+          <label class="form-check-label" for="strictSw">Activar vista gerencial estricta</label>
+        </div>
+        <button type="submit" class="btn btn-sm btn-primary">Guardar</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

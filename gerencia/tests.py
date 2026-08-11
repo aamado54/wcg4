@@ -4,30 +4,55 @@ from django.test import Client, TestCase
 from django.urls import reverse
 
 from gerencia.calc import board_indices, board_intermediacion, board_liquidez, load_finance
+from gerencia.calc.accounts import div_pref_month, preferentes_stock
 
 
 class GerenciaCalcTests(TestCase):
     def test_finance_loads(self):
         data = load_finance()
         self.assertIn("kpis", data)
+        self.assertTrue(data.get("accounts"))
+
+    def test_real_accounts_exist(self):
+        data = load_finance()
+        periods = data["periods"]
+        latest = periods[-1]
+        self.assertGreater(preferentes_stock(data, "F", latest), 0)
+        self.assertGreaterEqual(div_pref_month(data, "T", latest), 0)
 
     def test_intermediacion_ok(self):
         board = board_intermediacion(bu="T", months=12, mode="gerencial")
         self.assertEqual(board["status"], "ok")
         self.assertEqual(len(board["sections"]), 5)
         self.assertIn("labels", board["chart"])
-        self.assertIn("labels", board["chart_quarterly"])
-        self.assertIn("labels", board["chart_annual"])
-        self.assertIn("productos", board["aggregated"])
+        self.assertIn("fondeo_detalle", board)
+        self.assertIn("preferentes", board["fondeo_detalle"]["totals"])
 
-    def test_liquidez_vista_gerencial_higher_leverage(self):
-        c = board_liquidez(bu="T", vista="contable")
-        g = board_liquidez(bu="T", vista="gerencial")
+    def test_overhead_same_contable_gerencial(self):
+        c = board_intermediacion(bu="T", months=12, mode="contable")
+        g = board_intermediacion(bu="T", months=12, mode="gerencial")
+        self.assertAlmostEqual(
+            c["aggregated"]["overhead_neto"],
+            g["aggregated"]["overhead_neto"],
+            places=4,
+        )
+        self.assertNotAlmostEqual(
+            c["aggregated"]["utilidad"],
+            g["aggregated"]["utilidad"],
+            places=2,
+        )
+
+    def test_liquidez_gerencial_normal_same_leverage(self):
+        c = board_liquidez(bu="T", vista="contable", strict=False)
+        g = board_liquidez(bu="T", vista="gerencial", strict=False)
         self.assertEqual(c["status"], "ok")
         self.assertEqual(g["status"], "ok")
-        apa_c = c["cards"][3]["display"]
-        apa_g = g["cards"][3]["display"]
-        self.assertNotEqual(apa_c, apa_g)
+        self.assertEqual(c["cards"][3]["display"], g["cards"][3]["display"])
+
+    def test_liquidez_estricta_higher_leverage(self):
+        g = board_liquidez(bu="T", vista="gerencial", strict=False)
+        s = board_liquidez(bu="T", vista="gerencial", strict=True)
+        self.assertNotEqual(g["cards"][3]["display"], s["cards"][3]["display"])
 
     def test_indices_rows(self):
         board = board_indices(bu="T", vista="gerencial")
@@ -40,14 +65,22 @@ class GerenciaViewTests(TestCase):
         from django.contrib.auth import get_user_model
 
         User = get_user_model()
-        self.user = User.objects.create_user("gerencia_tester", password="x")
+        self.user = User.objects.create_user("caa", password="x")
         self.client = Client()
-        self.client.login(username="gerencia_tester", password="x")
+        self.client.login(username="caa", password="x")
 
     def test_intermediacion_200(self):
         resp = self.client.get(reverse("gerencia:intermediacion"))
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "Intermediación")
+        self.assertContains(resp, "ge-ccy")
+        self.assertContains(resp, "detalle")
+
+    def test_ccy_switch(self):
+        resp = self.client.get(reverse("gerencia:set_ccy") + "?ccy=USD", follow=False)
+        self.assertEqual(resp.status_code, 302)
+        session = self.client.session
+        self.assertEqual(session.get("gerencia_ccy"), "USD")
 
     def test_liquidez_200(self):
         resp = self.client.get(reverse("gerencia:liquidez"))
@@ -61,3 +94,13 @@ class GerenciaViewTests(TestCase):
     def test_whatif_200(self):
         resp = self.client.get(reverse("gerencia:whatif"))
         self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Comparar con anterior")
+
+    def test_config_strict(self):
+        resp = self.client.get(reverse("gerencia:config"))
+        self.assertEqual(resp.status_code, 200)
+        resp = self.client.post(reverse("gerencia:config"), {"strict_gerencial": "on"})
+        self.assertEqual(resp.status_code, 302)
+        from gerencia.models import GerenciaSettings
+
+        self.assertTrue(GerenciaSettings.get().strict_gerencial)

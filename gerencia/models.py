@@ -2,6 +2,39 @@ from django.conf import settings
 from django.db import models
 
 
+class GerenciaSettings(models.Model):
+    """Ajustes globales del Centro Gerencial (una sola fila)."""
+
+    strict_gerencial = models.BooleanField(
+        default=False,
+        help_text="Si está activo, 301010106 (acciones preferentes) se trata como pasivo a 1 año.",
+    )
+    updated_at = models.DateTimeField(auto_now=True)
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="gerencia_settings_updates",
+    )
+
+    class Meta:
+        verbose_name = "Ajuste Centro Gerencial"
+        verbose_name_plural = "Ajustes Centro Gerencial"
+
+    def __str__(self) -> str:
+        return "Centro Gerencial · " + (
+            "vista estricta ON" if self.strict_gerencial else "vista estricta OFF"
+        )
+
+    @classmethod
+    def get(cls) -> "GerenciaSettings":
+        obj = cls.objects.order_by("pk").first()
+        if obj:
+            return obj
+        return cls.objects.create(strict_gerencial=False)
+
+
 class GerenciaScenario(models.Model):
     """Escenario what-if simplificado (inspirado en hoja Control de wc-mod5c)."""
 

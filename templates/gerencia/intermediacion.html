@@ -65,8 +65,16 @@
     <div class="col-md-6 col-xl">
       <div class="ge-panel h-100">
         <div class="ge-panel-h">
-          <span class="ge-sec-letter">{{ sec.id }}</span>{{ sec.title }}
-          <div class="small text-muted fw-normal mt-1">{{ sec.subtitle }}</div>
+          <div class="d-flex align-items-start gap-2">
+            <span class="ge-sec-letter">{{ sec.id }}</span>
+            <div class="flex-grow-1">
+              {{ sec.title }}
+              <div class="small text-muted fw-normal mt-1">{{ sec.subtitle }}</div>
+            </div>
+            {% if sec.id == "C" %}
+            <button type="button" class="ge-detalle-btn" id="geFondeoBtn">detalle</button>
+            {% endif %}
+          </div>
         </div>
         <div class="ge-panel-b">
           {% for met in sec.metrics %}
@@ -103,6 +111,45 @@
   </div>
   {% endif %}
 </div>
+
+{% if board.fondeo_detalle %}
+<div class="ge-dlg-back" id="geFondeoDlg" role="dialog" aria-modal="true" aria-labelledby="geFondeoTitle">
+  <div class="ge-dlg">
+    <div class="ge-dlg-h">
+      <span id="geFondeoTitle">Costos financieros reales</span>
+      <button type="button" class="ge-dlg-x" id="geFondeoClose" aria-label="Cerrar">×</button>
+    </div>
+    <div class="ge-dlg-b">
+      <p class="text-muted small mb-2">
+        «est.» en el cuadro = estimado (tasa × stock). Esto es el gasto de libros del período
+        {{ board.start_period }} → {{ board.end_period }} ({{ unit_label }}).
+      </p>
+      <table class="table table-sm ge-table mb-2">
+        <thead><tr><th>Concepto</th><th class="text-end">Monto</th></tr></thead>
+        <tbody>
+          <tr><td colspan="2" class="small text-muted pt-2">Pagarés</td></tr>
+          {% for r in board.fondeo_detalle.pagares %}
+          <tr><td>{{ r.label }} <span class="text-muted">{{ r.code }}</span></td><td class="text-end">{{ r.display }}</td></tr>
+          {% endfor %}
+          <tr class="fw-semibold"><td>Total pagarés</td><td class="text-end">{{ board.fondeo_detalle.totals_display.pagares }}</td></tr>
+          <tr><td colspan="2" class="small text-muted pt-2">Acciones preferentes (Δ anticipos de dividendos)</td></tr>
+          {% for r in board.fondeo_detalle.preferentes %}
+          <tr><td>{{ r.label }} <span class="text-muted">{{ r.code }}</span></td><td class="text-end">{{ r.display }}</td></tr>
+          {% endfor %}
+          <tr class="fw-semibold"><td>Total preferentes</td><td class="text-end">{{ board.fondeo_detalle.totals_display.preferentes }}</td></tr>
+          <tr><td colspan="2" class="small text-muted pt-2">Bancos</td></tr>
+          {% for r in board.fondeo_detalle.bancos %}
+          <tr><td>{{ r.label }} · {{ r.bu }} <span class="text-muted">{{ r.code }}</span></td><td class="text-end">{{ r.display }}</td></tr>
+          {% endfor %}
+          <tr class="fw-semibold"><td>Total bancos</td><td class="text-end">{{ board.fondeo_detalle.totals_display.bancos }}</td></tr>
+          <tr class="table-light fw-bold"><td>Total costos financieros reales</td><td class="text-end">{{ board.fondeo_detalle.totals_display.all }}</td></tr>
+        </tbody>
+      </table>
+      <p class="small text-muted mb-0">{{ board.fondeo_detalle.note }}</p>
+    </div>
+  </div>
+</div>
+{% endif %}
 {% endblock %}
 {% block extra_js %}
 <script>
@@ -123,6 +170,14 @@ document.addEventListener('DOMContentLoaded', function () {
   if (raw.labels) new Chart(document.getElementById('geInterChart'), { type: 'line', data: raw, options: opt });
   if (q.labels) new Chart(document.getElementById('geInterQ'), { type: 'line', data: q, options: opt });
   if (a.labels) new Chart(document.getElementById('geInterA'), { type: 'line', data: a, options: opt });
+
+  const dlg = document.getElementById('geFondeoDlg');
+  const open = () => { if (dlg) dlg.classList.add('open'); };
+  const close = () => { if (dlg) dlg.classList.remove('open'); };
+  document.getElementById('geFondeoBtn')?.addEventListener('click', open);
+  document.getElementById('geFondeoClose')?.addEventListener('click', close);
+  dlg?.addEventListener('click', function (e) { if (e.target === dlg) close(); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
 });
 </script>
 {% endblock %}

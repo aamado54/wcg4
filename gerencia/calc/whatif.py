@@ -4,9 +4,11 @@ from __future__ import annotations
 
 from typing import Any
 
+from .accounts import div_pref_ytd, preferentes_stock
 from .indices import derived_metrics
 from .intermediacion import _intermediation_slice
-from .utils import BU_LABEL, fmt, kpi_row, rates_from_meta
+from .money import fmt_money
+from .utils import BU_LABEL, kpi_row, rates_from_meta
 
 
 DEFAULT_DRIVERS = {
@@ -45,7 +47,13 @@ def drivers_as_pct_display(drivers: dict[str, float]) -> dict[str, str]:
     return {k: format_pct(v) for k, v in drivers.items()}
 
 
-def run_whatif(data: dict, drivers: dict[str, float] | None = None, bu: str = "T") -> dict[str, Any]:
+def run_whatif(
+    data: dict,
+    drivers: dict[str, float] | None = None,
+    bu: str = "T",
+    ccy: str = "GTQ",
+    fx: float | None = None,
+) -> dict[str, Any]:
     periods = list(data.get("periods") or [])
     if not periods:
         return {"status": "empty"}
@@ -65,7 +73,14 @@ def run_whatif(data: dict, drivers: dict[str, float] | None = None, bu: str = "T
     all_p = periods
     prev = all_p[-2] if len(all_p) >= 2 else None
     prev_m = (
-        derived_metrics(kpi_row(data, bu, prev), bu, prev, base_rates)
+        derived_metrics(
+            kpi_row(data, bu, prev),
+            bu,
+            prev,
+            base_rates,
+            inv_proxy=preferentes_stock(data, bu, prev),
+            div_ytd=div_pref_ytd(data, bu, prev),
+        )
         if prev
         else {}
     )
@@ -97,7 +112,16 @@ def run_whatif(data: dict, drivers: dict[str, float] | None = None, bu: str = "T
     overhead = base["overhead_neto"] * (1 + float(d["growth_overhead"]))
     util = margen - overhead
 
-    m = derived_metrics(kpi_row(data, bu, latest), bu, latest, rates, vista="gerencial")
+    m = derived_metrics(
+        kpi_row(data, bu, latest),
+        bu,
+        latest,
+        rates,
+        vista="gerencial",
+        inv_proxy=preferentes_stock(data, bu, latest),
+        div_ytd=div_pref_ytd(data, bu, latest),
+    )
+    fm = lambda v: fmt_money(v, ccy, fx)
     ac0 = float(m.get("activo_corriente") or 0)
     pc0 = float(m.get("pasivo_corriente") or 1)
     ac1 = ac0 * (1 + g * 0.9)
@@ -132,10 +156,16 @@ def run_whatif(data: dict, drivers: dict[str, float] | None = None, bu: str = "T
             "margen": (margen - base["margen_bruto"]) / abs(base["margen_bruto"] or 1),
             "utilidad": (util - base["utilidad"]) / abs(base["utilidad"] or 1),
         },
+        "raw_rows": [
+            {"key": "cartera", "label": "Cartera", "base": base["colocaciones"], "proj": proj_cartera, "money": True},
+            {"key": "margen", "label": "Margen intermediación", "base": base["margen_bruto"], "proj": margen, "money": True},
+            {"key": "utilidad", "label": "Utilidad gerencial", "base": base["utilidad"], "proj": util, "money": True},
+            {"key": "liquidez", "label": "Liquidez", "base": m.get("liquidez"), "proj": liq_proj, "money": False},
+        ],
         "summary_rows": [
-            {"label": "Cartera", "base": fmt(base["colocaciones"]), "proj": fmt(proj_cartera)},
-            {"label": "Margen intermediación", "base": fmt(base["margen_bruto"]), "proj": fmt(margen)},
-            {"label": "Utilidad gerencial", "base": fmt(base["utilidad"]), "proj": fmt(util)},
+            {"label": "Cartera", "base": fm(base["colocaciones"]), "proj": fm(proj_cartera)},
+            {"label": "Margen intermediación", "base": fm(base["margen_bruto"]), "proj": fm(margen)},
+            {"label": "Utilidad gerencial", "base": fm(base["utilidad"]), "proj": fm(util)},
             {
                 "label": "Liquidez",
                 "base": f"{m['liquidez']:.2f}×" if m.get("liquidez") is not None else "—",

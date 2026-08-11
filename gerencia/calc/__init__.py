@@ -4,6 +4,10 @@ from __future__ import annotations
 
 from typing import Any
 
+from pathlib import Path
+
+from django.conf import settings
+
 from risk.financiero.reader import load_combined
 
 from .comando import build_comando
@@ -18,6 +22,16 @@ def load_finance() -> dict[str, Any]:
     data = load_combined()
     if data.get("kpis") and not data.get("status"):
         data["status"] = "ok"
+    if not data.get("accounts"):
+        full = Path(settings.BASE_DIR) / "risk/financiero/seed/combined_full.json"
+        if full.exists():
+            import json
+
+            try:
+                blob = json.loads(full.read_text(encoding="utf-8"))
+                data["accounts"] = blob.get("accounts") or []
+            except Exception:
+                data["accounts"] = []
     return data
 
 

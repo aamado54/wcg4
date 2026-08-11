@@ -351,6 +351,10 @@
                   <li><hr class="dropdown-divider"></li>
                   <li><a class="dropdown-item" href="{% url 'pgc:admin_monthly' %}">Admin PGC (período)</a></li>
                   {% endif %}
+                  {% if can_access_risk_gerencia %}
+                  <li><h6 class="dropdown-header">Centro Gerencial</h6></li>
+                  <li><a class="dropdown-item{% if '/gerencia/ajustes' in request.path %} active{% endif %}" href="{% url 'gerencia:config' %}">Ajustes (vista estricta)</a></li>
+                  {% endif %}
                   {% if user.is_superuser %}
                   <li><a class="dropdown-item" href="/admin/" target="_blank" rel="noopener">Admin Django</a></li>
                   {% endif %}
