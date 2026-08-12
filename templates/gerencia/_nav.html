@@ -8,9 +8,9 @@
      class="{% if item.active %}active{% endif %}">{{ item.label }}</a>
   {% endif %}
   {% if item.key == "detalle" %}
-  <div class="ge-ccy" role="group" aria-label="Moneda">
-    <a class="{% if ccy != 'USD' %}on{% endif %}" href="{% url 'gerencia:set_ccy' %}?ccy=GTQ" title="Quetzales">Q</a>
-    <a class="{% if ccy == 'USD' %}on{% endif %}" href="{% url 'gerencia:set_ccy' %}?ccy=USD" title="Dólares{% if fx %} · TC {{ fx }}{% endif %}">$</a>
+  <div class="ge-ccy" role="group" aria-label="Moneda del reporte">
+    <a class="{% if ccy != 'USD' %}on{% endif %}" href="{% url 'gerencia:set_ccy' %}?ccy=GTQ" title="Ver en quetzales">Q</a>
+    <a class="{% if ccy == 'USD' %}on{% endif %}" href="{% url 'gerencia:set_ccy' %}?ccy=USD" title="Ver en dólares{% if fx %} · TC {{ fx }}{% endif %}">$</a>
   </div>
   {% endif %}
   {% endfor %}
