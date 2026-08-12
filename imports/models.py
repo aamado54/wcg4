@@ -380,6 +380,25 @@ class NewClientImportRow(TimeStampedModel):
         related_name="new_client_import_rows",
     )
     amount = models.DecimalField(max_digits=18, decimal_places=2, null=True, blank=True)
+    interest_rate = models.DecimalField(
+        max_digits=8,
+        decimal_places=4,
+        null=True,
+        blank=True,
+        help_text="Porcentaje del archivo. Investment = anual; Factoraje/Leasing = mensual.",
+    )
+    RATE_ANNUAL = "annual"
+    RATE_MONTHLY = "monthly"
+    RATE_BASIS_CHOICES = (
+        (RATE_ANNUAL, "Anual"),
+        (RATE_MONTHLY, "Mensual"),
+    )
+    rate_basis = models.CharField(
+        max_length=12,
+        choices=RATE_BASIS_CHOICES,
+        blank=True,
+        default="",
+    )
 
     source_row_number = models.PositiveIntegerField(null=True, blank=True)
     raw_une_value = models.CharField(max_length=255, blank=True)
@@ -389,6 +408,15 @@ class NewClientImportRow(TimeStampedModel):
         ordering = ["year", "month", "une__sort_order", "client_name", "operation_code"]
         verbose_name = "Detalle importado de cliente nuevo"
         verbose_name_plural = "Detalles importados de clientes nuevos"
+
+    def save(self, *args, **kwargs):
+        from imports.client_rates import apply_rate_basis
+
+        apply_rate_basis(self)
+        update_fields = kwargs.get("update_fields")
+        if update_fields is not None:
+            kwargs["update_fields"] = list({*update_fields, "rate_basis"})
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.year}-{self.month:02d} {self.une.code} {self.client_name or self.operation_code}"

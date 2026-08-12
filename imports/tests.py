@@ -1,7 +1,9 @@
 """Tests de autodetección de importaciones (3 capas)."""
 
+from decimal import Decimal
+
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import SimpleTestCase
+from django.test import SimpleTestCase, TestCase
 
 from imports.detection import (
     TYPE_CRM_CLIENTES,
@@ -56,3 +58,26 @@ class DetectionFileTests(SimpleTestCase):
         self.assertEqual(result.tipo, TYPE_CRM_CLIENTES)
         self.assertTrue(result.can_auto_import)
         self.assertTrue(any("CRM" in r or "NIT" in r or "nit" in r for r in result.reasons) or "combinada" in result.layer)
+
+
+class NewClientsRowParseTests(SimpleTestCase):
+    def test_spaced_headers_and_rates(self):
+        from imports.client_rates import parse_rate, rate_basis_for, row_get
+
+        row = {
+            " Nit": " 577806-9 ",
+            " Moneda": "GTQ",
+            "Monto": "1275666.33",
+            "Porcentaje": "2",
+            " UNE": "Leasing",
+        }
+        self.assertEqual(row_get(row, "Nit"), "577806-9")
+        self.assertEqual(row_get(row, "Moneda"), "GTQ")
+        self.assertEqual(row_get(row, "Monto"), "1275666.33")
+        self.assertEqual(row_get(row, "UNE"), "Leasing")
+        self.assertEqual(parse_rate("8.5"), Decimal("8.5"))
+        self.assertEqual(rate_basis_for(None, "INVESTMENT - WC FACTORING"), "annual")
+        self.assertEqual(rate_basis_for(None, "Leasing"), "monthly")
+        self.assertEqual(rate_basis_for(None, "Factoraje"), "monthly")
+        self.assertEqual(rate_basis_for(None, "inversiones"), "annual")
+        self.assertEqual(row_get({"Cliente": '"MG RENTAL"'}, "Cliente"), "MG RENTAL")

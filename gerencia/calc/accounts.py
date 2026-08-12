@@ -63,6 +63,19 @@ def max0_inc(data: dict, bu: str, code: str, period: str) -> float:
     return max(0.0, cur - line(data, bu, code, prev_p))
 
 
+def combined_line(data: dict, bus: tuple[str, ...], code: str, period: str) -> float:
+    return sum(line(data, b, code, period) for b in bus)
+
+
+def max0_inc_combined(data: dict, bus: tuple[str, ...], code: str, period: str) -> float:
+    """Suma F+L (u UNEs pedidas) y recién entonces aplica max(0, Δ)."""
+    cur = combined_line(data, bus, code, period)
+    prev_p = _prev_period(data, period)
+    if prev_p is None:
+        return max(0.0, cur)
+    return max(0.0, cur - combined_line(data, bus, code, prev_p))
+
+
 def _bus(bu: str) -> tuple[str, ...]:
     bu = (bu or "T").upper()
     if bu == "T":
@@ -77,7 +90,8 @@ def preferentes_stock(data: dict, bu: str, period: str) -> float:
 
 
 def div_pref_month(data: dict, bu: str, period: str) -> float:
-    return sum(max0_inc(data, b, DIV_PREF, period) for b in _bus(bu))
+    """Costo gerencial del mes: max(0, Δ(102020301 F + 102020301 L)) si bu=T."""
+    return max0_inc_combined(data, _bus(bu), DIV_PREF, period)
 
 
 def div_pref_ytd(data: dict, bu: str, period: str) -> float:
@@ -125,7 +139,8 @@ def funding_detail(
     tot_pref = tot_pag = tot_bank = 0.0
     by_bu: dict[str, dict[str, float]] = {}
 
-    for b in _bus(bu):
+    bus = _bus(bu)
+    for b in bus:
         pref = sum(max0_inc(data, b, DIV_PREF, p) for p in periods)
         pag = sum(line(data, b, PAGARES, p) for p in periods)
         codes = BANK_F if b == "F" else BANK_L
@@ -163,10 +178,12 @@ def funding_detail(
             }
         )
         rows_bank.extend(bank_parts)
-        tot_pref += pref
         tot_pag += pag
         tot_bank += bank_sum
         by_bu[b] = {"preferentes": pref, "pagares": pag, "bancos": bank_sum}
+
+    # Total preferentes gerencial = Δ de la suma F+L, no suma de Δ individuales.
+    tot_pref = sum(max0_inc_combined(data, bus, DIV_PREF, p) for p in periods)
 
     return {
         "periods": periods,
@@ -182,8 +199,8 @@ def funding_detail(
         "by_bu": by_bu,
         "note": (
             "Pagarés = intereses a inversionistas (501010101). "
-            "Preferentes = incrementos de anticipo de dividendos (102020301), "
-            "max(0, Δ). Bancos = intereses y comisiones (701010106 / 108 / 104). "
+            "Preferentes = max(0, Δ(102020301 Factoraje + 102020301 Leasing)). "
+            "Bancos = intereses y comisiones (701010106 / 108 / 104). "
             "El cuadro de margen sigue usando costos estimados (tasa × stock)."
         ),
     }

@@ -18,7 +18,20 @@ class GerenciaCalcTests(TestCase):
         periods = data["periods"]
         latest = periods[-1]
         self.assertGreater(preferentes_stock(data, "F", latest), 0)
-        self.assertGreaterEqual(div_pref_month(data, "T", latest), 0)
+        self.assertGreater(preferentes_stock(data, "T", latest), 0)
+        self.assertGreater(div_pref_month(data, "T", latest), 0)
+
+    def test_div_pref_sums_f_and_l_then_increment(self):
+        from gerencia.calc.accounts import combined_line, DIV_PREF, max0_inc_combined
+
+        data = load_finance()
+        latest = data["periods"][-1]
+        combined = combined_line(data, ("F", "L"), DIV_PREF, latest)
+        self.assertGreater(combined, 0)
+        self.assertAlmostEqual(
+            div_pref_month(data, "T", latest),
+            max0_inc_combined(data, ("F", "L"), DIV_PREF, latest),
+        )
 
     def test_intermediacion_ok(self):
         board = board_intermediacion(bu="T", months=12, mode="gerencial")

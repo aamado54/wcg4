@@ -6,7 +6,9 @@ from core.models import UNE, UNEAlias, MetricDefinition, Currency
 from core.services.une_resolve import resolve_une_from_text
 from decimal import Decimal
 from django.core.management.base import BaseCommand, CommandError
+from django.core.management import call_command
 from django.db import transaction
+from imports.client_rates import parse_rate, rate_basis_for, row_get
 from imports.currency_normalize import normalize_currency_code
 from imports.models import FileUpload, NewClientImportHeader, NewClientImportRow
 from pathlib import Path
@@ -48,9 +50,13 @@ def _ensure_header(year: int, month: int, upload: FileUpload | None) -> NewClien
         return header
 
     if not upload:
-        raise CommandError(
-            f"No existe NewClientImportHeader para {year}-{month:02d} y no hay "
-            "FileUpload de origen para crearlo. Sube el archivo vía Administración."
+        upload = FileUpload.objects.create(
+            original_filename=f"clientes-nuevos-{year}-{month:02d}.csv",
+            file_type_detected=FileUpload.TYPE_NEW_CLIENTS,
+            file_format=FileUpload.FORMAT_CSV,
+            detected_year=year,
+            detected_month=month,
+            status=FileUpload.STATUS_PARSED_OK,
         )
 
     header, _ = NewClientImportHeader.objects.get_or_create(
@@ -116,10 +122,11 @@ class Command(BaseCommand):
             dialect = csv.Sniffer().sniff(sample, delimiters=[",", "\t", ";"])
             reader = csv.DictReader(f, dialect=dialect)
 
+            replaced_months: set[tuple[int, int]] = set()
             for line_no, row in enumerate(reader, start=2):
-                anio_mes = row.get("AnioMes") or row.get("aniomes")
-                contratos_previos = row.get("ContratosPrevios") or row.get("contratosprevios")
-                une_raw = row.get("UNE") or row.get("une")
+                anio_mes = row_get(row, "AnioMes", "anio_mes", "periodo")
+                contratos_previos = row_get(row, "ContratosPrevios", "contratos_previos")
+                une_raw = row_get(row, "UNE", "une")
 
                 if not anio_mes or not une_raw:
                     rows_skipped += 1
@@ -175,58 +182,41 @@ class Command(BaseCommand):
                     header = _ensure_header(year, month, source_upload)
                     headers_cache[header_key] = header
                 months_touched.add(header_key)
+                if header_key not in replaced_months:
+                    deleted, _ = NewClientImportRow.objects.filter(
+                        year=year, month=month
+                    ).delete()
+                    replaced_months.add(header_key)
+                    if deleted:
+                        self.stdout.write(
+                            f"Reemplazo {year}-{month:02d}: {deleted} fila(s) anteriores."
+                        )
 
-                client_name = (
-                    row.get("Cliente")
-                    or row.get("CLIENTE")
-                    or row.get("cliente")
-                    or ""
-                ).strip()
+                client_name = row_get(row, "Cliente", "CLIENTE", "nombre")
+                nit = row_get(row, "NIT", "Nit")
+                operation_code = row_get(row, "Operacion", "Operación", "OPERACION")
 
-                nit = (
-                    row.get("NIT")
-                    or row.get("Nit")
-                    or row.get("nit")
-                    or ""
-                ).strip()
-
-                operation_code = (
-                    row.get("Operacion")
-                    or row.get("Operación")
-                    or row.get("OPERACION")
-                    or row.get("operation_code")
-                    or ""
-                ).strip()
-
-                currency_raw = (
-                    row.get("Moneda")
-                    or row.get("MONEDA")
-                    or row.get("moneda")
-                    or ""
-                )
+                currency_raw = row_get(row, "Moneda", "MONEDA")
                 currency_code, currency_warn = normalize_currency_code(currency_raw)
                 if currency_warn:
                     q_alias_count += 1
                     if len(currency_warnings) < 8:
                         currency_warnings.append(f"Fila {line_no}: {currency_warn}")
 
-                amount_raw = (
-                    row.get("Monto")
-                    or row.get("MONTO")
-                    or row.get("monto")
-                    or ""
-                ).strip()
-
+                amount_raw = row_get(row, "Monto", "MONTO")
                 amount = None
                 if amount_raw:
                     try:
-                        # PGC expresa montos de ingresos en miles de US$;
+                        # PGC expresa montos de ingresos en miles;
                         # el archivo trae unidades → guardar ya dividido entre 1000.
                         amount = Decimal(str(amount_raw).replace(",", "")) / Decimal(
                             "1000"
                         )
                     except Exception:
                         amount = None
+
+                rate = parse_rate(row_get(row, "Porcentaje", "Tasa", "Rate"))
+                rate_basis = rate_basis_for(une, une_raw)
 
                 currency = currencies.get(currency_code) if currency_code else None
 
@@ -242,6 +232,8 @@ class Command(BaseCommand):
                     counts_as_new=counts_as_new,
                     currency=currency,
                     amount=amount,
+                    interest_rate=rate,
+                    rate_basis=rate_basis,
                     source_row_number=line_no,
                     raw_une_value=une_raw,
                     observations="",
@@ -351,6 +343,20 @@ class Command(BaseCommand):
             self.stdout.write(
                 f"Actualizado CLIENTES_NUEVOS {une.code} {year}-{month:02d}: {count}"
             )
+
+        for year, month in sorted(months_touched):
+            try:
+                call_command(
+                    "recalc_investment_ingresos_from_new_clients",
+                    year=year,
+                    month=month,
+                )
+            except Exception as exc:
+                self.stdout.write(
+                    self.style.WARNING(
+                        f"INVESTMENT ingresos {year}-{month:02d} no recalculado: {exc}"
+                    )
+                )
 
         self.stdout.write(
             self.style.SUCCESS(

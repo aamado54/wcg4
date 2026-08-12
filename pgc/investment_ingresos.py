@@ -58,6 +58,10 @@ def convert_row_amount_to_usd(row, fx_map: dict[tuple[int, int], Decimal]) -> De
     if currency_code in ("GTQ", "Q", "QUETZALES", "QUETZAL"):
         row_year, row_month = row_period(row)
         fx = fx_map.get((row_year, row_month))
+        if (not fx or fx == 0) and fx_map:
+            prior = [k for k in fx_map if k <= (row_year or 0, row_month or 0)]
+            if prior:
+                fx = fx_map[max(prior)]
         if fx and fx != 0:
             return amount / fx
 

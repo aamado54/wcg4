@@ -253,7 +253,12 @@ def build_intermediacion(
             "subtitle": f"Suma de {n_m} mes(es) terminando en {latest['period']}",
             "metrics": [
                 {"label": "Productos del período", "value": fm(agg["productos"]), "hint": f"{n_m} meses acum."},
-                {"label": "Costos fondeo del período", "value": fm(agg["costos"]), "hint": "est. acum."},
+                {
+                    "label": "Costos fondeo del período",
+                    "value": fm(agg["costos"]),
+                    "hint": "est. acum.",
+                    "key": "costos_fondeo",
+                },
                 {"label": "Margen bruto del período", "value": fm(agg["margen_bruto"]), "hint": "Intermediación"},
             ],
         },

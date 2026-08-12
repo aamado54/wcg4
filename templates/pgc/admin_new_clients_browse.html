@@ -24,7 +24,7 @@
 
     <div class="adm-panel">
         <h3 style="margin-top:0;">Browse · editar / eliminar / agregar</h3>
-        <p class="subtitle">Edite celdas, marque Eliminar, o complete la fila nueva al final. Guarde al terminar.</p>
+        <p class="subtitle">Edite celdas, marque Eliminar, o complete la fila nueva al final. Guarde al terminar. Investment = tasa anual; Leasing/Factoraje = mensual.</p>
 
         <form method="post">
             {% csrf_token %}
@@ -48,6 +48,8 @@
                             <th>¿Nuevo?</th>
                             <th>Moneda</th>
                             <th>Monto</th>
+                            <th>Tasa %</th>
+                            <th>Base tasa</th>
                             <th>UNE raw</th>
                             <th>Observación</th>
                             <th>Fila origen</th>
@@ -86,12 +88,14 @@
                                 </select>
                             </td>
                             <td><input type="text" name="row_{{ row.id }}_amount" value="{% if row.amount != None %}{{ row.amount }}{% endif %}" style="max-width:110px;"></td>
+                            <td><input type="text" name="row_{{ row.id }}_interest_rate" value="{% if row.interest_rate != None %}{{ row.interest_rate }}{% endif %}" style="max-width:70px;"></td>
+                            <td class="muted">{% if row.rate_basis == "annual" %}anual{% elif row.rate_basis == "monthly" %}mensual{% else %}—{% endif %}</td>
                             <td><input type="text" name="row_{{ row.id }}_raw_une_value" value="{{ row.raw_une_value }}" style="max-width:100px;"></td>
                             <td><input type="text" name="row_{{ row.id }}_observations" value="{{ row.observations }}"></td>
                             <td><input type="number" name="row_{{ row.id }}_source_row_number" value="{% if row.source_row_number != None %}{{ row.source_row_number }}{% endif %}" style="max-width:70px;"></td>
                         </tr>
                         {% empty %}
-                        <tr><td colspan="14" class="muted">Sin registros en este período.</td></tr>
+                        <tr><td colspan="16" class="muted">Sin registros en este período.</td></tr>
                         {% endfor %}
 
                         <tr class="adm-browse-new">
@@ -128,6 +132,8 @@
                                 </select>
                             </td>
                             <td><input type="text" name="new_amount" placeholder="Monto" style="max-width:110px;"></td>
+                            <td><input type="text" name="new_interest_rate" placeholder="%" style="max-width:70px;"></td>
+                            <td class="muted">auto</td>
                             <td><input type="text" name="new_raw_une_value" style="max-width:100px;"></td>
                             <td><input type="text" name="new_observations"></td>
                             <td><input type="number" name="new_source_row_number" style="max-width:70px;"></td>

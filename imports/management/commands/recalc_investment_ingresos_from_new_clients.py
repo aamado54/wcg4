@@ -63,9 +63,20 @@ class Command(BaseCommand):
         summary = sum_investment_ingresos_usd(year, month, une=une)
         fx = summary["fx"]
         if fx in (None, Decimal("0")):
-            raise CommandError(
-                f"No existe MonthlyExchangeRate válido para {year}-{month:02d}."
-            )
+            from pgc.models import MonthlyExchangeRate
+
+            latest = MonthlyExchangeRate.objects.order_by("-year", "-month").first()
+            if latest and latest.usd_to_gtq:
+                fx = latest.usd_to_gtq
+                self.stdout.write(
+                    self.style.WARNING(
+                        f"Sin TC {year}-{month:02d}; se usa {latest.year}-{latest.month:02d} = {fx}."
+                    )
+                )
+            else:
+                raise CommandError(
+                    f"No existe MonthlyExchangeRate válido para {year}-{month:02d}."
+                )
 
         total_usd = summary["total_usd"]
         used_rows = summary["used_rows"]

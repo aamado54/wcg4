@@ -115,6 +115,8 @@ class NewClientImportRowAdmin(admin.ModelAdmin):
         "counts_as_new",
         "currency",
         "amount",
+        "interest_rate",
+        "rate_basis",
     )
     list_filter = (
         "year",

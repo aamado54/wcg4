@@ -29,6 +29,8 @@
     <div class="col-auto">
       <label>Meses del período (acumula C–E)</label>
       <select name="months" class="form-select form-select-sm" onchange="this.form.submit()">
+        <option value="1" {% if months == 1 %}selected{% endif %}>1</option>
+        <option value="3" {% if months == 3 %}selected{% endif %}>3</option>
         <option value="6" {% if months == 6 %}selected{% endif %}>6</option>
         <option value="12" {% if months == 12 %}selected{% endif %}>12</option>
         <option value="18" {% if months == 18 %}selected{% endif %}>18</option>
@@ -71,9 +73,6 @@
               {{ sec.title }}
               <div class="small text-muted fw-normal mt-1">{{ sec.subtitle }}</div>
             </div>
-            {% if sec.id == "C" %}
-            <button type="button" class="ge-detalle-btn" id="geFondeoBtn">detalle</button>
-            {% endif %}
           </div>
         </div>
         <div class="ge-panel-b">
@@ -81,7 +80,12 @@
           <div class="mb-2">
             <div class="small text-muted">{{ met.label }}</div>
             <div class="fw-bold" style="font-size:1.15rem;letter-spacing:-0.02em;">{{ met.value }}</div>
-            <div class="small text-muted">{{ met.hint }}</div>
+            <div class="small text-muted">
+              {{ met.hint }}
+              {% if met.key == "costos_fondeo" %}
+              <button type="button" class="ge-detalle-btn" id="geFondeoBtn">detalle</button>
+              {% endif %}
+            </div>
           </div>
           {% endfor %}
         </div>

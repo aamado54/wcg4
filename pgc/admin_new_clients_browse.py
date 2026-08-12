@@ -216,6 +216,7 @@ def save_browse_rows(user, period: AdminPeriod, post_data, reason: str = "") -> 
             "counts_as_new": _parse_bool(post_data, f"{prefix}counts_as_new"),
             "currency_id": _resolve_currency_id(post_data.get(f"{prefix}currency")),
             "amount": parse_decimal_or_none(post_data.get(f"{prefix}amount")),
+            "interest_rate": parse_decimal_or_none(post_data.get(f"{prefix}interest_rate")),
             "raw_une_value": (post_data.get(f"{prefix}raw_une_value") or "").strip(),
             "observations": (post_data.get(f"{prefix}observations") or "").strip(),
             "une_id": une_id,
@@ -275,6 +276,7 @@ def save_browse_rows(user, period: AdminPeriod, post_data, reason: str = "") -> 
             counts_as_new=_parse_bool(post_data, "new_counts_as_new"),
             currency_id=_resolve_currency_id(post_data.get("new_currency")),
             amount=parse_decimal_or_none(post_data.get("new_amount")),
+            interest_rate=parse_decimal_or_none(post_data.get("new_interest_rate")),
             raw_une_value=(post_data.get("new_raw_une_value") or "").strip(),
             observations=(post_data.get("new_observations") or "").strip(),
             source_row_number=_parse_optional_int(post_data.get("new_source_row_number")),
@@ -327,7 +329,7 @@ def save_une_reassignments(user, period: AdminPeriod, post_data, reason: str = "
 
         old_une = row.une
         new_une = une_by_id[new_une_id]
-        row.une_id = new_une_id
+        row.une = new_une
         row.raw_une_value = new_une.name_es
         row.save(update_fields=["une", "raw_une_value", "updated_at"])
         touched_months.add(row.month)
