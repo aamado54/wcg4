@@ -1455,6 +1455,175 @@ def respuesta_reqs_export_md(request):
     return response
 
 
+INGRESOS_DECIMAL_OPTIONS = (1, 2, 3)
+INGRESOS_DEFAULT_DECIMALS = 1
+INGRESOS_VIEW_LIST = "lista"
+INGRESOS_VIEW_ANUAL = "anual"
+INGRESOS_VIEW_OPTIONS = (INGRESOS_VIEW_LIST, INGRESOS_VIEW_ANUAL)
+
+MONTH_ABBR_ES = (
+    "Ene", "Feb", "Mzo", "Abr", "May", "Jun",
+    "Jul", "Ago", "Sep", "Oct", "Nov", "Dic",
+)
+
+# Orden de tablas anuales: Factoraje → Leasing → Insurance → Inversiones
+INGRESOS_ANUAL_UNE_ORDER = (
+    UNE.CODE_FACTORING,
+    UNE.CODE_LEASING,
+    UNE.CODE_INSURANCE,
+    UNE.CODE_INVESTMENT,
+)
+
+INGRESOS_INCOME_LABEL = {
+    UNE.CODE_FACTORING: "Comisiones",
+    UNE.CODE_LEASING: "Comisiones",
+    UNE.CODE_INSURANCE: "Comisiones",
+    UNE.CODE_INVESTMENT: "Capital",
+}
+
+
+def _get_ingresos_report_settings(request):
+    """Settings de presentación del reporte ingresos vs meta (GET + session)."""
+    raw_decimals = _safe_int(request.GET.get("decimals"))
+    if raw_decimals in INGRESOS_DECIMAL_OPTIONS:
+        decimals = raw_decimals
+    else:
+        session_dec = _safe_int(request.session.get("pgc_ingresos_decimals"))
+        decimals = session_dec if session_dec in INGRESOS_DECIMAL_OPTIONS else INGRESOS_DEFAULT_DECIMALS
+
+    raw_view = (request.GET.get("view") or request.session.get("pgc_ingresos_view") or INGRESOS_VIEW_LIST).strip().lower()
+    view = raw_view if raw_view in INGRESOS_VIEW_OPTIONS else INGRESOS_VIEW_LIST
+
+    if "show_detail_cols" in request.GET:
+        show_detail_cols = request.GET.get("show_detail_cols") not in ("0", "false", "off", "")
+    elif "pgc_ingresos_show_detail_cols" in request.session:
+        show_detail_cols = bool(request.session.get("pgc_ingresos_show_detail_cols"))
+    else:
+        show_detail_cols = True
+
+    request.session["pgc_ingresos_decimals"] = decimals
+    request.session["pgc_ingresos_view"] = view
+    request.session["pgc_ingresos_show_detail_cols"] = show_detail_cols
+
+    return {
+        "decimals": decimals,
+        "view": view,
+        "show_detail_cols": show_detail_cols,
+        "decimal_options": INGRESOS_DECIMAL_OPTIONS,
+        "view_options": INGRESOS_VIEW_OPTIONS,
+    }
+
+
+def _build_ingresos_annual_tables(year):
+    """
+    Formato anual horizontal por UNE (estilo PRESUPUESTO de referencia):
+    Clientes nuevos / Comisiones|Capital / % + Ejecutado + Cumple.
+    """
+    investment_une = get_investment_une()
+    fx_map = build_fx_map()
+    periods = [(year, m) for m in range(1, 13)]
+    investment_real_map = investment_real_map_for_periods(
+        periods, une=investment_une, fx_map=fx_map
+    )
+
+    unes = list(
+        UNE.objects.filter(code__in=INGRESOS_ANUAL_UNE_ORDER, is_active=True)
+    )
+    une_by_code = {u.code: u for u in unes}
+    ordered_unes = [une_by_code[c] for c in INGRESOS_ANUAL_UNE_ORDER if c in une_by_code]
+
+    targets = MonthlyTarget.objects.filter(
+        year=year,
+        metric__code__in=(
+            MetricDefinition.CODE_INGRESOS,
+            MetricDefinition.CODE_CLIENTES_NUEVOS,
+        ),
+        une_id__in=[u.id for u in ordered_unes],
+    ).select_related("une", "metric")
+
+    results = MonthlyMetricResult.objects.filter(
+        year=year,
+        metric__code=MetricDefinition.CODE_INGRESOS,
+        une_id__in=[u.id for u in ordered_unes],
+    ).select_related("une", "metric")
+
+    target_map = {}
+    for t in targets:
+        target_map[(t.une_id, t.metric.code, t.month)] = t.target_value
+
+    result_map = {}
+    for r in results:
+        result_map[(r.une_id, r.month)] = r
+
+    tables = []
+    for une in ordered_unes:
+        clients_meta = []
+        income_meta = []
+        for month in range(1, 13):
+            clients_meta.append(target_map.get((une.id, MetricDefinition.CODE_CLIENTES_NUEVOS, month)))
+            income_meta.append(target_map.get((une.id, MetricDefinition.CODE_INGRESOS, month)))
+
+        annual_income = sum((v or Decimal("0")) for v in income_meta)
+        pct_row = []
+        for v in income_meta:
+            if v is None or annual_income == 0:
+                pct_row.append(None)
+            else:
+                pct_row.append((Decimal(v) / annual_income * Decimal("100")).quantize(
+                    Decimal("1"), rounding=ROUND_DOWN
+                ))
+
+        now = datetime.now()
+        ejecutado = []
+        cumple = []
+        for month in range(1, 13):
+            real = None
+            achieved = None
+            # Meses futuros del año en curso: sin ejecución aún → en blanco.
+            period_pending = (year > now.year) or (year == now.year and month > now.month)
+            if not period_pending:
+                if une.code in {"INVESTMENT", "INVESTMENTS", "INVERSIONES"}:
+                    if (year, month, une.id) in investment_real_map:
+                        real = investment_real_map[(year, month, une.id)]
+                        meta_v = income_meta[month - 1]
+                        if real is not None and meta_v is not None:
+                            achieved = real >= meta_v
+                        elif real is not None:
+                            achieved = False
+                else:
+                    result = result_map.get((une.id, month))
+                    if result is not None and result.measured_value is not None:
+                        real = result.measured_value
+                        achieved = bool(result.is_achieved)
+
+            ejecutado.append(real)
+            cumple.append(achieved)
+
+        def _sum_or_none(values):
+            present = [v for v in values if v is not None]
+            if not present:
+                return None
+            return sum(present, Decimal("0"))
+
+        tables.append({
+            "une": une,
+            "title": une.name_es,
+            "income_label": INGRESOS_INCOME_LABEL.get(une.code, "Comisiones"),
+            "month_labels": list(MONTH_ABBR_ES),
+            "clients_meta": clients_meta,
+            "clients_total": _sum_or_none(clients_meta),
+            "income_meta": income_meta,
+            "income_total": _sum_or_none(income_meta),
+            "pct_row": pct_row,
+            "pct_total": Decimal("100") if annual_income else None,
+            "ejecutado": ejecutado,
+            "ejecutado_total": _sum_or_none(ejecutado),
+            "cumple": cumple,
+        })
+
+    return tables
+
+
 def _get_ingresos_rows(periods=None):
 
     investment_une = get_investment_une()
@@ -1633,7 +1802,7 @@ def build_ingresos_markdown(rows, report_filter):
         "",
         "## Datos",
         "",
-        "| UNE | Periodo | Meta USD | Real USD | Dif. USD | Cumple | Método de cálculo | Observación |",
+        "| UNE | Periodo | Meta USD | Ejec.USD | Dif. USD | Cumple | Método de cálculo | Observación |",
         "| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |",
     ]
 
@@ -1649,25 +1818,21 @@ def build_ingresos_markdown(rows, report_filter):
             meta = row["meta"]
             real = row["real"]
             diferencia = row["diferencia"]
-            
-            # Insurance con 3 decimales en MD
-            is_insurance = target.une.code == "INSURANCE"
-            
-            if is_insurance:
-                meta_txt = f"{meta:.3f}" if meta is not None else "-"
-                real_txt = f"{real:.3f}" if real is not None else "-"
-                diferencia_txt = f"{diferencia:.3f}" if diferencia is not None else "-"
-            else:
-                meta_txt = f"{int(meta)}" if meta is not None else "-"
-                real_txt = f"{int(real)}" if real is not None else "-"
-                diferencia_txt = f"{int(diferencia)}" if diferencia is not None else "-"
-            
+
+            def _fmt(v):
+                if v is None:
+                    return "-"
+                try:
+                    return f"{Decimal(v):,.2f}"
+                except Exception:
+                    return str(v)
+
             lines.append(
                 f"| {target.une.name_es if hasattr(target.une, 'name_es') else target.une.name_es} | "
                 f"{period} | "
-                f"{meta_txt} | "
-                f"{real_txt} | "
-                f"{diferencia_txt} | "
+                f"{_fmt(meta)} | "
+                f"{_fmt(real)} | "
+                f"{_fmt(diferencia)} | "
                 f"{'Sí' if row['cumple'] else 'No'} | "
                 f"{row['metodo']} | "
                 f"{row['observacion'] or '-'} |"
@@ -1676,8 +1841,7 @@ def build_ingresos_markdown(rows, report_filter):
     lines.extend([
         "",
         "## Nota",
-        "Este reporte muestra la meta de ingresos, el valor real observado y el método usado para explicar el puntaje mensual.",
-        "Insurance se presenta siempre con 3 decimales.",
+        "Este reporte muestra la meta de ingresos, el valor ejecutado observado y el método usado para explicar el puntaje mensual.",
         "",
     ])
     return "\n".join(lines)
@@ -1687,6 +1851,7 @@ def build_ingresos_markdown(rows, report_filter):
 def ingresos_report(request):
     report_filter = _get_report_filter(request)
     report_sort = get_report_sort(request)
+    report_settings = _get_ingresos_report_settings(request)
 
     periods = _build_period_range(
         report_filter["start_year"],
@@ -1697,13 +1862,26 @@ def ingresos_report(request):
     metric, rows = _get_ingresos_rows(periods=periods)
     rows = sort_ingresos_rows(rows, report_sort)
 
+    annual_year = report_filter["start_year"]
+    annual_tables = (
+        _build_ingresos_annual_tables(annual_year)
+        if report_settings["view"] == INGRESOS_VIEW_ANUAL
+        else []
+    )
+
     context = {
         "rows": rows,
         "metric": metric,
         "report_filter": report_filter,
         "report_sort": report_sort,
+        "report_settings": report_settings,
+        "decimals": report_settings["decimals"],
         "available_periods": _get_available_periods(),
         "month_count_options": MONTH_COUNT_OPTIONS,
+        "annual_year": annual_year,
+        "annual_tables": annual_tables,
+        "view_lista": INGRESOS_VIEW_LIST,
+        "view_anual": INGRESOS_VIEW_ANUAL,
     }
 
     return render(request, "pgc/ingresos.html", context)

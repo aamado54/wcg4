@@ -470,6 +470,36 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
+  // Formato hover/eje: miles con coma (estilo Quantivo / gerencia Plotly).
+  const CHART_HOVER_DECIMALS = {
+    INGRESOS: 2,
+    CLIENTES_NUEVOS: 0,
+    VENTA_CRUZADA: 0
+  };
+
+  function chartDecimals(metricCode) {
+    return Object.prototype.hasOwnProperty.call(CHART_HOVER_DECIMALS, metricCode)
+      ? CHART_HOVER_DECIMALS[metricCode]
+      : 2;
+  }
+
+  function chartTickFormat(metricCode) {
+    const d = chartDecimals(metricCode);
+    return d <= 0 ? ",.0f" : (",." + d + "f");
+  }
+
+  function chartHoverTemplate(metricCode) {
+    const d = chartDecimals(metricCode);
+    const yFmt = d <= 0 ? "%{y:,.0f}" : ("%{y:,." + d + "f}");
+    return "%{fullData.name}: " + yFmt + "<extra></extra>";
+  }
+
+  function withHover(trace, metricCode) {
+    return Object.assign({}, trace, {
+      hovertemplate: chartHoverTemplate(metricCode)
+    });
+  }
+
   function buildMetricSeries(metricCode, selectedUneCodes, accumulated) {
     const metric = chartPayload.metrics[metricCode];
   
@@ -522,7 +552,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     if (chartType === "line") {
       return [
-        {
+        withHover({
           x: series.labels,
           y: series.targetValues,
           type: "scatter",
@@ -530,8 +560,8 @@ document.addEventListener("DOMContentLoaded", function () {
           name: "Meta",
           line: { color: "#7f8c8d", width: 3, dash: "dash" },
           marker: { size: 7 }
-        },
-        {
+        }, metricCode),
+        withHover({
           x: series.labels,
           y: series.realValues,
           type: "scatter",
@@ -539,39 +569,39 @@ document.addEventListener("DOMContentLoaded", function () {
           name: "Real",
           line: { color: "#1f77b4", width: 3 },
           marker: { size: 7 }
-        }
+        }, metricCode)
       ];
     }
 
     if (chartType === "bar") {
       return [
-        {
+        withHover({
           x: series.labels,
           y: series.targetValues,
           type: "bar",
           name: "Meta",
           marker: { color: "#b0b7bf" }
-        },
-        {
+        }, metricCode),
+        withHover({
           x: series.labels,
           y: series.realValues,
           type: "bar",
           name: "Real",
           marker: { color: "#1f77b4" }
-        }
+        }, metricCode)
       ];
     }
 
     
     return [
-      {
+      withHover({
         x: series.labels,
         y: series.realValues,
         type: "bar",
         name: "Real",
         marker: { color: "#1f77b4" }
-      },
-      {
+      }, metricCode),
+      withHover({
         x: series.labels,
         y: series.targetValues,
         type: "scatter",
@@ -579,7 +609,7 @@ document.addEventListener("DOMContentLoaded", function () {
         name: "Meta",
         line: { color: "#7f8c8d", width: 3, dash: "dash" },
         marker: { size: 7 }
-      }
+      }, metricCode)
     ];
   }
 
@@ -601,6 +631,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
       },
       barmode: "group",
+      hovermode: "x unified",
       margin: { l: 60, r: 24, t: 80, b: 80 },
       legend: {
         orientation: "h",
@@ -620,7 +651,9 @@ document.addEventListener("DOMContentLoaded", function () {
       },
       yaxis: {
         title: metric.y_axis,
-        rangemode: "tozero"
+        rangemode: "tozero",
+        tickformat: chartTickFormat(metricCode),
+        separatethousands: true
       },
       paper_bgcolor: "white",
       plot_bgcolor: "white"
@@ -638,12 +671,12 @@ document.addEventListener("DOMContentLoaded", function () {
     const config = {
       responsive: true,
       displaylogo: false,
-      // Bloquea toda interacción del usuario
-      staticPlot: true,          // Desactiva zoom, pan, selección, etc.
+      // Hover activo; sin zoom/pan ni barra de herramientas.
+      staticPlot: false,
       scrollZoom: false,
       doubleClick: false,
       editable: false,
-      displayModeBar: false      // Oculta barra de herramientas
+      displayModeBar: false
     };
 
     Plotly.react(plotMap[metricCode], traces, layout, config);

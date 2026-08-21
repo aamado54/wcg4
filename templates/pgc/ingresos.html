@@ -49,6 +49,121 @@
   .usd-official {
     font-variant-numeric: tabular-nums;
   }
+  .col-periodo {
+    white-space: nowrap;
+    width: 1%;
+  }
+  .ingresos-settings {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px 20px;
+    align-items: end;
+    margin: 0 0 16px;
+    padding: 12px 14px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+  }
+  .ingresos-settings label {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #334155;
+  }
+  .ingresos-settings .setting-check {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-bottom: 4px;
+  }
+  .ingresos-settings .setting-check input {
+    width: auto;
+  }
+  table.ingresos-lista th.col-periodo,
+  table.ingresos-lista td.col-periodo {
+    white-space: nowrap;
+  }
+
+  /* Formato anual estilo PRESUPUESTO */
+  .ingresos-anual-wrap {
+    margin-top: 18px;
+  }
+  .ingresos-anual-block {
+    margin-bottom: 28px;
+  }
+  .ingresos-anual-block h3 {
+    margin: 0 0 8px;
+    font-size: 1.05rem;
+    color: #1e293b;
+  }
+  table.pgc-presupuesto {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.86rem;
+    font-variant-numeric: tabular-nums;
+  }
+  table.pgc-presupuesto th,
+  table.pgc-presupuesto td {
+    border: 1px solid #1e293b;
+    padding: 5px 6px;
+    text-align: center;
+    vertical-align: middle;
+  }
+  table.pgc-presupuesto th.mes-corner,
+  table.pgc-presupuesto td.concept {
+    text-align: left;
+    white-space: nowrap;
+    min-width: 118px;
+    background: #f1f5f9;
+    font-weight: 600;
+  }
+  table.pgc-presupuesto thead th.presupuesto-span {
+    background: #1e3a5f;
+    color: #fff;
+    letter-spacing: 0.04em;
+    font-weight: 700;
+  }
+  table.pgc-presupuesto thead th.month-h {
+    background: #1e3a5f;
+    color: #fff;
+    font-weight: 600;
+  }
+  table.pgc-presupuesto thead th.total-h {
+    background: #fff;
+    color: #0f172a;
+    font-weight: 800;
+    min-width: 72px;
+  }
+  table.pgc-presupuesto td.total-cell {
+    background: #e2e8f0;
+    font-weight: 700;
+  }
+  table.pgc-presupuesto tbody tr:nth-child(odd) td:not(.concept):not(.total-cell) {
+    background: #f8fafc;
+  }
+  table.pgc-presupuesto tbody tr.row-ejecutado td.concept {
+    background: #ecfdf5;
+    color: #065f46;
+  }
+  table.pgc-presupuesto tbody tr.row-ejecutado td:not(.concept) {
+    background: #f0fdf4;
+  }
+  table.pgc-presupuesto tbody tr.row-cumple td.concept {
+    background: #eff6ff;
+    color: #1e40af;
+  }
+  table.pgc-presupuesto .cumple-si {
+    color: #166534;
+    font-weight: 700;
+    background: #bbf7d0 !important;
+  }
+  table.pgc-presupuesto .cumple-no {
+    color: #991b1b;
+    font-weight: 700;
+    background: #fecaca !important;
+  }
+  table.pgc-presupuesto .cumple-blank {
+    background: #fff !important;
+  }
   @media (max-width: 720px) {
     .ingresos-col-full { display: none; }
   }
@@ -63,7 +178,7 @@
   </p>
   <p class="currency-hint">Montos oficiales en miles de US$.</p>
 
-  <form method="get" class="filters">
+  <form method="get" class="filters" id="ingresos-filter-form">
       <div>
           <label for="start_year">Año inicial</label><br>
           <select name="start_year" id="start_year">
@@ -118,69 +233,167 @@
         <input type="hidden" name="group_mode" id="group_mode"
                value="{% if report_sort.group_mode == 'period' %}period{% else %}une{% endif %}">
       </div>
-  
+
       <div style="align-self:end;">
           <button type="button" id="btn-export-md">.md export</button>
       </div>
   </form>
-  
-  <table>
+
+  <div class="ingresos-settings">
+    <div>
+      <label for="decimals">Decimales (USD / GTQ)</label><br>
+      <select name="decimals" id="decimals" form="ingresos-filter-form">
+        {% for d in report_settings.decimal_options %}
+          <option value="{{ d }}" {% if report_settings.decimals == d %}selected{% endif %}>{{ d }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label for="view">Formato del reporte</label><br>
+      <select name="view" id="view" form="ingresos-filter-form">
+        <option value="{{ view_lista }}" {% if report_settings.view == view_lista %}selected{% endif %}>Lista (detalle)</option>
+        <option value="{{ view_anual }}" {% if report_settings.view == view_anual %}selected{% endif %}>Anual por UNE</option>
+      </select>
+    </div>
+    <div class="setting-check">
+      <input type="hidden" name="show_detail_cols" value="0" form="ingresos-filter-form">
+      <input type="checkbox" name="show_detail_cols" id="show_detail_cols" value="1" form="ingresos-filter-form"
+             {% if report_settings.show_detail_cols %}checked{% endif %}>
+      <label for="show_detail_cols" style="margin:0; font-weight:600;">Método y Observación</label>
+    </div>
+  </div>
+
+  {% if report_settings.view == view_anual %}
+  <div class="ingresos-anual-wrap">
+    <p class="muted" style="margin-top:0;">
+      Año {{ annual_year }} completo · metas (PRESUPUESTO), ejecutado de ingresos y cumplimiento.
+      Celdas en blanco = aún sin ejecución.
+    </p>
+    {% for table in annual_tables %}
+    <div class="ingresos-anual-block">
+      <h3>{{ table.title }}</h3>
+      <div style="overflow-x:auto;">
+        <table class="pgc-presupuesto">
+          <thead>
+            <tr>
+              <th class="mes-corner" rowspan="2">MES</th>
+              <th class="presupuesto-span" colspan="12">PRESUPUESTO</th>
+              <th class="total-h" rowspan="2">TOTAL</th>
+            </tr>
+            <tr>
+              {% for ml in table.month_labels %}
+              <th class="month-h">{{ ml }}</th>
+              {% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="concept">Clientes nuevos</td>
+              {% for v in table.clients_meta %}
+              <td>{% if v is not None %}{{ v|wcg_num:0 }}{% endif %}</td>
+              {% endfor %}
+              <td class="total-cell">{% if table.clients_total is not None %}{{ table.clients_total|wcg_num:0 }}{% endif %}</td>
+            </tr>
+            <tr>
+              <td class="concept">{{ table.income_label }}</td>
+              {% for v in table.income_meta %}
+              <td>{% if v is not None %}{{ v|wcg_num:decimals }}{% endif %}</td>
+              {% endfor %}
+              <td class="total-cell">{% if table.income_total is not None %}{{ table.income_total|wcg_num:decimals }}{% endif %}</td>
+            </tr>
+            <tr>
+              <td class="concept">%</td>
+              {% for v in table.pct_row %}
+              <td>{% if v is not None %}{{ v|wcg_num:0 }}%{% endif %}</td>
+              {% endfor %}
+              <td class="total-cell">{% if table.pct_total is not None %}{{ table.pct_total|wcg_num:0 }}%{% endif %}</td>
+            </tr>
+            <tr class="row-ejecutado">
+              <td class="concept">Ejecutado</td>
+              {% for v in table.ejecutado %}
+              <td>{% if v is not None %}{{ v|wcg_num:decimals }}{% endif %}</td>
+              {% endfor %}
+              <td class="total-cell">{% if table.ejecutado_total is not None %}{{ table.ejecutado_total|wcg_num:decimals }}{% endif %}</td>
+            </tr>
+            <tr class="row-cumple">
+              <td class="concept">Cumple</td>
+              {% for ok in table.cumple %}
+                {% if ok is None %}
+                <td class="cumple-blank"></td>
+                {% elif ok %}
+                <td class="cumple-si">Sí</td>
+                {% else %}
+                <td class="cumple-no">No</td>
+                {% endif %}
+              {% endfor %}
+              <td class="total-cell cumple-blank"></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% empty %}
+    <p class="muted">No hay datos anuales para {{ annual_year }}.</p>
+    {% endfor %}
+  </div>
+  {% else %}
+  <table class="ingresos-lista">
     <thead>
       <tr>
         <th style="text-align:left;">UNE</th>
-        <th>Periodo</th>
+        <th class="col-periodo">Periodo</th>
         <th title="Meta en USD">Meta USD</th>
-        <th title="Real en USD (oficial)">Real USD</th>
+        <th title="Ejecutado en USD (oficial)">Ejec.USD</th>
+        {% if not report_settings.show_detail_cols %}
+        <th title="Referencia en quetzales (solo si hay captura GTQ)">GTQ</th>
+        {% endif %}
         <th title="Diferencia en USD">Dif. USD</th>
         <th>Cumple</th>
+        {% if report_settings.show_detail_cols %}
         <th class="ingresos-col-full">Método de cálculo</th>
         <th style="text-align:left;">Observación</th>
+        {% endif %}
       </tr>
     </thead>
     <tbody>
         {% for row in rows %}
             {% if row.is_separator %}
                 <tr class="group_separator">
-                    <td colspan="8"></td>
+                    <td colspan="{% if report_settings.show_detail_cols %}8{% else %}7{% endif %}"></td>
                 </tr>
             {% else %}
                 <tr>
                     <td style="text-align:left;">{{ row.target.une.name_es|default:row.target.une.name_es }}</td>
-                    <td>{{ row.target.year }}-{{ row.target.month|stringformat:"02d" }}</td>
+                    <td class="col-periodo">{{ row.target.year }}-{{ row.target.month|stringformat:"02d" }}</td>
                     <td class="usd-official">
                         {% if row.meta is not None %}
-                            {% if row.target.une.code == "INSURANCE" %}
-                                ${{ row.meta|wcg_miles:1 }}
-                            {% else %}
-                                ${{ row.meta|wcg_miles:0 }}
-                            {% endif %}
+                            ${{ row.meta|wcg_num:decimals }}
                         {% else %}
                             -
                         {% endif %}
                     </td>
                     <td class="usd-official">
                         {% if row.real is not None %}
-                            {% if row.target.une.code == "INSURANCE" %}
-                                ${{ row.real|wcg_miles:1 }}
-                            {% else %}
-                                ${{ row.real|wcg_miles:0 }}
-                            {% endif %}
-                            {% if row.source_gtq is not None %}
+                            ${{ row.real|wcg_num:decimals }}
+                            {% if report_settings.show_detail_cols and row.source_gtq is not None %}
                             <span class="gtq-ref" title="Captura manual en GTQ (referencia; el score usa USD)">
-                              ref Q{{ row.source_gtq|wcg_num:2 }}
+                              ref Q{{ row.source_gtq|wcg_num:decimals }}
                             </span>
                             {% endif %}
                         {% else %}
                             -
                         {% endif %}
                     </td>
+                    {% if not report_settings.show_detail_cols %}
+                    <td class="usd-official">
+                        {% if row.source_gtq is not None %}
+                          Q{{ row.source_gtq|wcg_num:decimals }}
+                        {% endif %}
+                    </td>
+                    {% endif %}
                     <td class="usd-official">
                         {% if row.diferencia is not None %}
-                            {% if row.target.une.code == "INSURANCE" %}
-                                ${{ row.diferencia|wcg_miles:1 }}
-                            {% else %}
-                                ${{ row.diferencia|wcg_miles:0 }}
-                            {% endif %}
+                            ${{ row.diferencia|wcg_num:decimals }}
                         {% else %}
                             -
                         {% endif %}
@@ -192,6 +405,7 @@
                             <span class="bad">No</span>
                         {% endif %}
                     </td>
+                    {% if report_settings.show_detail_cols %}
                     <td class="ingresos-metodo-cell ingresos-col-full">{{ row.metodo }}</td>
                     <td class="ingresos-observacion-cell" style="text-align:left">
                       {% if row.tc_label %}
@@ -203,15 +417,17 @@
                         -
                       {% endif %}
                     </td>
+                    {% endif %}
                 </tr>
             {% endif %}
         {% empty %}
             <tr>
-                <td colspan="8">No hay datos de ingresos para los filtros seleccionados.</td>
+                <td colspan="{% if report_settings.show_detail_cols %}8{% else %}7{% endif %}">No hay datos de ingresos para los filtros seleccionados.</td>
             </tr>
         {% endfor %}
     </tbody>
   </table>
+  {% endif %}
 </div>
 
 <script>
@@ -237,7 +453,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
-    const filterForm = document.querySelector("form.filters");
+    const filterForm = document.getElementById("ingresos-filter-form");
     function applyFilters() {
         if (typeof syncSortFields === "function") syncSortFields();
         if (filterForm) filterForm.submit();
@@ -248,9 +464,10 @@ document.addEventListener("DOMContentLoaded", function () {
         syncSortFields();
     }
 
-    ["month_count", "start_year", "start_month"].forEach(function (id) {
+    ["month_count", "start_year", "start_month", "decimals", "view", "show_detail_cols"].forEach(function (id) {
         const el = document.getElementById(id);
-        if (el && el.tagName === "SELECT") {
+        if (!el) return;
+        if (el.tagName === "SELECT" || el.type === "checkbox") {
             el.addEventListener("change", applyFilters);
         }
     });
@@ -266,7 +483,10 @@ document.addEventListener("DOMContentLoaded", function () {
             start_month: startMonth?.value || "",
             month_count: document.getElementById("month_count")?.value || "",
             date_order:  dateOrder?.value  || "asc",
-            group_mode:  groupMode?.value  || "une"
+            group_mode:  groupMode?.value  || "une",
+            decimals: document.getElementById("decimals")?.value || "1",
+            view: document.getElementById("view")?.value || "lista",
+            show_detail_cols: document.getElementById("show_detail_cols")?.checked ? "1" : "0"
         });
 
         const url = `{% url 'pgc:ingresos_export_md' %}?` + params.toString();
