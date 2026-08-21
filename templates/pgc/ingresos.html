@@ -83,7 +83,7 @@
     white-space: nowrap;
   }
 
-  /* Formato anual estilo PRESUPUESTO */
+  /* Formato anual por UNE */
   .ingresos-anual-wrap {
     margin-top: 18px;
   }
@@ -91,9 +91,12 @@
     margin-bottom: 28px;
   }
   .ingresos-anual-block h3 {
-    margin: 0 0 8px;
-    font-size: 1.05rem;
-    color: #1e293b;
+    margin: 0 0 10px;
+    font-family: "Source Serif 4", "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    font-size: 1.22rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    color: #14532d;
   }
   table.pgc-presupuesto {
     width: 100%;
@@ -116,20 +119,15 @@
     background: #f1f5f9;
     font-weight: 600;
   }
-  table.pgc-presupuesto thead th.presupuesto-span {
-    background: #1e3a5f;
-    color: #fff;
-    letter-spacing: 0.04em;
-    font-weight: 700;
-  }
+  table.pgc-presupuesto thead th.mes-corner,
   table.pgc-presupuesto thead th.month-h {
     background: #1e3a5f;
     color: #fff;
     font-weight: 600;
   }
   table.pgc-presupuesto thead th.total-h {
-    background: #fff;
-    color: #0f172a;
+    background: #1e3a5f;
+    color: #fff;
     font-weight: 800;
     min-width: 72px;
   }
@@ -266,7 +264,7 @@
   {% if report_settings.view == view_anual %}
   <div class="ingresos-anual-wrap">
     <p class="muted" style="margin-top:0;">
-      Año {{ annual_year }} completo · metas (PRESUPUESTO), ejecutado de ingresos y cumplimiento.
+      Año {{ annual_year }} completo · metas, ejecutado de ingresos y cumplimiento.
       Celdas en blanco = aún sin ejecución.
     </p>
     {% for table in annual_tables %}
@@ -276,14 +274,11 @@
         <table class="pgc-presupuesto">
           <thead>
             <tr>
-              <th class="mes-corner" rowspan="2">MES</th>
-              <th class="presupuesto-span" colspan="12">PRESUPUESTO</th>
-              <th class="total-h" rowspan="2">TOTAL</th>
-            </tr>
-            <tr>
+              <th class="mes-corner">MES</th>
               {% for ml in table.month_labels %}
               <th class="month-h">{{ ml }}</th>
               {% endfor %}
+              <th class="total-h">TOTAL</th>
             </tr>
           </thead>
           <tbody>
