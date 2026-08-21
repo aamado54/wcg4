@@ -1460,6 +1460,7 @@ INGRESOS_DEFAULT_DECIMALS = 1
 INGRESOS_VIEW_LIST = "lista"
 INGRESOS_VIEW_ANUAL = "anual"
 INGRESOS_VIEW_OPTIONS = (INGRESOS_VIEW_LIST, INGRESOS_VIEW_ANUAL)
+INGRESOS_DEFAULT_VIEW = INGRESOS_VIEW_ANUAL
 
 MONTH_ABBR_ES = (
     "Ene", "Feb", "Mzo", "Abr", "May", "Jun",
@@ -1491,8 +1492,12 @@ def _get_ingresos_report_settings(request):
         session_dec = _safe_int(request.session.get("pgc_ingresos_decimals"))
         decimals = session_dec if session_dec in INGRESOS_DECIMAL_OPTIONS else INGRESOS_DEFAULT_DECIMALS
 
-    raw_view = (request.GET.get("view") or request.session.get("pgc_ingresos_view") or INGRESOS_VIEW_LIST).strip().lower()
-    view = raw_view if raw_view in INGRESOS_VIEW_OPTIONS else INGRESOS_VIEW_LIST
+    raw_view = (
+        request.GET.get("view")
+        or request.session.get("pgc_ingresos_view_v2")
+        or INGRESOS_DEFAULT_VIEW
+    ).strip().lower()
+    view = raw_view if raw_view in INGRESOS_VIEW_OPTIONS else INGRESOS_DEFAULT_VIEW
 
     if "show_detail_cols" in request.GET:
         show_detail_cols = request.GET.get("show_detail_cols") not in ("0", "false", "off", "")
@@ -1502,7 +1507,7 @@ def _get_ingresos_report_settings(request):
         show_detail_cols = True
 
     request.session["pgc_ingresos_decimals"] = decimals
-    request.session["pgc_ingresos_view"] = view
+    request.session["pgc_ingresos_view_v2"] = view
     request.session["pgc_ingresos_show_detail_cols"] = show_detail_cols
 
     return {
