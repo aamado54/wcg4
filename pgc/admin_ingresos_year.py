@@ -11,7 +11,7 @@ from django.db import transaction
 from core.models import MetricDefinition, UNE
 from pgc.admin_manual import log_manual_edit, save_fx
 from pgc.admin_utils import parse_decimal_or_none
-from pgc.income_conversion import format_usd_3, get_fx_rate, gtq_to_usd
+from pgc.income_conversion import format_usd_3, get_fx_rate, gtq_to_usd, apply_result_achievement
 from pgc.models import (
     AdminManualEditLog,
     MonthlyExchangeRate,
@@ -199,6 +199,7 @@ def save_ingresos_year(user, year: int, post_data, reason: str = "") -> dict:
                 obj.calculation_note = (
                     f"Matriz anual USD: {usd_value} USD [{year}-{month:02d}]"
                 )
+                achievement_fields = apply_result_achievement(obj)
                 obj.save(
                     update_fields=[
                         "measured_value",
@@ -207,6 +208,7 @@ def save_ingresos_year(user, year: int, post_data, reason: str = "") -> dict:
                         "exchange_rate_used",
                         "conversion_status",
                         "calculation_note",
+                        *achievement_fields,
                         "updated_at",
                     ]
                 )
@@ -266,6 +268,7 @@ def save_ingresos_year(user, year: int, post_data, reason: str = "") -> dict:
                 f"Matriz anual GTQ→USD: {parsed} GTQ / {fx_rate} = {usd_value} USD "
                 f"[{year}-{month:02d}]"
             )
+            achievement_fields = apply_result_achievement(obj)
             obj.save(
                 update_fields=[
                     "measured_value",
@@ -274,6 +277,7 @@ def save_ingresos_year(user, year: int, post_data, reason: str = "") -> dict:
                     "exchange_rate_used",
                     "conversion_status",
                     "calculation_note",
+                    *achievement_fields,
                     "updated_at",
                 ]
             )

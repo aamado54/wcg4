@@ -57,6 +57,7 @@ PGC_MODE_LABELS = {
 DEFAULT_PGC_MODE = "modo1"
 
 
+from pgc.income_conversion import evaluate_result_achievement
 from pgc.investment_ingresos import (
     build_fx_map,
     convert_row_amount_to_usd,
@@ -1599,7 +1600,11 @@ def _build_ingresos_annual_tables(year):
                     result = result_map.get((une.id, month))
                     if result is not None and result.measured_value is not None:
                         real = result.measured_value
-                        achieved = bool(result.is_achieved)
+                        meta_v = income_meta[month - 1]
+                        achieved, _pts = evaluate_result_achievement(real, meta_v)
+                        # Si no hay meta, no forzar No: dejar blank vía None solo si falta real.
+                        if meta_v is None:
+                            achieved = bool(result.is_achieved)
 
             ejecutado.append(real)
             cumple.append(achieved)
@@ -1695,8 +1700,10 @@ def _get_ingresos_rows(periods=None):
             diferencia = real - meta
             if target.une.code == "INSURANCE":
                 diferencia = diferencia.quantize(Decimal("0.001"), rounding=ROUND_DOWN)
+            cumple, _pts = evaluate_result_achievement(real, meta)
         else:
             diferencia = None
+            cumple = bool(result.is_achieved) if result else False
 
         if target.une.code in {"INVESTMENT", "INVESTMENTS", "INVERSIONES"}:
             metodo = "Suma de montos del archivo de clientes nuevos del mes"
@@ -1774,7 +1781,7 @@ def _get_ingresos_rows(periods=None):
             "meta": meta,
             "real": real,
             "diferencia": diferencia,
-            "cumple": result.is_achieved if result else False,
+            "cumple": cumple,
             "metodo": metodo,
             "observacion": observacion,
             "observacion_base": display_base,

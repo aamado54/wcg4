@@ -22,6 +22,7 @@ from pgc.models import (
 
 from pgc.admin_utils import format_value, parse_decimal_or_none
 from pgc.income_conversion import (
+    apply_result_achievement,
     count_stale_ingresos,
     format_usd_3,
     get_fx_rate,
@@ -390,6 +391,7 @@ def save_results(user, year: int, month: int, post_data, reason: str = "") -> in
                     obj.calculation_note = (
                         f"Captura manual USD nativo: {usd_value} USD [{year}-{month:02d}]"
                     )
+                    achievement_fields = apply_result_achievement(obj)
                     obj.save(
                         update_fields=[
                             "measured_value",
@@ -398,6 +400,7 @@ def save_results(user, year: int, month: int, post_data, reason: str = "") -> in
                             "exchange_rate_used",
                             "conversion_status",
                             "calculation_note",
+                            *achievement_fields,
                             "updated_at",
                         ]
                     )
@@ -458,6 +461,7 @@ def save_results(user, year: int, month: int, post_data, reason: str = "") -> in
                     f"Captura manual GTQ→USD: {parsed} GTQ / {fx_rate} = {usd_value} USD "
                     f"[{year}-{month:02d}]"
                 )
+                achievement_fields = apply_result_achievement(obj)
                 obj.save(
                     update_fields=[
                         "measured_value",
@@ -466,6 +470,7 @@ def save_results(user, year: int, month: int, post_data, reason: str = "") -> in
                         "exchange_rate_used",
                         "conversion_status",
                         "calculation_note",
+                        *achievement_fields,
                         "updated_at",
                     ]
                 )
@@ -500,7 +505,15 @@ def save_results(user, year: int, month: int, post_data, reason: str = "") -> in
             if created or old != parsed:
                 obj.measured_value = parsed
                 obj.calculation_note = (obj.calculation_note or "") + " [Edición manual]"
-                obj.save(update_fields=["measured_value", "calculation_note", "updated_at"])
+                achievement_fields = apply_result_achievement(obj)
+                obj.save(
+                    update_fields=[
+                        "measured_value",
+                        "calculation_note",
+                        *achievement_fields,
+                        "updated_at",
+                    ]
+                )
                 log_manual_edit(
                     user=user,
                     year=year,

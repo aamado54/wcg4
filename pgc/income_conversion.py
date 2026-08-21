@@ -34,6 +34,105 @@ def format_usd_3(value: Decimal | None) -> str:
     return str(value.quantize(USD_DISPLAY_PLACES, rounding=ROUND_HALF_UP))
 
 
+def evaluate_result_achievement(
+    measured_value,
+    target_value,
+    *,
+    points_if_achieved: int = 0,
+) -> tuple[bool, int]:
+    """Regla PGC modo1 para Cumple: real >= meta → Sí + puntos; si no, No + 0."""
+    if measured_value is None or target_value is None:
+        return False, 0
+    try:
+        measured = Decimal(str(measured_value))
+        target = Decimal(str(target_value))
+    except Exception:
+        return False, 0
+    achieved = measured >= target
+    points = int(points_if_achieved or 0) if achieved else 0
+    return achieved, points
+
+
+def apply_result_achievement(result: MonthlyMetricResult, target=None) -> list[str]:
+    """
+    Sincroniza is_achieved / points_awarded / target_value en MonthlyMetricResult.
+
+    Returns:
+        Lista de campos modificados (para update_fields).
+    """
+    from pgc.models import MonthlyTarget
+
+    if target is None:
+        target = (
+            MonthlyTarget.objects.filter(
+                plan_id=result.plan_id,
+                une_id=result.une_id,
+                metric_id=result.metric_id,
+                year=result.year,
+                month=result.month,
+            ).first()
+        )
+
+    meta = None
+    points_if = 0
+    if target is not None:
+        meta = target.target_value
+        points_if = int(target.points_if_achieved or 0)
+    elif result.target_value is not None:
+        meta = result.target_value
+
+    achieved, points = evaluate_result_achievement(
+        result.measured_value,
+        meta,
+        points_if_achieved=points_if,
+    )
+
+    changed: list[str] = []
+    if meta is not None and result.target_value != meta:
+        result.target_value = meta
+        changed.append("target_value")
+    if bool(result.is_achieved) != achieved:
+        result.is_achieved = achieved
+        changed.append("is_achieved")
+    if int(result.points_awarded or 0) != points:
+        result.points_awarded = points
+        changed.append("points_awarded")
+    return changed
+
+
+def sync_ingresos_achievements(*, year: int | None = None) -> dict:
+    """Repara Cumple/puntos de todos los MonthlyMetricResult de INGRESOS."""
+    metric = MetricDefinition.objects.filter(code=MetricDefinition.CODE_INGRESOS).first()
+    if not metric:
+        return {"updated": 0, "checked": 0}
+
+    qs = MonthlyMetricResult.objects.filter(metric=metric).select_related("une")
+    if year is not None:
+        qs = qs.filter(year=year)
+
+    checked = 0
+    updated = 0
+    mismatches = []
+    for row in qs.iterator():
+        checked += 1
+        before = (row.is_achieved, int(row.points_awarded or 0), row.target_value)
+        fields = apply_result_achievement(row)
+        if not fields:
+            continue
+        row.save(update_fields=fields + ["updated_at"])
+        updated += 1
+        mismatches.append(
+            {
+                "une": row.une.code if row.une_id else "?",
+                "period": f"{row.year}-{row.month:02d}",
+                "measured": row.measured_value,
+                "before": before,
+                "after": (row.is_achieved, int(row.points_awarded or 0), row.target_value),
+            }
+        )
+    return {"updated": updated, "checked": checked, "mismatches": mismatches}
+
+
 def _log_edit(*, user, year, month, entity_id, field_name, old_value, new_value, reason):
     if user is None:
         return
@@ -146,12 +245,14 @@ def recalc_stale_ingresos(
             + f" [Recalc GTQ→USD: {row.source_value} GTQ / {fx} = {new_usd} USD; "
             f"prev USD={old_usd}, prev FX={old_fx}]"
         ).strip()
+        achievement_fields = apply_result_achievement(row)
         row.save(
             update_fields=[
                 "measured_value",
                 "exchange_rate_used",
                 "conversion_status",
                 "calculation_note",
+                *achievement_fields,
                 "updated_at",
             ]
         )
