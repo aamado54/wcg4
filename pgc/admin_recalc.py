@@ -9,12 +9,24 @@ from datetime import datetime
 from typing import Any
 
 from django.core.management import call_command
+from django.db import transaction
 from django.db.models import Max
 from django.utils import timezone
 
-from core.models import MetricDefinition, UNE
-from imports.models import CrossSaleImportRow, FileUpload, NewClientImportRow
-from pgc.income_conversion import count_stale_ingresos, recalc_stale_ingresos
+from core.models import MetricDefinition, SystemSetting, UNE
+from imports.models import (
+    BankLoanMonthSnapshot,
+    CrossSaleImportRow,
+    FileUpload,
+    InvestmentGrowthRow,
+    NewClientImportRow,
+)
+from pgc.investment_ingresos import has_investment_growth_data
+from pgc.income_conversion import (
+    apply_result_achievement,
+    count_stale_ingresos,
+    recalc_stale_ingresos,
+)
 from pgc.models import (
     ManualRequirementsCompliance,
     MonthlyMetricResult,
@@ -25,6 +37,71 @@ from pgc.models import (
 
 MODES = ("modo1", "modo2")
 INVESTMENT_CODES = ("INVESTMENT", "INVESTMENTS", "INVERSIONES")
+PGC_AUTO_RECALC_KEY = "pgc.auto_recalc"
+
+_auto_recalc_running = False
+
+
+def get_auto_recalc_enabled() -> bool:
+    setting = SystemSetting.objects.filter(key=PGC_AUTO_RECALC_KEY).first()
+    if setting is None:
+        return False
+    if setting.value_bool is not None:
+        return bool(setting.value_bool)
+    text = (setting.value_text or "").strip().lower()
+    return text in ("1", "true", "yes", "on", "si", "sí")
+
+
+def set_auto_recalc_enabled(enabled: bool, *, user=None) -> bool:
+    SystemSetting.objects.update_or_create(
+        key=PGC_AUTO_RECALC_KEY,
+        defaults={
+            "value_bool": bool(enabled),
+            "value_text": "1" if enabled else "0",
+            "description": "Recalcular PGC automáticamente cuando hay pendientes",
+            "updated_by": user,
+        },
+    )
+    return bool(enabled)
+
+
+def maybe_auto_recalc(*, user=None, source: str = "") -> dict[str, Any] | None:
+    """
+    Si auto-recalc está activo y hay pendientes, ejecuta la cadena inteligente.
+
+    Usa on_commit para no correr dentro de transacciones abiertas de import/save.
+    """
+    if not get_auto_recalc_enabled():
+        return None
+
+    def _run() -> dict[str, Any] | None:
+        global _auto_recalc_running
+        if _auto_recalc_running:
+            return None
+        status = get_global_recalc_status()
+        if not status.get("is_pending"):
+            return None
+        _auto_recalc_running = True
+        try:
+            result = run_smart_recalc_all(user=user, force_all=False)
+            result["source"] = source or "auto"
+            result["auto"] = True
+            return result
+        finally:
+            _auto_recalc_running = False
+
+    # Si ya hay transacción, diferir; si no, correr ya.
+    connection = transaction.get_connection()
+    if connection.in_atomic_block:
+        holder: dict[str, Any] = {}
+
+        def _deferred():
+            holder["result"] = _run()
+
+        transaction.on_commit(_deferred)
+        return {"scheduled": True, "source": source or "auto"}
+
+    return _run()
 
 
 def _aware(dt: datetime | None) -> datetime | None:
@@ -151,7 +228,29 @@ def period_pending_reasons(year: int, month: int) -> list[str]:
 
     inv_une = _investment_une()
     metric = _ingresos_metric()
-    if inv_une and NewClientImportRow.objects.filter(
+    if inv_une and has_investment_growth_data():
+        latest_inv_ts = InvestmentGrowthRow.objects.aggregate(m=Max("updated_at"))["m"]
+        latest_bank_ts = BankLoanMonthSnapshot.objects.aggregate(m=Max("updated_at"))["m"]
+        latest_row_ts = max(
+            [ts for ts in (latest_inv_ts, latest_bank_ts) if ts],
+            default=None,
+        )
+        result = None
+        if plan and metric:
+            result = MonthlyMetricResult.objects.filter(
+                plan=plan,
+                metric=metric,
+                une=inv_une,
+                year=year,
+                month=month,
+            ).first()
+        if result is None or result.measured_value is None:
+            reasons.append("Ingresos Investment sin calcular desde crecimiento neto")
+        elif latest_row_ts and result.updated_at and _aware(result.updated_at) < _aware(
+            latest_row_ts
+        ):
+            reasons.append("Ingresos Investment desactualizados vs archivos AP/PG/bancos")
+    elif inv_une and NewClientImportRow.objects.filter(
         year=year, month=month, une=inv_une
     ).exists():
         latest_row_ts = NewClientImportRow.objects.filter(
@@ -205,11 +304,13 @@ def get_global_recalc_status() -> dict[str, Any]:
 
     pending_count = len(pending_periods)
     is_pending = pending_count > 0
+    auto_enabled = get_auto_recalc_enabled()
     return {
         "is_pending": is_pending,
         "is_ready": not is_pending,
         "pending_count": pending_count,
         "pending_periods": pending_periods,
+        "auto_recalc": auto_enabled,
         "state": "pending" if is_pending else "ready",
         "state_label": (
             f"Pendiente · {pending_count} período(s)"
@@ -244,6 +345,22 @@ def run_period_recalc_chain(
     """
     messages_out: list[str] = []
     label = f"{year}-{month:02d}"
+
+    # Alinea Cumple/puntos de INGRESOS (real >= meta) antes del score.
+    ingresos_metric = _ingresos_metric()
+    if ingresos_metric:
+        synced = 0
+        for row in MonthlyMetricResult.objects.filter(
+            year=year, month=month, metric=ingresos_metric
+        ):
+            fields = apply_result_achievement(row)
+            if fields:
+                row.save(update_fields=[*fields, "updated_at"])
+                synced += 1
+        if synced:
+            messages_out.append(
+                f"{label}: {synced} resultado(s) INGRESOS con Cumple/puntos alineados."
+            )
 
     try:
         stale_result = recalc_stale_ingresos(

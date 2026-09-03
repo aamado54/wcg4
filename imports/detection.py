@@ -8,6 +8,7 @@ Capas (en orden de evaluación, luego fusión):
 
 from __future__ import annotations
 
+import io
 import re
 from dataclasses import dataclass, field
 
@@ -61,6 +62,8 @@ TYPE_RISK_RENTAS = "risk_rentas"
 TYPE_NEW_CLIENTS = "new_clients"
 TYPE_CROSS_SALE = "cross_sale"
 TYPE_FINANCIAL = "financial"
+TYPE_INVESTMENT_GROWTH = "investment_growth"
+TYPE_BANK_LOANS = "bank_loans"
 TYPE_UNKNOWN = "unknown"
 
 TYPE_LABELS = {
@@ -72,6 +75,8 @@ TYPE_LABELS = {
     TYPE_NEW_CLIENTS: "PGC — Clientes nuevos",
     TYPE_CROSS_SALE: "PGC — Venta cruzada",
     TYPE_FINANCIAL: "PGC — Estado financiero (WC*)",
+    TYPE_INVESTMENT_GROWTH: "PGC — Inversiones AP/PG (crecimiento neto)",
+    TYPE_BANK_LOANS: "PGC — Préstamos bancarios (fin de mes)",
     TYPE_UNKNOWN: "Desconocido",
 }
 
@@ -83,6 +88,8 @@ ALL_IMPORTABLE = [
     TYPE_RISK_RENTAS,
     TYPE_NEW_CLIENTS,
     TYPE_CROSS_SALE,
+    TYPE_INVESTMENT_GROWTH,
+    TYPE_BANK_LOANS,
 ]
 
 IMPORTER_LABELS = {
@@ -94,7 +101,83 @@ IMPORTER_LABELS = {
     TYPE_NEW_CLIENTS: "import_clientes_nuevos",
     TYPE_CROSS_SALE: "import_venta_cruzada",
     TYPE_FINANCIAL: "pgc.admin_monthly (manual)",
+    TYPE_INVESTMENT_GROWTH: "import_inversiones_crecimiento",
+    TYPE_BANK_LOANS: "import_bancos_fin_mes",
 }
+
+
+def _split_header_line(raw: bytes) -> list[str]:
+    text = raw.decode("utf-8-sig", errors="replace")
+    first = text.splitlines()[0] if text else ""
+    sep = ";" if ";" in first and first.count(";") >= first.count(",") else ","
+    return [_norm_header(part) for part in first.split(sep)]
+
+
+def detect_passives_investment(uploaded_file) -> DetectionResult | None:
+    """Detección específica: Inversiones_crecimiento (CSV) y Bancos_Fin_de_mes (XLSX)."""
+    name = (getattr(uploaded_file, "name", "") or "").lower()
+    compact = re.sub(r"[\s_\-.]+", "", name)
+    raw = uploaded_file.read()
+    uploaded_file.seek(0)
+
+    if name.endswith((".csv", ".tsv", ".txt")):
+        headers = _split_header_line(raw)
+        inv_markers = {
+            "cierre",
+            "instrumento",
+            "numero_inversion",
+            "monto_inversion",
+            "dolarizado",
+            "quetzalizado",
+            "tipocambio",
+        }
+        hits = sum(1 for h in headers if h in inv_markers)
+        name_hit = (
+            "inversionescrecimiento" in compact
+            or ("inversiones" in compact and "crecimiento" in compact)
+        )
+        if hits >= 4 or (hits >= 3 and name_hit):
+            conf = 0.92 if hits >= 5 else 0.86
+            if name_hit:
+                conf = max(conf, 0.9)
+            return DetectionResult(
+                tipo=TYPE_INVESTMENT_GROWTH,
+                confidence=conf,
+                label=TYPE_LABELS[TYPE_INVESTMENT_GROWTH],
+                reasons=[
+                    f"estructura: encabezados AP/PG ({hits} columnas clave)",
+                    *(["nombre: Inversiones_crecimiento"] if name_hit else []),
+                ],
+                layer="pasivas",
+            )
+
+    if name.endswith((".xlsx", ".xls")):
+        try:
+            from openpyxl import load_workbook
+
+            wb = load_workbook(io.BytesIO(raw), read_only=True, data_only=True)
+            ws = wb.active
+            header_cells = [ws.cell(1, c).value for c in range(1, min(ws.max_column or 1, 20) + 1)]
+            headers = [_norm_header(str(v)) for v in header_cells if v]
+            has_cierre = any(h == "cierre" for h in headers)
+            has_quetzalizado = any("quetzalizado" in h for h in headers)
+            bank_name_hit = "bancos" in compact and "fin" in compact and "mes" in compact
+            if has_quetzalizado and (has_cierre or bank_name_hit):
+                return DetectionResult(
+                    tipo=TYPE_BANK_LOANS,
+                    confidence=0.94 if bank_name_hit else 0.88,
+                    label=TYPE_LABELS[TYPE_BANK_LOANS],
+                    reasons=[
+                        "estructura: columna Quetzalizado + CIERRE",
+                        *(["nombre: Bancos_Fin_de_mes"] if bank_name_hit else []),
+                    ],
+                    layer="pasivas",
+                )
+        except Exception:
+            uploaded_file.seek(0)
+
+    uploaded_file.seek(0)
+    return None
 
 
 def _score_columns(cols: set[str], required_groups: list[list[str]]) -> int:
@@ -110,6 +193,17 @@ def detect_from_name(filename: str) -> DetectionResult | None:
     compact = re.sub(r"[\s_\-.]+", "", name)
 
     checks = [
+        (
+            TYPE_INVESTMENT_GROWTH,
+            "inversionescrecimiento" in compact
+            or ("inversiones" in compact and "crecimiento" in compact),
+            "nombre: Inversiones_crecimiento",
+        ),
+        (
+            TYPE_BANK_LOANS,
+            "bancos" in compact and "fin" in compact and "mes" in compact,
+            "nombre: Bancos_Fin_de_mes",
+        ),
         (TYPE_NEW_CLIENTS, "clientesnuevos" in compact or "clientes_nuevos" in name, "nombre: ClientesNuevos"),
         (TYPE_CROSS_SALE, "ventacruzada" in compact, "nombre: VentaCruzada"),
         (TYPE_FINANCIAL, name.startswith("wc") or "estado_resultados" in name or "er_" in name, "nombre: WC*/ER financiero"),
@@ -191,6 +285,29 @@ def detect_from_columns(cols: set[str]) -> DetectionResult | None:
     )
     if xc_score >= 3:
         candidates.append((TYPE_CROSS_SALE, xc_score, ["estructura: venta cruzada origen/destino"]))
+
+    inv_score = _score_columns(
+        cols,
+        [
+            ["cierre"],
+            ["instrumento"],
+            ["numero_inversion"],
+            ["dolarizado", "quetzalizado"],
+            ["monto_inversion"],
+        ],
+    )
+    if inv_score >= 4:
+        candidates.append(
+            (TYPE_INVESTMENT_GROWTH, inv_score, ["estructura: Cierre/Instrumento/AP-PG"])
+        )
+
+    bank_score = 0
+    if any("quetzalizado" in c for c in cols):
+        bank_score += 2
+    if "cierre" in cols or "tc" in cols:
+        bank_score += 1
+    if bank_score >= 2:
+        candidates.append((TYPE_BANK_LOANS, bank_score, ["estructura: Quetzalizado/CIERRE bancos"]))
 
     if not candidates:
         return None
@@ -403,6 +520,10 @@ def _merge_detections(
 
 
 def detect_file(uploaded_file) -> DetectionResult:
+    by_passivas = detect_passives_investment(uploaded_file)
+    if by_passivas and by_passivas.confidence >= CONFIDENCE_AUTO:
+        return by_passivas
+
     by_name = detect_from_name(getattr(uploaded_file, "name", "") or "")
     df = None
     by_cols = None
@@ -416,6 +537,8 @@ def detect_file(uploaded_file) -> DetectionResult:
         by_content = detect_from_content(df)
     except Exception as exc:
         uploaded_file.seek(0)
+        if by_passivas and by_passivas.confidence >= CONFIDENCE_AUTO:
+            return by_passivas
         if by_name and by_name.confidence >= 0.8:
             by_name.reasons.append(f"columnas no leídas ({exc})")
             by_name.ambiguous = False
@@ -430,7 +553,15 @@ def detect_file(uploaded_file) -> DetectionResult:
             ambiguous=True,
         )
 
-    return _merge_detections(by_name, by_cols, by_content)
+    merged = _merge_detections(by_name, by_cols, by_content)
+    if (
+        by_passivas
+        and by_passivas.tipo == merged.tipo
+        and by_passivas.confidence > merged.confidence
+    ):
+        by_passivas.reasons = list(dict.fromkeys(by_passivas.reasons + merged.reasons))[:8]
+        return by_passivas
+    return merged
 
 
 def detect_path(path: str) -> DetectionResult:

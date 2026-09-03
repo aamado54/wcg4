@@ -10,9 +10,11 @@ from django.core.management import call_command
 
 from imports.detection import (
     IMPORTER_LABELS,
+    TYPE_BANK_LOANS,
     TYPE_CRM_CLIENTES,
     TYPE_CROSS_SALE,
     TYPE_FINANCIAL,
+    TYPE_INVESTMENT_GROWTH,
     TYPE_LABELS,
     TYPE_NEW_CLIENTS,
     TYPE_PGO_CATALOGO,
@@ -112,6 +114,173 @@ def _annotate_batch(batch, detection: DetectionResult, tipo: str, forced: bool) 
     existing = (batch.log_texto or "").strip()
     batch.log_texto = (header + ("\n" + existing if existing else ""))[:8000]
     batch.save(update_fields=["log_texto"])
+
+
+def _recalc_investment_ingresos_after_passivas() -> int:
+    """Recalcula ingresos Investment para períodos con datos AP/PG/bancos."""
+    from imports.models import BankLoanMonthSnapshot, InvestmentGrowthRow
+
+    periods = set(InvestmentGrowthRow.objects.values_list("year", "month"))
+    periods |= set(BankLoanMonthSnapshot.objects.values_list("year", "month"))
+    done = 0
+    for year, month in sorted(periods):
+        try:
+            call_command(
+                "recalc_investment_ingresos_from_new_clients",
+                year=year,
+                month=month,
+            )
+            done += 1
+        except Exception:
+            continue
+    return done
+
+
+def _dispatch_pgc_uploaded_file(
+    user,
+    uploaded_file: UploadedFile,
+    detection: DetectionResult,
+    tipo: str,
+    *,
+    forced: bool,
+) -> DispatchResult:
+    from imports.models import FileImportLog, FileUpload, guess_file_format
+
+    label = TYPE_LABELS.get(tipo, tipo)
+    type_map = {
+        TYPE_NEW_CLIENTS: FileUpload.TYPE_NEW_CLIENTS,
+        TYPE_CROSS_SALE: FileUpload.TYPE_CROSS_SALE,
+        TYPE_FINANCIAL: FileUpload.TYPE_FINANCIAL,
+        TYPE_INVESTMENT_GROWTH: FileUpload.TYPE_INVESTMENT_GROWTH,
+        TYPE_BANK_LOANS: FileUpload.TYPE_BANK_LOANS,
+    }
+    tmp = FileUpload(
+        uploaded_by=user,
+        original_filename=uploaded_file.name,
+        file_format=guess_file_format(uploaded_file.name),
+        file_type_detected=type_map[tipo],
+        status=FileUpload.STATUS_UPLOADED,
+        parsing_notes=_detection_log(detection, tipo, forced),
+    )
+    tmp.stored_file.save(uploaded_file.name, uploaded_file, save=True)
+    FileImportLog.objects.create(
+        file_upload=tmp,
+        step_code="detect",
+        level=FileImportLog.LEVEL_INFO,
+        message=_detection_log(detection, tipo, forced),
+        payload_json={
+            "tipo": tipo,
+            "layer": detection.layer,
+            "confidence": detection.confidence,
+            "reasons": detection.reasons,
+            "forced": forced,
+            "importer": IMPORTER_LABELS.get(tipo),
+        },
+    )
+    path = Path(tmp.stored_file.path)
+    try:
+        if tipo == TYPE_NEW_CLIENTS:
+            call_command("import_clientes_nuevos", path=str(path), file_upload_id=tmp.id)
+        elif tipo == TYPE_CROSS_SALE:
+            call_command("import_venta_cruzada", path=str(path))
+        elif tipo == TYPE_INVESTMENT_GROWTH:
+            call_command(
+                "import_inversiones_crecimiento",
+                path=str(path),
+                file_upload_id=tmp.id,
+            )
+        elif tipo == TYPE_BANK_LOANS:
+            call_command(
+                "import_bancos_fin_mes",
+                path=str(path),
+                file_upload_id=tmp.id,
+            )
+        else:
+            tmp.status = FileUpload.STATUS_UPLOADED
+            tmp.parsing_notes = (
+                _detection_log(detection, tipo, forced)
+                + " | Subido vía Administración → Importación. "
+                "Procesar en Admin PGC mensual (requiere año/mes)."
+            )
+            tmp.save(update_fields=["status", "parsing_notes"])
+            return DispatchResult(
+                tipo=tipo,
+                label=label,
+                detection=detection,
+                batch=tmp,
+                message=(
+                    "Archivo financiero WC* guardado. "
+                    "Complételo en Admin PGC → período mensual (requiere año/mes)."
+                ),
+                ok=True,
+                redirect_hint="pgc:admin_monthly",
+                forced=forced,
+            )
+
+        tmp.status = FileUpload.STATUS_PARSED_OK
+        tmp.save(update_fields=["status"])
+        FileImportLog.objects.create(
+            file_upload=tmp,
+            step_code="dispatch",
+            level=FileImportLog.LEVEL_INFO,
+            message=f"Procesado con {IMPORTER_LABELS.get(tipo, tipo)}",
+        )
+        warns = _collect_upload_warnings(tmp)
+        dup = _duplicate_hint_for_tipo(tipo)
+        msg = f"{label}: procesado correctamente."
+        if dup:
+            msg += f" · {dup} posible(s) duplicado(s) para revisión."
+        if tipo in (TYPE_INVESTMENT_GROWTH, TYPE_BANK_LOANS):
+            recalc_n = _recalc_investment_ingresos_after_passivas()
+            if recalc_n:
+                msg += f" · Ingresos Investment recalculados en {recalc_n} período(s)."
+        try:
+            from pgc.admin_recalc import maybe_auto_recalc
+
+            auto = maybe_auto_recalc(user=user, source=f"dispatch_{tipo}")
+            if auto and auto.get("ran"):
+                msg += (
+                    f" · Auto-recalcular: {auto.get('periods_processed', 0)} "
+                    "período(s)."
+                )
+        except Exception:
+            pass
+        redirect = "pgc:admin_monthly"
+        if tipo == TYPE_NEW_CLIENTS:
+            redirect = "pgc:clientes_nuevos"
+        elif tipo in (TYPE_INVESTMENT_GROWTH, TYPE_BANK_LOANS):
+            redirect = "pgc:ingresos"
+        return DispatchResult(
+            tipo=tipo,
+            label=label,
+            detection=detection,
+            batch=tmp,
+            message=msg,
+            ok=True,
+            redirect_hint=redirect,
+            forced=forced,
+            warnings=warns,
+            duplicate_extra=dup,
+        )
+    except Exception as exc:
+        tmp.status = FileUpload.STATUS_PARSED_ERROR
+        tmp.error_summary = str(exc)[:500]
+        tmp.save(update_fields=["status", "error_summary"])
+        FileImportLog.objects.create(
+            file_upload=tmp,
+            step_code="dispatch",
+            level=FileImportLog.LEVEL_ERROR,
+            message=str(exc)[:1000],
+        )
+        return DispatchResult(
+            tipo=tipo,
+            label=label,
+            detection=detection,
+            batch=tmp,
+            message=f"Error al procesar: {exc}",
+            ok=False,
+            forced=forced,
+        )
 
 
 def run_import(user, uploaded_file: UploadedFile, tipo_forzado: str | None = None) -> DispatchResult:
@@ -254,107 +423,16 @@ def run_import(user, uploaded_file: UploadedFile, tipo_forzado: str | None = Non
             duplicate_extra=dup,
         )
 
-    if tipo in (TYPE_NEW_CLIENTS, TYPE_CROSS_SALE, TYPE_FINANCIAL):
-        from imports.models import FileImportLog, FileUpload, guess_file_format
-
-        tmp = FileUpload(
-            uploaded_by=user,
-            original_filename=uploaded_file.name,
-            file_format=guess_file_format(uploaded_file.name),
-            file_type_detected={
-                TYPE_NEW_CLIENTS: FileUpload.TYPE_NEW_CLIENTS,
-                TYPE_CROSS_SALE: FileUpload.TYPE_CROSS_SALE,
-                TYPE_FINANCIAL: FileUpload.TYPE_FINANCIAL,
-            }[tipo],
-            status=FileUpload.STATUS_UPLOADED,
-            parsing_notes=_detection_log(detection, tipo, forced),
+    if tipo in (
+        TYPE_NEW_CLIENTS,
+        TYPE_CROSS_SALE,
+        TYPE_FINANCIAL,
+        TYPE_INVESTMENT_GROWTH,
+        TYPE_BANK_LOANS,
+    ):
+        return _dispatch_pgc_uploaded_file(
+            user, uploaded_file, detection, tipo, forced=forced
         )
-        tmp.stored_file.save(uploaded_file.name, uploaded_file, save=True)
-        FileImportLog.objects.create(
-            file_upload=tmp,
-            step_code="detect",
-            level=FileImportLog.LEVEL_INFO,
-            message=_detection_log(detection, tipo, forced),
-            payload_json={
-                "tipo": tipo,
-                "layer": detection.layer,
-                "confidence": detection.confidence,
-                "reasons": detection.reasons,
-                "forced": forced,
-                "importer": IMPORTER_LABELS.get(tipo),
-            },
-        )
-        path = Path(tmp.stored_file.path)
-        try:
-            if tipo == TYPE_NEW_CLIENTS:
-                call_command("import_clientes_nuevos", path=str(path), file_upload_id=tmp.id)
-            elif tipo == TYPE_CROSS_SALE:
-                call_command("import_venta_cruzada", path=str(path))
-            else:
-                tmp.status = FileUpload.STATUS_UPLOADED
-                tmp.parsing_notes = (
-                    _detection_log(detection, tipo, forced)
-                    + " | Subido vía Administración → Importación. "
-                    "Procesar en Admin PGC mensual (requiere año/mes)."
-                )
-                tmp.save(update_fields=["status", "parsing_notes"])
-                return DispatchResult(
-                    tipo=tipo,
-                    label=label,
-                    detection=detection,
-                    batch=tmp,
-                    message=(
-                        "Archivo financiero WC* guardado. "
-                        "Complételo en Admin PGC → período mensual (requiere año/mes)."
-                    ),
-                    ok=True,
-                    redirect_hint="pgc:admin_monthly",
-                    forced=forced,
-                )
-            tmp.status = FileUpload.STATUS_PARSED_OK
-            tmp.save(update_fields=["status"])
-            FileImportLog.objects.create(
-                file_upload=tmp,
-                step_code="dispatch",
-                level=FileImportLog.LEVEL_INFO,
-                message=f"Procesado con {IMPORTER_LABELS.get(tipo, tipo)}",
-            )
-            warns = _collect_upload_warnings(tmp)
-            dup = _duplicate_hint_for_tipo(tipo)
-            msg = f"{label}: procesado correctamente."
-            if dup:
-                msg += f" · {dup} posible(s) duplicado(s) para revisión."
-            return DispatchResult(
-                tipo=tipo,
-                label=label,
-                detection=detection,
-                batch=tmp,
-                message=msg,
-                ok=True,
-                redirect_hint="pgc:admin_monthly" if tipo != TYPE_NEW_CLIENTS else "pgc:clientes_nuevos",
-                forced=forced,
-                warnings=warns,
-                duplicate_extra=dup,
-            )
-        except Exception as exc:
-            tmp.status = FileUpload.STATUS_PARSED_ERROR
-            tmp.error_summary = str(exc)[:500]
-            tmp.save(update_fields=["status", "error_summary"])
-            FileImportLog.objects.create(
-                file_upload=tmp,
-                step_code="dispatch",
-                level=FileImportLog.LEVEL_ERROR,
-                message=str(exc)[:1000],
-            )
-            return DispatchResult(
-                tipo=tipo,
-                label=label,
-                detection=detection,
-                batch=tmp,
-                message=f"Error al procesar: {exc}",
-                ok=False,
-                forced=forced,
-            )
 
     return DispatchResult(
         tipo=tipo,

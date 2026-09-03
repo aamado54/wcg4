@@ -16,9 +16,9 @@ from pgc.models import (
 
 class Command(BaseCommand):
     help = (
-        "Recalcula INGRESOS de INVESTMENT desde NewClientImportRow "
-        "(misma lógica que /pgc/ingresos/: todos los registros del mes; "
-        "amount ya está en miles, sin volver a dividir entre 1000)."
+        "Recalcula INGRESOS de INVESTMENT desde crecimiento neto mensual "
+        "(AP + PG + préstamos bancarios, dolarizado en miles USD). "
+        "Si no hay archivos de crecimiento, usa clientes nuevos como fallback."
     )
 
     def add_arguments(self, parser):
@@ -80,6 +80,9 @@ class Command(BaseCommand):
 
         total_usd = summary["total_usd"]
         used_rows = summary["used_rows"]
+        source = summary.get("source", "new_clients")
+        gross = summary.get("gross") or {}
+        growth_usd = summary.get("growth_usd")
 
         mmr, _ = MonthlyMetricResult.objects.get_or_create(
             plan=plan,
@@ -104,13 +107,28 @@ class Command(BaseCommand):
         mmr.points_awarded = (
             target.points_if_achieved if mmr.is_achieved else 0
         )
-        mmr.calculation_note = (
-            "INVESTMENT INGRESOS recalculado desde NewClientImportRow "
-            f"(todos los registros del mes; alineado con /pgc/ingresos/). "
-            f"Filas={used_rows}. "
-            f"GTQ->USD usando TC={fx} del {year}-{month:02d}. "
-            f"TotalUSD={total_usd}."
-        )
+        if source == "investment_growth":
+            note = summary.get("note") or ""
+            if growth_usd is not None:
+                mmr.calculation_note = (
+                    "INVESTMENT INGRESOS = crecimiento neto mensual dolarizado "
+                    f"(AP+PG+bancos). Bruto USD={gross.get('total_usd')}; "
+                    f"Δ mes={growth_usd}; miles={total_usd}. "
+                    f"Operaciones={used_rows}. TC={fx}."
+                )
+            else:
+                mmr.calculation_note = (
+                    "INVESTMENT INGRESOS sin crecimiento neto: "
+                    f"no hay saldo del mes anterior. Bruto USD={gross.get('total_usd')}. "
+                    f"{note}"
+                )
+        else:
+            mmr.calculation_note = (
+                "INVESTMENT INGRESOS recalculado desde NewClientImportRow "
+                f"(fallback; todos los registros del mes). Filas={used_rows}. "
+                f"GTQ->USD usando TC={fx} del {year}-{month:02d}. "
+                f"TotalUSD={total_usd}."
+            )
         mmr.save()
 
         self.stdout.write(

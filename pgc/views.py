@@ -10,6 +10,7 @@ from .models import (
     MonthlyMetricScore,
     MonthlyModeScorecard,
     MonthlyExchangeRate,
+    ManualRequirementsCompliance,
 )
 from accounts.models import UserUNEPermission
 from core.models import MetricDefinition, UNE, SystemSetting
@@ -55,6 +56,18 @@ PGC_MODE_LABELS = {
     "modo2": "2.Proporción",
 }
 DEFAULT_PGC_MODE = "modo1"
+
+DASHBOARD_VIEW_LIST = "lista"
+DASHBOARD_VIEW_ANUAL = "anual"
+DASHBOARD_VIEW_OPTIONS = (DASHBOARD_VIEW_LIST, DASHBOARD_VIEW_ANUAL)
+DASHBOARD_DEFAULT_VIEW = DASHBOARD_VIEW_LIST
+
+DASHBOARD_ANUAL_UNE_ORDER = (
+    UNE.CODE_FACTORING,
+    UNE.CODE_LEASING,
+    UNE.CODE_INSURANCE,
+    UNE.CODE_INVESTMENT,
+)
 
 
 from pgc.income_conversion import evaluate_result_achievement
@@ -662,6 +675,7 @@ def pgc_dashboard(request):
     selected_mode = _get_pgc_mode(request)
     report_filter = _get_report_filter(request, mode=selected_mode)
     report_sort = get_report_sort(request)
+    board_view = _get_dashboard_view(request)
 
     periods = _build_period_range(
         report_filter["start_year"],
@@ -671,6 +685,13 @@ def pgc_dashboard(request):
 
     rows = _get_dashboard_rows(periods=periods, mode=selected_mode)
     rows = sort_report_rows(rows, report_sort)
+
+    annual_year = report_filter["start_year"]
+    annual_tables = (
+        _build_dashboard_annual_tables(annual_year, mode=selected_mode)
+        if board_view == DASHBOARD_VIEW_ANUAL
+        else []
+    )
 
     chart_payload = _build_dashboard_chart_payload(
         periods=periods,
@@ -708,6 +729,11 @@ def pgc_dashboard(request):
         "mode_choices": [(m, PGC_MODE_LABELS[m]) for m in PGC_MODE_OPTIONS],
         "available_periods": _get_available_periods(mode=selected_mode),
         "month_count_options": MONTH_COUNT_OPTIONS,
+        "board_view": board_view,
+        "view_lista": DASHBOARD_VIEW_LIST,
+        "view_anual": DASHBOARD_VIEW_ANUAL,
+        "annual_year": annual_year,
+        "annual_tables": annual_tables,
         "chart_payload_json": json.dumps(chart_payload, ensure_ascii=False),
         "chart_rows": [
             {
@@ -725,6 +751,156 @@ def pgc_dashboard(request):
     }
     return render(request, "pgc/dashboard.html", context)
   
+
+def _get_dashboard_view(request) -> str:
+    raw = (
+        request.GET.get("view")
+        or request.session.get("pgc_dashboard_view")
+        or DASHBOARD_DEFAULT_VIEW
+    )
+    view = str(raw).strip().lower()
+    if view not in DASHBOARD_VIEW_OPTIONS:
+        view = DASHBOARD_DEFAULT_VIEW
+    request.session["pgc_dashboard_view"] = view
+    return view
+
+
+def _build_dashboard_annual_tables(year: int, mode: str = DEFAULT_PGC_MODE) -> list:
+    """
+    Tablero anual por UNE: columnas = meses, filas = puntos por métrica + total + clasifica.
+    """
+    active_plan = _get_active_pgc_plan()
+    if not active_plan:
+        return []
+
+    unes = list(
+        UNE.objects.filter(code__in=DASHBOARD_ANUAL_UNE_ORDER, is_active=True)
+    )
+    une_by_code = {u.code: u for u in unes}
+    ordered_unes = [
+        une_by_code[c] for c in DASHBOARD_ANUAL_UNE_ORDER if c in une_by_code
+    ]
+    if not ordered_unes:
+        return []
+
+    une_ids = [u.id for u in ordered_unes]
+    metric_scores = (
+        MonthlyMetricScore.objects.filter(
+            plan=active_plan,
+            year=year,
+            mode=mode,
+            une_id__in=une_ids,
+            metric__code__in=(
+                MetricDefinition.CODE_INGRESOS,
+                MetricDefinition.CODE_CLIENTES_NUEVOS,
+                MetricDefinition.CODE_VENTA_CRUZADA,
+                MetricDefinition.CODE_RESPUESTA_REQS,
+            ),
+        ).select_related("metric", "une")
+    )
+    scorecards = MonthlyModeScorecard.objects.filter(
+        plan=active_plan,
+        year=year,
+        mode=mode,
+        une_id__in=une_ids,
+    )
+    income_results = MonthlyMetricResult.objects.filter(
+        plan=active_plan,
+        year=year,
+        une_id__in=une_ids,
+        metric__code=MetricDefinition.CODE_INGRESOS,
+    )
+    fx_rows = MonthlyExchangeRate.objects.filter(year=year)
+
+    pts_map: dict[tuple[int, int, str], Decimal] = {}
+    for s in metric_scores:
+        pts_map[(s.une_id, s.month, s.metric.code)] = Decimal(
+            str(s.points_awarded or 0)
+        )
+
+    card_map: dict[tuple[int, int], object] = {}
+    for sc in scorecards:
+        card_map[(sc.une_id, sc.month)] = sc
+
+    # TC del mes presente y ≠ 0.
+    fx_ok_months: set[int] = set()
+    for fx in fx_rows:
+        if fx.usd_to_gtq is not None and Decimal(str(fx.usd_to_gtq)) != 0:
+            fx_ok_months.add(fx.month)
+
+    # Ingresos del mes por UNE: measured_value presente y ≠ 0.
+    income_ok: set[tuple[int, int]] = set()
+    for r in income_results:
+        if r.measured_value is not None and Decimal(str(r.measured_value)) != 0:
+            income_ok.add((r.une_id, r.month))
+
+    tables = []
+    for une in ordered_unes:
+        p_ingresos = []
+        p_clientes = []
+        p_venta = []
+        p_reqs = []
+        totals = []
+        clasifica = []
+
+        for month in range(1, 13):
+            card = card_map.get((une.id, month))
+            # Mostrar mes solo con TC≠0 e ingresos≠0 (ambos ingresados).
+            has_info = month in fx_ok_months and (une.id, month) in income_ok
+
+            if not has_info:
+                p_ingresos.append(None)
+                p_clientes.append(None)
+                p_venta.append(None)
+                p_reqs.append(None)
+                totals.append(None)
+                clasifica.append(None)
+                continue
+
+            def _pts(code):
+                key = (une.id, month, code)
+                if key not in pts_map:
+                    return None
+                return pts_map[key]
+
+            p_ingresos.append(_pts(MetricDefinition.CODE_INGRESOS))
+            p_clientes.append(_pts(MetricDefinition.CODE_CLIENTES_NUEVOS))
+            p_venta.append(_pts(MetricDefinition.CODE_VENTA_CRUZADA))
+            p_reqs.append(_pts(MetricDefinition.CODE_RESPUESTA_REQS))
+            if card is not None and card.total_points is not None:
+                totals.append(Decimal(str(card.total_points)))
+            else:
+                parts = [
+                    v
+                    for v in (
+                        p_ingresos[-1],
+                        p_clientes[-1],
+                        p_venta[-1],
+                        p_reqs[-1],
+                    )
+                    if v is not None
+                ]
+                totals.append(sum(parts, Decimal("0")) if parts else None)
+            if card is not None:
+                clasifica.append(bool(card.is_month_qualified))
+            else:
+                clasifica.append(None)
+
+        tables.append(
+            {
+                "une": une,
+                "title": une.name_es,
+                "month_labels": list(MONTH_ABBR_ES),
+                "p_ingresos": p_ingresos,
+                "p_clientes": p_clientes,
+                "p_venta": p_venta,
+                "p_reqs": p_reqs,
+                "totals": totals,
+                "clasifica": clasifica,
+            }
+        )
+
+    return tables
 
 def _decimal_to_number(value):
     if value is None:
@@ -1309,12 +1485,14 @@ def _get_respuesta_reqs_rows(periods=None):
         metric__code=MetricDefinition.CODE_RESPUESTA_REQS
     )
     scorecards = MonthlyScorecard.objects.select_related("une", "plan")
+    manuals = ManualRequirementsCompliance.objects.select_related("une", "plan")
 
     if periods:
         period_q = _build_period_q(periods)
         targets = targets.filter(period_q)
         results = results.filter(period_q)
         scorecards = scorecards.filter(period_q)
+        manuals = manuals.filter(period_q)
 
     result_map = {}
     for r in results:
@@ -1326,15 +1504,65 @@ def _get_respuesta_reqs_rows(periods=None):
         key = (sc.plan_id, sc.une_id, sc.year, sc.month)
         score_map[key] = sc
 
+    manual_map = {}
+    for m in manuals:
+        key = (m.plan_id, m.une_id, m.year, m.month)
+        manual_map[key] = m
+
+    # Preferir puntos del score modo1 cuando exista (tablero).
+    mode_score_map = {}
+    if metric:
+        for s in (
+            MonthlyMetricScore.objects.select_related("une", "plan")
+            .filter(metric=metric, mode="modo1")
+        ):
+            if periods:
+                # filtrado abajo por key membership
+                pass
+            key = (s.plan_id, s.une_id, s.year, s.month)
+            mode_score_map[key] = s
+        if periods:
+            period_set = {(p[0], p[1]) for p in periods}
+            mode_score_map = {
+                k: v
+                for k, v in mode_score_map.items()
+                if (k[2], k[3]) in period_set
+            }
+
     rows = []
     for t in targets.order_by("year", "month", "une__sort_order"):
         key = (t.plan_id, t.une_id, t.year, t.month)
         mr = result_map.get(key)
         sc = score_map.get(key)
+        mrc = manual_map.get(key)
+        ms = mode_score_map.get(key)
+        if mrc is not None:
+            is_achieved = bool(mrc.is_compliant)
+        elif ms is not None:
+            is_achieved = bool(ms.is_achieved)
+        elif mr is not None:
+            is_achieved = bool(mr.is_achieved)
+        else:
+            is_achieved = False
+        if ms is not None and ms.points_awarded is not None:
+            points = ms.points_awarded
+        elif mr is not None and mr.points_awarded is not None:
+            points = mr.points_awarded
+        else:
+            points = 0
+        measured = None
+        if ms is not None and ms.measured_value is not None:
+            measured = ms.measured_value
+        elif mr is not None:
+            measured = mr.measured_value
         rows.append({
             "target": t,
             "result": mr,
             "scorecard": sc,
+            "manual": mrc,
+            "is_achieved": is_achieved,
+            "points_awarded": points,
+            "measured_value": measured,
         })
 
     return metric, rows
@@ -1406,9 +1634,12 @@ def _build_respuesta_reqs_markdown(rows, report_filter):
           
             periodo = f"{target.year}-{target.month:02d}"
             meta = int(target.target_value) if target.target_value is not None else "-"
-            reales = int(result.measured_value) if result and result.measured_value is not None else "-"
-            cumple = "Sí" if result and result.is_achieved else "No"
-            puntos = result.points_awarded if result else 0
+            measured = row.get("measured_value")
+            if measured is None and result is not None:
+                measured = result.measured_value
+            reales = int(measured) if measured is not None else "-"
+            cumple = "Sí" if row.get("is_achieved") else "No"
+            puntos = row.get("points_awarded", 0)
             total_mes = scorecard.total_points if scorecard else 0
 
             lines.append(
@@ -1684,10 +1915,10 @@ def _get_ingresos_rows(periods=None):
         investment_codes = {"INVESTMENT", "INVESTMENTS", "INVERSIONES"}
         
         if target.une.code in investment_codes:
-            real = investment_real_map.get(
-                (target.year, target.month, target.une_id),
-                Decimal("0"),
-            )
+            if (target.year, target.month, target.une_id) in investment_real_map:
+                real = investment_real_map[(target.year, target.month, target.une_id)]
+            else:
+                real = None
 
         # Insurance siempre con 3 decimales
         if target.une.code == "INSURANCE":
@@ -1706,10 +1937,11 @@ def _get_ingresos_rows(periods=None):
             cumple = bool(result.is_achieved) if result else False
 
         if target.une.code in {"INVESTMENT", "INVESTMENTS", "INVERSIONES"}:
-            metodo = "Suma de montos del archivo de clientes nuevos del mes"
+            metodo = "Crecimiento neto mensual (AP + PG + bancos, USD)"
             observacion = (
-                "En Investment, el ingreso del score mensual se calcula como la suma "
-                "de montos de todos los registros del archivo de clientes del mes."
+                "En Investment, el ingreso del score mensual es el incremento "
+                "dolarizado del total de acciones preferentes, pagarés y préstamos "
+                "bancarios respecto al mes anterior."
             )
             observacion_base = observacion
             tc_label = ""

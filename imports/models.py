@@ -43,6 +43,12 @@ def guess_file_type_and_period(filename: str):
         file_type = "NEW_CLIENTS"
     elif "ventacruzada" in compact:
         file_type = "CROSS_SALE"
+    elif "inversionescrecimiento" in compact or (
+        "inversiones" in compact and "crecimiento" in compact
+    ):
+        file_type = "INVESTMENT_GROWTH"
+    elif "bancos" in compact and "fin" in compact and "mes" in compact:
+        file_type = "BANK_LOANS"
     elif "tiempos" in compact and "estacion" in compact:
         file_type = "STATION_TIMES"
     else:
@@ -55,6 +61,8 @@ class FileUpload(TimeStampedModel):
     TYPE_FINANCIAL = 'FINANCIAL'
     TYPE_NEW_CLIENTS = 'NEW_CLIENTS'
     TYPE_CROSS_SALE = 'CROSS_SALE'
+    TYPE_INVESTMENT_GROWTH = 'INVESTMENT_GROWTH'
+    TYPE_BANK_LOANS = 'BANK_LOANS'
     TYPE_STATION_TIMES = 'STATION_TIMES'
     TYPE_UNKNOWN = 'UNKNOWN'
 
@@ -62,6 +70,8 @@ class FileUpload(TimeStampedModel):
         (TYPE_FINANCIAL, 'Estado financiero (WC*)'),
         (TYPE_NEW_CLIENTS, 'Clientes nuevos'),
         (TYPE_CROSS_SALE, 'Venta cruzada'),
+        (TYPE_INVESTMENT_GROWTH, 'Inversiones AP/PG (crecimiento)'),
+        (TYPE_BANK_LOANS, 'Préstamos bancarios (fin de mes)'),
         (TYPE_STATION_TIMES, 'Tiempos de estaciones'),
         (TYPE_UNKNOWN, 'Desconocido'),
     ]
@@ -420,5 +430,70 @@ class NewClientImportRow(TimeStampedModel):
 
     def __str__(self):
         return f"{self.year}-{self.month:02d} {self.une.code} {self.client_name or self.operation_code}"
+
+
+class InvestmentGrowthRow(TimeStampedModel):
+    """Saldo vigente de AP/PG al cierre (archivo Inversiones_crecimiento)."""
+
+    file_upload = models.ForeignKey(
+        FileUpload,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="investment_growth_rows",
+    )
+    year = models.PositiveIntegerField()
+    month = models.PositiveIntegerField()
+    instrument = models.CharField(max_length=4)
+    company = models.CharField(max_length=255, blank=True)
+    operation_code = models.CharField(max_length=100)
+    currency_code = models.CharField(max_length=10, blank=True)
+    amount_original = models.DecimalField(max_digits=18, decimal_places=2, default=0)
+    start_date = models.DateField(null=True, blank=True)
+    maturity_date = models.DateField(null=True, blank=True)
+    exchange_rate = models.DecimalField(max_digits=12, decimal_places=6, null=True, blank=True)
+    amount_gtq = models.DecimalField(max_digits=18, decimal_places=2, default=0)
+    amount_usd = models.DecimalField(max_digits=18, decimal_places=2, default=0)
+    source_row_number = models.PositiveIntegerField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["year", "month", "instrument", "operation_code"]
+        indexes = [
+            models.Index(fields=["year", "month"]),
+            models.Index(fields=["year", "month", "instrument"]),
+            models.Index(fields=["operation_code", "year", "month"]),
+        ]
+        verbose_name = "Saldo inversión AP/PG"
+        verbose_name_plural = "Saldos inversión AP/PG"
+
+    def __str__(self):
+        return f"{self.year}-{self.month:02d} {self.instrument} {self.operation_code}"
+
+
+class BankLoanMonthSnapshot(TimeStampedModel):
+    """Total de préstamos bancarios al cierre (archivo Bancos_Fin_de_mes)."""
+
+    file_upload = models.ForeignKey(
+        FileUpload,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="bank_loan_snapshots",
+    )
+    year = models.PositiveIntegerField()
+    month = models.PositiveIntegerField()
+    exchange_rate = models.DecimalField(max_digits=12, decimal_places=6)
+    total_gtq = models.DecimalField(max_digits=18, decimal_places=2)
+    total_usd = models.DecimalField(max_digits=18, decimal_places=2)
+    bank_amounts_json = models.JSONField(default=dict, blank=True)
+
+    class Meta:
+        unique_together = ("year", "month")
+        ordering = ["year", "month"]
+        verbose_name = "Préstamos bancarios (cierre)"
+        verbose_name_plural = "Préstamos bancarios (cierre)"
+
+    def __str__(self):
+        return f"{self.year}-{self.month:02d} bancos USD {self.total_usd}"
 
   

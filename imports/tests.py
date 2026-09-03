@@ -6,11 +6,13 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import SimpleTestCase, TestCase
 
 from imports.detection import (
+    TYPE_BANK_LOANS,
     TYPE_CRM_CLIENTES,
+    TYPE_INVESTMENT_GROWTH,
     TYPE_PGO_TICKETS,
-    detect_from_columns,
-    detect_from_name,
     detect_file,
+    detect_from_name,
+    detect_from_columns,
     _merge_detections,
 )
 
@@ -25,6 +27,14 @@ class DetectionNameTests(SimpleTestCase):
     def test_crm_infoclientes_by_name(self):
         r = detect_from_name("InfoClientes_WCG.xlsx")
         self.assertEqual(r.tipo, TYPE_CRM_CLIENTES)
+
+    def test_inversiones_crecimiento_by_name(self):
+        r = detect_from_name("Inversiones_crecimiento_2026.csv")
+        self.assertEqual(r.tipo, TYPE_INVESTMENT_GROWTH)
+
+    def test_bancos_fin_mes_by_name(self):
+        r = detect_from_name("Bancos_Fin_de_mes.xlsx")
+        self.assertEqual(r.tipo, TYPE_BANK_LOANS)
 
 
 class DetectionStructureTests(SimpleTestCase):
@@ -58,6 +68,21 @@ class DetectionFileTests(SimpleTestCase):
         self.assertEqual(result.tipo, TYPE_CRM_CLIENTES)
         self.assertTrue(result.can_auto_import)
         self.assertTrue(any("CRM" in r or "NIT" in r or "nit" in r for r in result.reasons) or "combinada" in result.layer)
+
+    def test_csv_inversiones_crecimiento_detect(self):
+        header = (
+            "Cierre;instrumento;empresa;numero_inversion;moneda_inversion;monto_inversion;"
+            "Inicio;Vencimiento;TipoCambio;Quetzalizado;Dolarizado\n"
+        )
+        row = "2026/07;AP;INVESTMENT - WC FACTORING;AP01220305;GTQ;200000;2022-03-21;2025-03-26;7.66;200000;26094\n"
+        f = SimpleUploadedFile(
+            "Inversiones_crecimiento_2026-07.csv",
+            (header + row).encode("utf-8"),
+            content_type="text/csv",
+        )
+        result = detect_file(f)
+        self.assertEqual(result.tipo, TYPE_INVESTMENT_GROWTH)
+        self.assertTrue(result.can_auto_import)
 
 
 class NewClientsRowParseTests(SimpleTestCase):

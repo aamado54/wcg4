@@ -128,6 +128,7 @@ def intermediacion(request):
     board = engine.board_intermediacion(
         bu=bu, months=months, end_period=end, mode=mode, ccy=ccy, fx=_fx(end)
     )
+    pasivas = engine.board_pasivas_growth(end_period=end or board.get("end_period"), months=months)
     return render(
         request,
         "gerencia/intermediacion.html",
@@ -135,6 +136,7 @@ def intermediacion(request):
             request,
             "intermediacion",
             board=board,
+            pasivas_board=pasivas,
             bu=bu,
             months=months,
             mode=mode,

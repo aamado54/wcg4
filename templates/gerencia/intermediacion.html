@@ -1,4 +1,5 @@
 {% extends "base_wcg.html" %}
+{% load wcg_format %}
 {% block title %}Intermediación — Centro Gerencial{% endblock %}
 {% block extra_head %}
 {% include "gerencia/_styles.html" %}
@@ -113,6 +114,105 @@
       </div>
     </div>
   </div>
+
+  {% if pasivas_board.status == "ok" %}
+  <div class="ge-panel mt-3">
+    <div class="ge-panel-h">
+      Pasivas de inversión · crecimiento neto (AP + PG + bancos, USD)
+      <div class="small text-muted fw-normal mt-1">
+        Saldos brutos al cierre y Δ mensual dolarizado · {{ pasivas_board.start_period }} → {{ pasivas_board.end_period }}
+      </div>
+    </div>
+    <div class="ge-panel-b">
+      {% if pasivas_board.latest %}
+      <div class="row g-3 mb-3">
+        <div class="col-md-3">
+          <div class="small text-muted">Total bruto (último mes)</div>
+          <div class="fw-bold">${{ pasivas_board.latest.total_usd|wcg_num:0 }}</div>
+        </div>
+        <div class="col-md-3">
+          <div class="small text-muted">AP dolarizado</div>
+          <div class="fw-bold">${{ pasivas_board.latest.ap_usd|wcg_num:0 }}</div>
+        </div>
+        <div class="col-md-3">
+          <div class="small text-muted">PG dolarizado</div>
+          <div class="fw-bold">${{ pasivas_board.latest.pg_usd|wcg_num:0 }}</div>
+        </div>
+        <div class="col-md-3">
+          <div class="small text-muted">Bancos dolarizado</div>
+          <div class="fw-bold">${{ pasivas_board.latest.banks_usd|wcg_num:0 }}</div>
+        </div>
+      </div>
+      {% endif %}
+      <table class="table table-sm ge-table mb-3">
+        <thead>
+          <tr>
+            <th>Período</th>
+            <th class="text-end">AP USD</th>
+            <th class="text-end">PG USD</th>
+            <th class="text-end">Bancos USD</th>
+            <th class="text-end">Total bruto</th>
+            <th class="text-end">Δ neto mes</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in pasivas_board.rows %}
+          <tr>
+            <td>{{ row.period }}</td>
+            <td class="text-end">${{ row.ap_usd|wcg_num:0 }}</td>
+            <td class="text-end">${{ row.pg_usd|wcg_num:0 }}</td>
+            <td class="text-end">${{ row.banks_usd|wcg_num:0 }}</td>
+            <td class="text-end">${{ row.total_usd|wcg_num:0 }}</td>
+            <td class="text-end">
+              {% if row.growth_usd is not None %}${{ row.growth_usd|wcg_num:0 }}{% else %}—{% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% if pasivas_board.currency_split %}
+      <div class="row g-3">
+        <div class="col-lg-6">
+          <div class="small text-muted mb-1">Montos por moneda de origen (dolarizado)</div>
+          <table class="table table-sm ge-table">
+            <thead><tr><th>Moneda</th><th class="text-end">AP</th><th class="text-end">PG</th><th class="text-end">Total</th></tr></thead>
+            <tbody>
+              {% for c in pasivas_board.currency_split %}
+              <tr>
+                <td>{{ c.currency }}</td>
+                <td class="text-end">${{ c.ap_usd|wcg_num:0 }}</td>
+                <td class="text-end">${{ c.pg_usd|wcg_num:0 }}</td>
+                <td class="text-end">${{ c.total_usd|wcg_num:0 }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <div class="col-lg-6">
+          <div class="small text-muted mb-1">Vencimientos próximos (120 días)</div>
+          {% if pasivas_board.maturities %}
+          <table class="table table-sm ge-table">
+            <thead><tr><th>Op.</th><th>Inst.</th><th>Vence</th><th class="text-end">USD</th></tr></thead>
+            <tbody>
+              {% for m in pasivas_board.maturities %}
+              <tr>
+                <td>{{ m.operation_code }}</td>
+                <td>{{ m.instrument }}</td>
+                <td>{{ m.maturity_date }}</td>
+                <td class="text-end">${{ m.amount_usd|wcg_num:0 }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          {% else %}
+          <p class="small text-muted mb-0">Sin vencimientos en el horizonte.</p>
+          {% endif %}
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
   {% endif %}
 </div>
 

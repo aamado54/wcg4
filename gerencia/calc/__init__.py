@@ -15,6 +15,7 @@ from .indices import build_indices_catalog
 from .intermediacion import _build_slices, build_intermediacion
 from .liquidez import build_estructura_board, build_liquidez_board
 from .utils import rates_from_meta
+from .pasivas_growth import build_pasivas_growth_board
 from .whatif import DEFAULT_DRIVERS, drivers_as_pct_display, format_pct, parse_pct, run_whatif
 
 
@@ -53,6 +54,10 @@ def board_indices(**kwargs) -> dict[str, Any]:
 
 def board_comando() -> dict[str, Any]:
     return build_comando(load_finance())
+
+
+def board_pasivas_growth(**kwargs) -> dict[str, Any]:
+    return build_pasivas_growth_board(**kwargs)
 
 
 def board_whatif(**kwargs) -> dict[str, Any]:
@@ -100,6 +105,7 @@ __all__ = [
     "board_estructura",
     "board_indices",
     "board_comando",
+    "board_pasivas_growth",
     "board_whatif",
     "board_trimestral",
 ]
