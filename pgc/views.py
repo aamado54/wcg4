@@ -1536,25 +1536,27 @@ def _get_respuesta_reqs_rows(periods=None):
         sc = score_map.get(key)
         mrc = manual_map.get(key)
         ms = mode_score_map.get(key)
+        # Manual / resultado sincronizado antes que score desactualizado (p. ej. tras guardar reqs).
         if mrc is not None:
             is_achieved = bool(mrc.is_compliant)
-        elif ms is not None:
-            is_achieved = bool(ms.is_achieved)
+            points = (
+                Decimal(str(t.points_if_achieved or 0))
+                if mrc.is_compliant
+                else Decimal("0")
+            )
+            measured = Decimal("1") if mrc.is_compliant else Decimal("0")
         elif mr is not None:
             is_achieved = bool(mr.is_achieved)
+            points = mr.points_awarded if mr.points_awarded is not None else Decimal("0")
+            measured = mr.measured_value
+        elif ms is not None:
+            is_achieved = bool(ms.is_achieved)
+            points = ms.points_awarded if ms.points_awarded is not None else Decimal("0")
+            measured = ms.measured_value
         else:
             is_achieved = False
-        if ms is not None and ms.points_awarded is not None:
-            points = ms.points_awarded
-        elif mr is not None and mr.points_awarded is not None:
-            points = mr.points_awarded
-        else:
-            points = 0
-        measured = None
-        if ms is not None and ms.measured_value is not None:
-            measured = ms.measured_value
-        elif mr is not None:
-            measured = mr.measured_value
+            points = Decimal("0")
+            measured = None
         rows.append({
             "target": t,
             "result": mr,

@@ -53,7 +53,11 @@ from .admin_new_clients_browse import (
     save_une_reassignments,
 )
 from .admin_ingresos_year import get_ingresos_year_context, save_ingresos_year
-from .admin_recalc import run_smart_recalc_all
+from .admin_recalc import (
+    maybe_auto_recalc,
+    run_smart_recalc_all,
+    set_auto_recalc_enabled,
+)
 from .admin_utils import (
     admin_period_context,
     parse_admin_period,
@@ -132,6 +136,7 @@ def _process_upload(request, upload: FileUpload, year: int, month: int, block: s
             upload.status = FileUpload.STATUS_PARSED_OK
             upload.save(update_fields=["status"])
             messages.success(request, "Clientes nuevos procesados correctamente.")
+            _trigger_auto_recalc(request, source="import_clientes")
         elif block == BLOCK_CROSS_SALE:
             if upload.status == FileUpload.STATUS_PARSED_OK:
                 messages.warning(
@@ -144,11 +149,13 @@ def _process_upload(request, upload: FileUpload, year: int, month: int, block: s
             upload.status = FileUpload.STATUS_PARSED_OK
             upload.save(update_fields=["status"])
             messages.success(request, "Venta cruzada procesada correctamente.")
+            _trigger_auto_recalc(request, source="import_venta_cruzada")
         elif block == BLOCK_FINANCIAL:
             call_command("import_ingresos", path=str(path), year=year, month=month)
             upload.status = FileUpload.STATUS_PARSED_OK
             upload.save(update_fields=["status"])
             messages.success(request, "Estado de resultados importado correctamente.")
+            _trigger_auto_recalc(request, source="import_ingresos")
         else:
             messages.error(request, "Este bloque no admite procesamiento de archivo.")
     except Exception as exc:
@@ -163,6 +170,65 @@ def _admin_period_context(year: int, month: int) -> dict:
     from .admin_utils import AdminPeriod
 
     return admin_period_context(AdminPeriod(year=year, month_from=month, month_to=month))
+
+
+def _flash_auto_recalc(request, result) -> None:
+    if not result:
+        return
+    if result.get("scheduled"):
+        messages.info(
+            request,
+            "Auto-recalcular: pendiente de ejecutar al cerrar la transacción.",
+        )
+        return
+    if not result.get("ran"):
+        return
+    n = result.get("periods_processed") or 0
+    messages.success(
+        request,
+        f"Auto-recalcular: {n} período(s) procesado(s).",
+    )
+    after = result.get("status_after") or {}
+    if after.get("is_pending"):
+        messages.warning(
+            request,
+            f"Auto-recalcular: aún quedan {after.get('pending_count')} período(s) "
+            "(p.ej. falta TC para convertir STALE).",
+        )
+
+
+def _trigger_auto_recalc(request, *, source: str = "") -> None:
+    try:
+        result = maybe_auto_recalc(user=getattr(request, "user", None), source=source)
+        _flash_auto_recalc(request, result)
+    except Exception as exc:
+        messages.warning(request, f"Auto-recalcular no completó: {exc}")
+
+
+@login_required
+@user_passes_test(can_access_ops)
+def admin_auto_recalc_toggle(request):
+    """Activa/desactiva recálculo automático ante pendientes."""
+    period = parse_admin_period(request)
+    next_url = (request.POST.get("next") or "").strip()
+
+    if request.method != "POST":
+        return redirect_admin_monthly(period=period)
+
+    enabled = request.POST.get("auto_recalc") in ("1", "on", "true", "yes")
+    set_auto_recalc_enabled(enabled, user=request.user)
+    if enabled:
+        messages.success(
+            request,
+            "Auto-recalcular activado: al importar o guardar datos se calcularán los pendientes.",
+        )
+        _trigger_auto_recalc(request, source="toggle_on")
+    else:
+        messages.info(request, "Auto-recalcular desactivado. Use el botón amarillo cuando haya pendientes.")
+
+    if next_url.startswith("/"):
+        return redirect(next_url)
+    return redirect_admin_monthly(period=period)
 
 
 @login_required
@@ -367,7 +433,14 @@ def admin_manual_edit(request):
                 messages.info(request, "No hay ingresos STALE para recalcular.")
                 return redirect_admin_manual(period=period, tab=tab)
             elif action == "save_requirements":
-                changes = save_requirements(request.user, year, month, request.POST, reason)
+                changes = save_requirements(
+                    request.user,
+                    year,
+                    month,
+                    request.POST,
+                    reason,
+                    month_from=period.month_from,
+                )
             elif action == "save_fx":
                 changes = save_fx(
                     request.user,
@@ -398,12 +471,24 @@ def admin_manual_edit(request):
 
             if changes:
                 messages.success(request, f"Se guardaron {changes} cambio(s).")
-                if recalc_after:
+                if action == "save_requirements":
+                    # Reqs: sincronizar score de todos los meses del rango editado.
+                    try:
+                        for m in range(period.month_from, month + 1):
+                            for msg in recalculate_period(year, m):
+                                messages.success(request, msg)
+                    except Exception as exc:
+                        messages.warning(
+                            request,
+                            f"Requerimientos guardados, pero falló el score: {exc}",
+                        )
+                elif recalc_after:
                     try:
                         for msg in recalculate_period(year, month):
                             messages.success(request, msg)
                     except Exception as exc:
                         messages.warning(request, f"Cambios guardados, pero falló el recálculo: {exc}")
+                _trigger_auto_recalc(request, source=action or "manual_edit")
             else:
                 messages.info(request, "No hubo cambios que guardar.")
         except ValueError as exc:
@@ -476,6 +561,7 @@ def admin_ingresos_year(request):
                                 f"Ingresos guardados, pero falló el score de "
                                 f"{year}-{period.month:02d}: {exc}",
                             )
+                    _trigger_auto_recalc(request, source="save_ingresos_year")
                 elif fx_n:
                     messages.warning(
                         request,
@@ -483,6 +569,7 @@ def admin_ingresos_year(request):
                         "No llegó ningún valor de ingreso en el POST "
                         "(celdas vacías o no enviadas). Complete ingresos y vuelva a Guardar.",
                     )
+                    _trigger_auto_recalc(request, source="save_ingresos_year_fx")
                 else:
                     messages.warning(
                         request,
@@ -558,6 +645,7 @@ def admin_new_clients_browse(request):
                             request,
                             f"Cambios guardados, pero falló el recálculo: {exc}",
                         )
+                _trigger_auto_recalc(request, source="browse_clients")
             else:
                 messages.info(request, "No hubo cambios que guardar.")
         except ValueError as exc:
@@ -603,6 +691,7 @@ def admin_new_clients_une(request):
                             request,
                             f"Cambios guardados, pero falló el recálculo: {exc}",
                         )
+                _trigger_auto_recalc(request, source="une_reassign")
             else:
                 messages.info(request, "No hubo cambios de UNE.")
         except ValueError as exc:

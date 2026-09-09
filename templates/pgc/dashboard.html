@@ -84,6 +84,91 @@
     font-size: 0.72rem;
     opacity: 0.9;
   }
+
+  .tablero-settings {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px 20px;
+    align-items: end;
+    margin: 0 0 16px;
+    padding: 12px 14px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+  }
+  .tablero-settings label {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #334155;
+  }
+
+  .tablero-anual-wrap { margin-top: 8px; }
+  .tablero-anual-block { margin-bottom: 28px; }
+  .tablero-anual-block h3 {
+    margin: 0 0 10px;
+    font-family: "Source Serif 4", "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    font-size: 1.22rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    color: #14532d;
+  }
+  table.pgc-presupuesto {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.86rem;
+    font-variant-numeric: tabular-nums;
+  }
+  table.pgc-presupuesto th,
+  table.pgc-presupuesto td {
+    border: 1px solid #1e293b;
+    padding: 5px 6px;
+    text-align: center;
+    vertical-align: middle;
+  }
+  table.pgc-presupuesto th.mes-corner,
+  table.pgc-presupuesto td.concept {
+    text-align: left;
+    white-space: nowrap;
+    min-width: 128px;
+    background: #f1f5f9;
+    font-weight: 600;
+  }
+  table.pgc-presupuesto thead th.mes-corner,
+  table.pgc-presupuesto thead th.month-h,
+  table.pgc-presupuesto thead th.total-h {
+    background: #1e3a5f;
+    color: #fff;
+    font-weight: 600;
+  }
+  table.pgc-presupuesto thead th.total-h { font-weight: 800; min-width: 72px; }
+  table.pgc-presupuesto td.total-cell {
+    background: #e2e8f0;
+    font-weight: 700;
+  }
+  table.pgc-presupuesto tbody tr.row-total td.concept {
+    background: #e2e8f0;
+  }
+  table.pgc-presupuesto tbody tr.row-total td:not(.concept) {
+    background: #f1f5f9;
+    font-weight: 700;
+  }
+  table.pgc-presupuesto tbody tr.row-clasifica td.concept {
+    background: #eff6ff;
+    color: #1e40af;
+  }
+  table.pgc-presupuesto .clasifica-si {
+    color: #06100c;
+    font-weight: 700;
+    background: #bbf7d0 !important;
+  }
+  table.pgc-presupuesto .clasifica-no {
+    color: #6b7280;
+    font-weight: 600;
+    background: #fecaca !important;
+  }
+  table.pgc-presupuesto .clasifica-blank {
+    background: #fff !important;
+  }
 </style>
 <div class="card">
     <div class="wcg-report-head" style="margin-top:0;">
@@ -157,6 +242,14 @@
           <input type="hidden" name="group_mode" id="group_mode"
                  value="{% if report_sort.group_mode == 'period' %}period{% else %}une{% endif %}">
         </div>
+
+        <div>
+            <label for="view">Formato del reporte</label><br>
+            <select name="view" id="view">
+                <option value="{{ view_lista }}" {% if board_view == view_lista %}selected{% endif %}>Lista (detalle)</option>
+                <option value="{{ view_anual }}" {% if board_view == view_anual %}selected{% endif %}>Anual por UNE</option>
+            </select>
+        </div>
       
         <div style="align-self:end;">
             <button type="button" id="btn-export-md">.md export</button>
@@ -169,6 +262,78 @@
         </div>
     </form>
 
+    {% if board_view == view_anual %}
+    <div class="tablero-anual-wrap">
+      <p class="muted" style="margin-top:0;">
+        Año {{ annual_year }} · puntos por métrica y clasificación mensual
+        ({{ selected_mode_label|default:selected_mode }}).
+        Celdas en blanco = falta TC del mes o ingresos de la UNE (ambos deben ser ≠ 0).
+      </p>
+      {% for table in annual_tables %}
+      <div class="tablero-anual-block">
+        <h3>{{ table.title }}</h3>
+        <div style="overflow-x:auto;">
+          <table class="pgc-presupuesto">
+            <thead>
+              <tr>
+                <th class="mes-corner">MES</th>
+                {% for ml in table.month_labels %}
+                <th class="month-h">{{ ml }}</th>
+                {% endfor %}
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="concept">Ingresos</td>
+                {% for v in table.p_ingresos %}
+                <td>{% if v is not None %}{{ v|floatformat:1 }}{% endif %}</td>
+                {% endfor %}
+              </tr>
+              <tr>
+                <td class="concept">Clientes nuevos</td>
+                {% for v in table.p_clientes %}
+                <td>{% if v is not None %}{{ v|floatformat:1 }}{% endif %}</td>
+                {% endfor %}
+              </tr>
+              <tr>
+                <td class="concept">Venta cruzada</td>
+                {% for v in table.p_venta %}
+                <td>{% if v is not None %}{{ v|floatformat:0 }}{% endif %}</td>
+                {% endfor %}
+              </tr>
+              <tr>
+                <td class="concept">Respuesta reqs</td>
+                {% for v in table.p_reqs %}
+                <td>{% if v is not None %}{{ v|floatformat:0 }}{% endif %}</td>
+                {% endfor %}
+              </tr>
+              <tr class="row-total">
+                <td class="concept">Total</td>
+                {% for v in table.totals %}
+                <td>{% if v is not None %}<strong>{{ v|floatformat:1 }}</strong>{% endif %}</td>
+                {% endfor %}
+              </tr>
+              <tr class="row-clasifica">
+                <td class="concept">Clasifica</td>
+                {% for ok in table.clasifica %}
+                  {% if ok is None %}
+                  <td class="clasifica-blank"></td>
+                  {% elif ok %}
+                  <td class="clasifica-si">Sí</td>
+                  {% else %}
+                  <td class="clasifica-no">No</td>
+                  {% endif %}
+                {% endfor %}
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      {% empty %}
+      <p class="muted">No hay datos anuales de puntos para {{ annual_year }}.</p>
+      {% endfor %}
+    </div>
+    {% else %}
     <table class="pgc-scoreboard">
         <thead>
             <tr>
@@ -216,6 +381,7 @@
         </tbody>
           
     </table>
+    {% endif %}
 </div>
 
 <div class="card" style="margin-top:24px;">
@@ -327,7 +493,7 @@ document.addEventListener("DOMContentLoaded", function () {
         syncSortFields();
     }
 
-    ["month_count", "mode", "start_year", "start_month", "year", "month", "une"].forEach(function (id) {
+    ["month_count", "mode", "view", "start_year", "start_month", "year", "month", "une"].forEach(function (id) {
         const el = document.getElementById(id);
         if (el && el.tagName === "SELECT") {
             el.addEventListener("change", applyFilters);

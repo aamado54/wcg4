@@ -254,3 +254,19 @@ class Command(BaseCommand):
             )
 
         self.stdout.write(self.style.SUCCESS("Venta cruzada importada correctamente."))
+
+        try:
+            from pgc.admin_recalc import maybe_auto_recalc
+
+            auto = maybe_auto_recalc(source="import_venta_cruzada")
+            if auto and auto.get("ran"):
+                self.stdout.write(
+                    self.style.SUCCESS(
+                        f"Auto-recalcular: {auto.get('periods_processed', 0)} período(s)."
+                    )
+                )
+        except Exception as exc:
+            self.stdout.write(
+                self.style.WARNING(f"Auto-recalcular no completó: {exc}")
+            )
+

@@ -16,6 +16,7 @@ from pgc.models import (
     ManualRequirementsCompliance,
     MonthlyExchangeRate,
     MonthlyMetricResult,
+    MonthlyMetricScore,
     MonthlyTarget,
     PGCPlan,
 )
@@ -212,6 +213,72 @@ def get_manual_edit_context(year: int, month: int, tab: str, month_from: int | N
     for une in unes:
         requirements.append({"une": une, "obj": req_map.get(une.id)})
 
+    # Matriz multi-mes: UNE × meses del rango seleccionado.
+    requirements_months = list(range(mf, month + 1))
+    month_labels = {
+        1: "Ene",
+        2: "Feb",
+        3: "Mar",
+        4: "Abr",
+        5: "May",
+        6: "Jun",
+        7: "Jul",
+        8: "Ago",
+        9: "Sep",
+        10: "Oct",
+        11: "Nov",
+        12: "Dic",
+    }
+    requirements_month_headers = [
+        {"month": m, "label": month_labels.get(m, str(m)), "code": f"{year}-{m:02d}"}
+        for m in requirements_months
+    ]
+    req_range_map: dict[tuple[int, int], ManualRequirementsCompliance] = {}
+    if plan:
+        for r in ManualRequirementsCompliance.objects.filter(
+            plan=plan, year=year, month__gte=mf, month__lte=month
+        ):
+            req_range_map[(r.une_id, r.month)] = r
+    req_result_map: dict[tuple[int, int], MonthlyMetricResult] = {}
+    req_metric = MetricDefinition.objects.filter(
+        code=MetricDefinition.CODE_RESPUESTA_REQS
+    ).first()
+    if plan and req_metric:
+        for r in MonthlyMetricResult.objects.filter(
+            plan=plan,
+            metric=req_metric,
+            year=year,
+            month__gte=mf,
+            month__lte=month,
+        ):
+            req_result_map[(r.une_id, r.month)] = r
+    requirements_matrix = []
+    for une in unes:
+        cells = []
+        for m in requirements_months:
+            obj = req_range_map.get((une.id, m))
+            result = req_result_map.get((une.id, m))
+            if obj is not None:
+                status = "1" if obj.is_compliant else "0"
+            elif result is not None and result.is_achieved:
+                status = "1"
+            elif result is not None and result.measured_value is not None:
+                status = "1" if result.measured_value >= Decimal("1") else "0"
+            else:
+                status = ""  # sin registrar
+            cells.append(
+                {
+                    "month": m,
+                    "label": month_labels.get(m, str(m)),
+                    "obj": obj,
+                    "result": result,
+                    "status": status,
+                    "note": (obj.incident_note if obj else "") or "",
+                    "points": getattr(result, "points_awarded", None),
+                }
+            )
+        requirements_matrix.append({"une": une, "cells": cells})
+
     aliases = list(UNEAlias.objects.select_related("une").filter(is_active=True).order_by("raw_value")[:200])
     pending_aliases = get_pending_alias_values(year, month, month_from=mf)
 
@@ -240,8 +307,8 @@ def get_manual_edit_context(year: int, month: int, tab: str, month_from: int | N
     if tab not in valid_tabs:
         tab = "targets"
 
-    # FX aprovecha el rango completo; metas/resultados/reqs siguen enfocados en month_to.
-    range_capable_tabs = {"imports", "aliases", "fx"}
+    # FX y requerimientos aprovechan el rango completo; metas/resultados siguen en month_to.
+    range_capable_tabs = {"imports", "aliases", "fx", "requirements"}
     tab_uses_range = tab in range_capable_tabs
 
     return {
@@ -263,6 +330,10 @@ def get_manual_edit_context(year: int, month: int, tab: str, month_from: int | N
         "target_rows": target_rows,
         "result_rows": result_rows,
         "requirements": requirements,
+        "requirements_months": requirements_months,
+        "requirements_month_headers": requirements_month_headers,
+        "requirements_matrix": requirements_matrix,
+        "month_labels": month_labels,
         "fx": fx,
         "fx_rows": fx_rows,
         "missing_fx_months": missing_fx_months,
@@ -593,54 +664,208 @@ def save_fx(user, year: int, month: int, post_data, reason: str = "", month_from
     return changes
 
 
+def _sync_requirements_metric_result(
+    *,
+    plan: PGCPlan,
+    une: UNE,
+    year: int,
+    month: int,
+    is_compliant: bool,
+    incident_note: str = "",
+) -> MonthlyMetricResult | None:
+    """Escribe MonthlyMetricResult de RESPUESTA_REQS según el cumplimiento manual."""
+    metric = MetricDefinition.objects.filter(
+        code=MetricDefinition.CODE_RESPUESTA_REQS
+    ).first()
+    if not metric:
+        return None
+
+    target = MonthlyTarget.objects.filter(
+        plan=plan, une=une, metric=metric, year=year, month=month
+    ).first()
+    if not target:
+        return None
+
+    measured = Decimal("1") if is_compliant else Decimal("0")
+    points = Decimal(str(target.points_if_achieved or 0)) if is_compliant else Decimal("0")
+    note = (
+        "Cumplimiento manual: Cumple."
+        if is_compliant
+        else "Cumplimiento manual: No cumple."
+    )
+    if incident_note and not is_compliant:
+        note = f"{note} Incidencia: {incident_note}"
+
+    obj, created = MonthlyMetricResult.objects.get_or_create(
+        plan=plan,
+        une=une,
+        metric=metric,
+        year=year,
+        month=month,
+        defaults={
+            "measured_value": measured,
+            "target_value": target.target_value,
+            "is_achieved": is_compliant,
+            "points_awarded": points,
+            "calculation_note": note,
+        },
+    )
+    if not created:
+        obj.measured_value = measured
+        obj.target_value = target.target_value
+        obj.is_achieved = is_compliant
+        obj.points_awarded = points
+        obj.calculation_note = note
+        obj.save(
+            update_fields=[
+                "measured_value",
+                "target_value",
+                "is_achieved",
+                "points_awarded",
+                "calculation_note",
+                "updated_at",
+            ]
+        )
+    for mode in ("modo1", "modo2"):
+        score, score_created = MonthlyMetricScore.objects.get_or_create(
+            plan=plan,
+            une=une,
+            metric=metric,
+            year=year,
+            month=month,
+            mode=mode,
+            defaults={
+                "measured_value": measured,
+                "target_value": target.target_value,
+                "is_achieved": is_compliant,
+                "points_awarded": points,
+                "calculation_note": note,
+            },
+        )
+        if not score_created:
+            score.measured_value = measured
+            score.target_value = target.target_value
+            score.is_achieved = is_compliant
+            score.points_awarded = points
+            score.calculation_note = note
+            score.save(
+                update_fields=[
+                    "measured_value",
+                    "target_value",
+                    "is_achieved",
+                    "points_awarded",
+                    "calculation_note",
+                    "updated_at",
+                ]
+            )
+    return obj
+
+
 @transaction.atomic
-def save_requirements(user, year: int, month: int, post_data, reason: str = "") -> int:
+def save_requirements(
+    user,
+    year: int,
+    month: int,
+    post_data,
+    reason: str = "",
+    *,
+    month_from: int | None = None,
+) -> int:
+    """
+    Guarda cumplimiento de requerimientos para el rango month_from..month.
+
+    Campos POST:
+      req_status_{une_id}_{month} = "1" | "0" | "" (vacío = no tocar)
+      req_note_{une_id}_{month} = texto opcional (requerido si status=0)
+    """
     plan = _get_plan(year)
     if not plan:
         raise ValueError("No existe plan PGC para este año.")
 
+    mf = int(month_from or month)
+    if mf < 1 or mf > 12 or month < 1 or month > 12 or mf > month:
+        raise ValueError("Rango de meses inválido.")
+
     changes = 0
-    for une in _unes():
-        compliant_key = f"req_compliant_{une.id}"
-        note_key = f"req_note_{une.id}"
-        is_compliant = post_data.get(compliant_key) == "1"
-        incident_note = (post_data.get(note_key) or "").strip()
+    for m in range(mf, month + 1):
+        for une in _unes():
+            status_raw = (post_data.get(f"req_status_{une.id}_{m}") or "").strip()
+            # Compat: checkbox legacy de un solo mes
+            if status_raw == "" and post_data.get(f"req_compliant_{une.id}") is not None:
+                if m == month:
+                    status_raw = "1" if post_data.get(f"req_compliant_{une.id}") == "1" else "0"
+                else:
+                    continue
+            if status_raw == "":
+                continue
+            if status_raw not in ("0", "1"):
+                raise ValueError(
+                    f"Estado inválido para {une.name_es} {year}-{m:02d}."
+                )
 
-        if not is_compliant and not incident_note and not reason.strip():
-            raise ValueError(f"Indique motivo o nota de incidencia para {une.name_es}.")
+            is_compliant = status_raw == "1"
+            incident_note = (post_data.get(f"req_note_{une.id}_{m}") or "").strip()
+            if not incident_note and m == month:
+                incident_note = (post_data.get(f"req_note_{une.id}") or "").strip()
 
-        obj, created = ManualRequirementsCompliance.objects.get_or_create(
-            plan=plan,
-            une=une,
-            year=year,
-            month=month,
-            defaults={"is_compliant": is_compliant, "incident_note": incident_note},
-        )
-        old_compliant = None if created else obj.is_compliant
-        old_note = "" if created else obj.incident_note
+            if not is_compliant and not incident_note and not (reason or "").strip():
+                raise ValueError(
+                    f"Si {une.name_es} no cumple en {year}-{m:02d}, "
+                    "indique nota de incidencia o motivo del guardado."
+                )
 
-        changed = False
-        if obj.is_compliant != is_compliant:
-            obj.is_compliant = is_compliant
-            changed = True
-        if obj.incident_note != incident_note:
-            obj.incident_note = incident_note
-            changed = True
-
-        if changed:
-            obj.save(update_fields=["is_compliant", "incident_note", "updated_at"])
-            log_manual_edit(
-                user=user,
+            obj, created = ManualRequirementsCompliance.objects.get_or_create(
+                plan=plan,
+                une=une,
                 year=year,
-                month=month,
-                entity_type=AdminManualEditLog.ENTITY_REQUIREMENT,
-                entity_id=obj.id,
-                field_name="is_compliant/incident_note",
-                old_value=f"compliant={old_compliant}; note={old_note}",
-                new_value=f"compliant={is_compliant}; note={incident_note}",
-                reason=reason or incident_note,
+                month=m,
+                defaults={
+                    "is_compliant": is_compliant,
+                    "incident_note": incident_note,
+                },
             )
-            changes += 1
+            old_compliant = None if created else obj.is_compliant
+            old_note = "" if created else (obj.incident_note or "")
+
+            changed = created
+            if obj.is_compliant != is_compliant:
+                obj.is_compliant = is_compliant
+                changed = True
+            if (obj.incident_note or "") != incident_note:
+                obj.incident_note = incident_note
+                changed = True
+
+            if changed:
+                if not created:
+                    obj.save(
+                        update_fields=["is_compliant", "incident_note", "updated_at"]
+                    )
+                log_manual_edit(
+                    user=user,
+                    year=year,
+                    month=m,
+                    entity_type=AdminManualEditLog.ENTITY_REQUIREMENT,
+                    entity_id=obj.id,
+                    field_name="is_compliant/incident_note",
+                    old_value=f"compliant={old_compliant}; note={old_note}",
+                    new_value=f"compliant={is_compliant}; note={incident_note}",
+                    reason=reason or incident_note or "Edición matriz requerimientos",
+                )
+                changes += 1
+
+            # Siempre alinear resultado/puntos visibles con el cumplimiento guardado.
+            _sync_requirements_metric_result(
+                plan=plan,
+                une=une,
+                year=year,
+                month=m,
+                is_compliant=is_compliant,
+                incident_note=incident_note,
+            )
+            # Contar también re-sincronizaciones (p.ej. Cumple ya marcado pero score en 0).
+            if not changed:
+                changes += 1
+
     return changes
 
 

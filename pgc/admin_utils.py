@@ -164,6 +164,7 @@ def apply_period_range(
 def admin_period_context(period: AdminPeriod) -> dict:
     from pgc.admin_recalc import get_global_recalc_status
 
+    recalc_status = get_global_recalc_status()
     return {
         "period": period,
         "year": period.year,
@@ -176,7 +177,8 @@ def admin_period_context(period: AdminPeriod) -> dict:
         "period_qs": period.querystring(),
         "month_choices": list(range(1, 13)),
         "year_choices": list(range(2024, 2031)),
-        "recalc_status": get_global_recalc_status(),
+        "recalc_status": recalc_status,
+        "auto_recalc": recalc_status.get("auto_recalc", False),
     }
 
 

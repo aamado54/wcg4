@@ -7,8 +7,11 @@ from core.models import MetricDefinition, UNE
 from pgc.admin_manual import save_fx, save_results
 from pgc.income_conversion import gtq_to_usd, recalc_stale_ingresos
 from pgc.models import (
+    ManualRequirementsCompliance,
     MonthlyExchangeRate,
     MonthlyMetricResult,
+    MonthlyMetricScore,
+    MonthlyTarget,
     PGCPlan,
 )
 
@@ -309,3 +312,95 @@ class SmartRecalcTests(TestCase):
         status = get_global_recalc_status()
         self.assertEqual(status["pending_count"], 0)
         self.assertTrue(status["is_ready"])
+
+    def test_target_only_future_months_not_pending_for_investment(self):
+        from pgc.admin_recalc import period_pending_reasons
+
+        MonthlyTarget.objects.create(
+            plan=self.plan,
+            une=self.une,
+            metric=self.metric,
+            year=self.year,
+            month=11,
+            target_value=Decimal("100"),
+            points_if_achieved=Decimal("70"),
+        )
+        reasons = period_pending_reasons(self.year, 11)
+        self.assertFalse(
+            any("Ingresos Investment" in r for r in reasons),
+            msg=f"No debería marcar pendiente Investment sin datos: {reasons}",
+        )
+
+
+class RequirementsReportTests(TestCase):
+    def setUp(self):
+        self.plan = PGCPlan.objects.create(year=2026, name="Plan reqs")
+        self.une = UNE.objects.create(
+            code=UNE.CODE_FACTORING,
+            name="Factoring",
+            name_es="Factoraje",
+            sort_order=1,
+        )
+        self.metric, _ = MetricDefinition.objects.get_or_create(
+            code=MetricDefinition.CODE_RESPUESTA_REQS,
+            defaults={"name": "Reqs", "is_scored": True},
+        )
+        MonthlyTarget.objects.create(
+            plan=self.plan,
+            une=self.une,
+            metric=self.metric,
+            year=2026,
+            month=8,
+            target_value=Decimal("1"),
+            points_if_achieved=Decimal("5"),
+        )
+
+    def test_report_prefers_manual_over_stale_score(self):
+        from pgc.admin_manual import _sync_requirements_metric_result
+        from pgc.views import _get_respuesta_reqs_rows
+
+        ManualRequirementsCompliance.objects.create(
+            plan=self.plan,
+            une=self.une,
+            year=2026,
+            month=8,
+            is_compliant=True,
+        )
+        result = MonthlyMetricResult.objects.create(
+            plan=self.plan,
+            une=self.une,
+            metric=self.metric,
+            year=2026,
+            month=8,
+            measured_value=Decimal("0"),
+            target_value=Decimal("1"),
+            is_achieved=False,
+            points_awarded=Decimal("0"),
+        )
+        MonthlyMetricScore.objects.create(
+            plan=self.plan,
+            une=self.une,
+            metric=self.metric,
+            year=2026,
+            month=8,
+            mode="modo1",
+            measured_value=Decimal("0"),
+            target_value=Decimal("1"),
+            is_achieved=False,
+            points_awarded=Decimal("0"),
+        )
+        _sync_requirements_metric_result(
+            plan=self.plan,
+            une=self.une,
+            year=2026,
+            month=8,
+            is_compliant=True,
+        )
+
+        _, rows = _get_respuesta_reqs_rows(periods=[(2026, 8)])
+        row = rows[0]
+        self.assertTrue(row["is_achieved"])
+        self.assertEqual(row["points_awarded"], Decimal("5"))
+        result.refresh_from_db()
+        self.assertTrue(result.is_achieved)
+        self.assertEqual(result.points_awarded, Decimal("5"))

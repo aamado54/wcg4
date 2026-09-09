@@ -58,8 +58,8 @@
 
                 {% elif selected_block == "manual_requirements" %}
                 <p class="muted">Registre cumplimiento de respuesta a requerimientos por UNE.</p>
-                <a href="{% url 'pgc:admin_manual_edit' %}?year={{ year }}&month={{ month }}&tab=requirements"
-                   class="adm-btn adm-btn-primary">Editar requerimientos</a>
+                <a href="{% url 'pgc:admin_manual_edit' %}?year={{ year|unlocalize }}&month_from={{ month_from|unlocalize }}&month_to={{ month_to|unlocalize }}&month={{ month|unlocalize }}&tab=requirements"
+                   class="adm-btn adm-btn-primary">Editar requerimientos (matriz del rango)</a>
 
                 {% elif selected_block == "review" %}
                 <p class="muted">Revise el tablero después de cargar y recalcular.</p>
@@ -185,7 +185,7 @@
                 <div class="adm-reminder">Verifique el período activo antes de subir archivos.</div>
                 <div class="adm-reminder">Confirme que el archivo corresponde al bloque seleccionado.</div>
                 <div class="adm-reminder">Revise alias UNE nuevos antes de confiar en el score.</div>
-                <div class="adm-reminder">Tras cargar datos, use el botón de recálculo (amarillo si hay pendientes).</div>
+                <div class="adm-reminder">Tras cargar datos, use el botón de recálculo (amarillo si hay pendientes), o active <strong>Auto-recalcular</strong>.</div>
             </div>
 
             <div class="adm-side-card">

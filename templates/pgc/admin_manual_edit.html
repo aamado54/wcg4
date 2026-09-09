@@ -23,7 +23,7 @@
     <div class="adm-route-hint">
         <strong>Ruta sugerida:</strong>
         Tipos de cambio → Metas (USD) → Resultados (ingresos Q o $ → se guardan en USD).
-        Metas/resultados usan el mes foco <code>{{ focus_label }}</code>; el TC usa el rango completo.
+        Metas/resultados usan el mes foco <code>{{ focus_label }}</code>; TC y requerimientos usan el rango completo.
     </div>
 
     <div class="adm-tabs">
@@ -45,7 +45,7 @@
                 <form method="post">
                     {% csrf_token %}
                     <input type="hidden" name="action" value="save_targets">
-                    <input type="hidden" name="year" value="{{ year }}">
+                    <input type="hidden" name="year" value="{{ year|unlocalize }}">
                     <input type="hidden" name="month" value="{{ month }}">
                     <input type="hidden" name="month_from" value="{{ month_from }}">
                     <input type="hidden" name="month_to" value="{{ month_to }}">
@@ -113,7 +113,7 @@
                     <form method="post" style="display:inline; margin-left:8px;">
                         {% csrf_token %}
                         <input type="hidden" name="action" value="recalc_stale_ingresos">
-                        <input type="hidden" name="year" value="{{ year }}">
+                        <input type="hidden" name="year" value="{{ year|unlocalize }}">
                         <input type="hidden" name="month" value="{{ month }}">
                         <input type="hidden" name="month_from" value="{{ month_from }}">
                         <input type="hidden" name="month_to" value="{{ month_to }}">
@@ -127,7 +127,7 @@
                 <form method="post">
                     {% csrf_token %}
                     <input type="hidden" name="action" value="save_results">
-                    <input type="hidden" name="year" value="{{ year }}">
+                    <input type="hidden" name="year" value="{{ year|unlocalize }}">
                     <input type="hidden" name="month" value="{{ month }}">
                     <input type="hidden" name="month_from" value="{{ month_from }}">
                     <input type="hidden" name="month_to" value="{{ month_to }}">
@@ -217,38 +217,81 @@
                     {% include "pgc/admin/_save_footer.html" with reason_required=True %}
 
                 {% elif tab == "requirements" %}
-                <h3>Respuesta a requerimientos</h3>
-                <p class="subtitle">Cumplimiento manual por UNE. Si hay incidencia, indique nota o motivo.</p>
-                <form method="post">
+                <h3>Respuesta a requerimientos · {{ label }}</h3>
+                <p class="subtitle">
+                    Una celda por UNE y mes del rango. <strong>Cumple</strong> = puntos de la meta;
+                    <strong>No cumple</strong> = 0 puntos (indique nota). Vacío = no modificar ese mes.
+                    Al guardar se actualizan resultado, Cumple y score del tablero.
+                </p>
+                <form method="post" id="adm-req-form">
                     {% csrf_token %}
                     <input type="hidden" name="action" value="save_requirements">
-                    <input type="hidden" name="year" value="{{ year }}">
+                    <input type="hidden" name="year" value="{{ year|unlocalize }}">
                     <input type="hidden" name="month" value="{{ month }}">
                     <input type="hidden" name="month_from" value="{{ month_from }}">
                     <input type="hidden" name="month_to" value="{{ month_to }}">
                     <input type="hidden" name="tab" value="{{ tab }}">
-                    <table class="adm-edit-grid">
-                        <thead>
-                            <tr><th>UNE</th><th>Cumple</th><th>Nota de incidencia</th></tr>
-                        </thead>
-                        <tbody>
-                            {% for item in requirements %}
-                            <tr>
-                                <td>{{ item.une.name_es }}</td>
-                                <td>
-                                    <input type="checkbox" name="req_compliant_{{ item.une.id }}" value="1"
-                                           {% if not item.obj or item.obj.is_compliant %}checked{% endif %}>
-                                </td>
-                                <td>
-                                    <input type="text" name="req_note_{{ item.une.id }}"
-                                           value="{% if item.obj %}{{ item.obj.incident_note }}{% endif %}"
-                                           style="max-width:280px;">
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+                    <div class="adm-req-toolbar">
+                        <button type="button" class="adm-btn" id="adm-req-all-yes">Marcar todo el rango: Cumple</button>
+                        <button type="button" class="adm-btn adm-btn-ghost" id="adm-req-all-clear">Vaciar celdas (no tocar)</button>
+                    </div>
+                    <div class="adm-scroll">
+                        <table class="adm-edit-grid adm-req-matrix">
+                            <thead>
+                                <tr>
+                                    <th>UNE</th>
+                                    {% for h in requirements_month_headers %}
+                                    <th>{{ h.label }}<br><span class="muted">{{ h.code }}</span></th>
+                                    {% endfor %}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in requirements_matrix %}
+                                <tr>
+                                    <td style="text-align:left; font-weight:600;">{{ row.une.name_es }}</td>
+                                    {% for cell in row.cells %}
+                                    <td class="adm-req-cell">
+                                        <select name="req_status_{{ row.une.id }}_{{ cell.month }}"
+                                                class="adm-req-status"
+                                                title="Puntos actuales: {% if cell.points is not None %}{{ cell.points }}{% else %}—{% endif %}">
+                                            <option value="" {% if cell.status == "" %}selected{% endif %}>—</option>
+                                            <option value="1" {% if cell.status == "1" %}selected{% endif %}>Cumple</option>
+                                            <option value="0" {% if cell.status == "0" %}selected{% endif %}>No cumple</option>
+                                        </select>
+                                        <input type="text"
+                                               name="req_note_{{ row.une.id }}_{{ cell.month }}"
+                                               class="adm-req-note"
+                                               placeholder="Nota si no cumple"
+                                               value="{{ cell.note }}">
+                                        {% if cell.points is not None %}
+                                        <div class="muted adm-req-pts">pts: {{ cell.points }}</div>
+                                        {% endif %}
+                                    </td>
+                                    {% endfor %}
+                                </tr>
+                                {% empty %}
+                                <tr><td colspan="13">No hay UNEs activas.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
                     {% include "pgc/admin/_save_footer.html" with reason_required=False %}
+                </form>
+                <script>
+                (function () {
+                  var form = document.getElementById("adm-req-form");
+                  if (!form) return;
+                  var yesBtn = document.getElementById("adm-req-all-yes");
+                  var clearBtn = document.getElementById("adm-req-all-clear");
+                  function setAll(val) {
+                    form.querySelectorAll("select.adm-req-status").forEach(function (el) {
+                      el.value = val;
+                    });
+                  }
+                  if (yesBtn) yesBtn.addEventListener("click", function () { setAll("1"); });
+                  if (clearBtn) clearBtn.addEventListener("click", function () { setAll(""); });
+                })();
+                </script>
 
                 {% elif tab == "fx" %}
                 <h3>Tipos de cambio · {{ label }}</h3>
@@ -264,7 +307,7 @@
                 <form method="post">
                     {% csrf_token %}
                     <input type="hidden" name="action" value="save_fx">
-                    <input type="hidden" name="year" value="{{ year }}">
+                    <input type="hidden" name="year" value="{{ year|unlocalize }}">
                     <input type="hidden" name="month" value="{{ month }}">
                     <input type="hidden" name="month_from" value="{{ month_from }}">
                     <input type="hidden" name="month_to" value="{{ month_to }}">
@@ -312,7 +355,7 @@
                 <form method="post" style="margin-bottom:20px;">
                     {% csrf_token %}
                     <input type="hidden" name="action" value="save_alias">
-                    <input type="hidden" name="year" value="{{ year }}">
+                    <input type="hidden" name="year" value="{{ year|unlocalize }}">
                     <input type="hidden" name="month" value="{{ month }}">
                     <input type="hidden" name="month_from" value="{{ month_from }}">
                     <input type="hidden" name="month_to" value="{{ month_to }}">
@@ -338,7 +381,7 @@
                 <form method="post">
                     {% csrf_token %}
                     <input type="hidden" name="action" value="save_aliases_bulk">
-                    <input type="hidden" name="year" value="{{ year }}">
+                    <input type="hidden" name="year" value="{{ year|unlocalize }}">
                     <input type="hidden" name="month" value="{{ month }}">
                     <input type="hidden" name="month_from" value="{{ month_from }}">
                     <input type="hidden" name="month_to" value="{{ month_to }}">
@@ -374,7 +417,7 @@
                 <form method="post">
                     {% csrf_token %}
                     <input type="hidden" name="action" value="save_imports">
-                    <input type="hidden" name="year" value="{{ year }}">
+                    <input type="hidden" name="year" value="{{ year|unlocalize }}">
                     <input type="hidden" name="month" value="{{ month }}">
                     <input type="hidden" name="month_from" value="{{ month_from }}">
                     <input type="hidden" name="month_to" value="{{ month_to }}">
@@ -454,7 +497,7 @@
                 <form method="post">
                     {% csrf_token %}
                     <input type="hidden" name="action" value="save_notes">
-                    <input type="hidden" name="year" value="{{ year }}">
+                    <input type="hidden" name="year" value="{{ year|unlocalize }}">
                     <input type="hidden" name="month" value="{{ month }}">
                     <input type="hidden" name="month_from" value="{{ month_from }}">
                     <input type="hidden" name="month_to" value="{{ month_to }}">

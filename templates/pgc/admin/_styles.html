@@ -523,6 +523,40 @@
         margin-left: auto;
         display: flex;
         align-items: center;
+        gap: 10px;
+    }
+    .adm-recalc-cluster {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+    }
+    .adm-auto-recalc-form { margin: 0; }
+    .adm-auto-recalc-toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        margin: 0;
+        padding: 7px 10px;
+        border-radius: 8px;
+        border: 1px solid #cbd5e1;
+        background: #f8fafc;
+        color: #334155;
+        font-size: 0.82rem;
+        font-weight: 600;
+        cursor: pointer;
+        user-select: none;
+        white-space: nowrap;
+    }
+    .adm-auto-recalc-toggle.is-on {
+        background: #ecfdf5;
+        border-color: #6ee7b7;
+        color: #065f46;
+    }
+    .adm-auto-recalc-toggle input {
+        width: auto;
+        margin: 0;
     }
     .adm-recalc-form { margin: 0; }
     .adm-recalc-btn {
@@ -605,5 +639,35 @@
     .adm-recalc-details ul {
         margin: 8px 0 0;
         padding-left: 18px;
+    }
+    .adm-req-toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 0 0 12px;
+    }
+    .adm-req-matrix th,
+    .adm-req-matrix td {
+        vertical-align: top;
+        min-width: 110px;
+    }
+    .adm-req-cell {
+        text-align: left !important;
+    }
+    .adm-req-status {
+        width: 100%;
+        max-width: 120px;
+        padding: 6px 8px;
+        margin-bottom: 4px;
+    }
+    .adm-req-note {
+        width: 100%;
+        max-width: 140px;
+        padding: 4px 6px;
+        font-size: 0.8rem;
+    }
+    .adm-req-pts {
+        margin-top: 2px;
+        font-size: 0.75rem;
     }
 </style>

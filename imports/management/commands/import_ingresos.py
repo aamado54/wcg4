@@ -321,3 +321,19 @@ class Command(BaseCommand):
             )
         )
         self.stdout.write(self.style.SUCCESS("Import INGRESOS completado."))
+
+        try:
+            from pgc.admin_recalc import maybe_auto_recalc
+
+            auto = maybe_auto_recalc(source="import_ingresos")
+            if auto and auto.get("ran"):
+                self.stdout.write(
+                    self.style.SUCCESS(
+                        f"Auto-recalcular: {auto.get('periods_processed', 0)} período(s)."
+                    )
+                )
+        except Exception as exc:
+            self.stdout.write(
+                self.style.WARNING(f"Auto-recalcular no completó: {exc}")
+            )
+

@@ -1,5 +1,26 @@
 {# Botón universal de recálculo inteligente. Espera recalc_status + year/month* en contexto. #}
 {% if recalc_status %}
+<div class="adm-recalc-cluster">
+<form method="post"
+      action="{% url 'pgc:admin_auto_recalc_toggle' %}"
+      class="adm-auto-recalc-form"
+      title="Si está activo, al importar o guardar datos se ejecuta solo el recálculo pendiente.">
+    {% csrf_token %}
+    <input type="hidden" name="year" value="{{ year }}">
+    <input type="hidden" name="month" value="{{ month }}">
+    <input type="hidden" name="month_from" value="{{ month_from }}">
+    <input type="hidden" name="month_to" value="{{ month_to }}">
+    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+    <input type="hidden" name="auto_recalc" value="0">
+    <label class="adm-auto-recalc-toggle {% if recalc_status.auto_recalc %}is-on{% endif %}">
+        <input type="checkbox"
+               name="auto_recalc"
+               value="1"
+               {% if recalc_status.auto_recalc %}checked{% endif %}
+               onchange="this.form.submit()">
+        <span>Auto-recalcular</span>
+    </label>
+</form>
 <form method="post"
       action="{% url 'pgc:admin_smart_recalc' %}"
       class="adm-recalc-form"
@@ -24,6 +45,7 @@
         <span class="adm-recalc-spinner" aria-hidden="true"></span>
     </button>
 </form>
+</div>
 <script>
 (function () {
   var form = document.currentScript && document.currentScript.previousElementSibling;

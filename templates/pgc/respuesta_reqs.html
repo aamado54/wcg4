@@ -114,25 +114,23 @@
                             {% endif %}
                         </td>
                         <td>
-                            {% if row.result %}
+                            {% if row.measured_value is not None %}
+                                {{ row.measured_value|floatformat:0|unlocalize }}
+                            {% elif row.result %}
                                 {{ row.result.measured_value|floatformat:0|unlocalize }}
                             {% else %}
                                 —
                             {% endif %}
                         </td>
                         <td>
-                            {% if row.result and row.result.is_achieved %}
+                            {% if row.is_achieved %}
                                 <span class="ok">Sí</span>
                             {% else %}
                                 <span class="bad">No</span>
                             {% endif %}
                         </td>
                         <td>
-                            {% if row.result %}
-                                {{ row.result.points_awarded }}
-                            {% else %}
-                                0
-                            {% endif %}
+                            {{ row.points_awarded }}
                         </td>
                         <td>
                             {% if row.scorecard %}

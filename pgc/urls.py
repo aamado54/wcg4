@@ -21,6 +21,11 @@ urlpatterns = [
         admin_views.admin_smart_recalc,
         name="admin_smart_recalc",
     ),
+    path(
+        "admin-hub/auto-recalcular/",
+        admin_views.admin_auto_recalc_toggle,
+        name="admin_auto_recalc_toggle",
+    ),
     path("admin-hub/mensual/edicion/", admin_views.admin_manual_edit, name="admin_manual_edit"),
     path(
         "admin-hub/mensual/ingresos/",

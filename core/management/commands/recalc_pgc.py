@@ -143,6 +143,8 @@ class Command(BaseCommand):
                         year=year,
                         month=month,
                         metric_score=score,
+                        source_result=source_result,
+                        target=target,
                     )
 
                 score.save()
@@ -307,8 +309,14 @@ class Command(BaseCommand):
         )
 
     def apply_manual_requirements_override(
-        self, plan, une, year, month, metric_score
+        self, plan, une, year, month, metric_score, source_result=None, target=None
     ):
+        """
+        El cumplimiento manual es la fuente de verdad para RESPUESTA_REQS.
+        - Cumple: measured=1, puntos de la meta, is_achieved=True
+        - No cumple: measured=0, 0 puntos, is_achieved=False
+        Sin registro manual: no altera el cálculo previo.
+        """
         try:
             mrc = ManualRequirementsCompliance.objects.get(
                 plan=plan,
@@ -319,12 +327,47 @@ class Command(BaseCommand):
         except ManualRequirementsCompliance.DoesNotExist:
             return
 
-        if mrc.is_compliant is False:
-            metric_score.points_awarded = 0
-            metric_score.is_achieved = False
+        points_if = Decimal("0")
+        target_value = metric_score.target_value
+        if target is not None:
+            points_if = Decimal(str(target.points_if_achieved or 0))
+            if target_value is None:
+                target_value = target.target_value
+
+        if mrc.is_compliant:
+            metric_score.measured_value = Decimal("1")
+            metric_score.target_value = target_value if target_value is not None else Decimal("1")
+            metric_score.is_achieved = True
+            metric_score.points_awarded = points_if
             metric_score.calculation_note = (
-                "Marcado como no cumplido en cumplimiento manual; "
-                "puntos removidos."
+                "Cumplimiento manual: Cumple. Puntos otorgados según meta."
+            )
+        else:
+            metric_score.measured_value = Decimal("0")
+            metric_score.target_value = target_value if target_value is not None else Decimal("1")
+            metric_score.is_achieved = False
+            metric_score.points_awarded = Decimal("0")
+            note = (mrc.incident_note or "").strip()
+            metric_score.calculation_note = (
+                "Cumplimiento manual: No cumple; puntos en 0."
+                + (f" Incidencia: {note}" if note else "")
+            )
+
+        if source_result is not None:
+            source_result.measured_value = metric_score.measured_value
+            source_result.target_value = metric_score.target_value
+            source_result.is_achieved = metric_score.is_achieved
+            source_result.points_awarded = metric_score.points_awarded
+            source_result.calculation_note = metric_score.calculation_note
+            source_result.save(
+                update_fields=[
+                    "measured_value",
+                    "target_value",
+                    "is_achieved",
+                    "points_awarded",
+                    "calculation_note",
+                    "updated_at",
+                ]
             )
 
     def get_available_reserve(self, plan, une, metric, year, month):

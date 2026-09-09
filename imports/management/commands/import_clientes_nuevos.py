@@ -365,3 +365,17 @@ class Command(BaseCommand):
                 f"{len(months_touched)} mes(es)."
             )
         )
+        try:
+            from pgc.admin_recalc import maybe_auto_recalc
+
+            auto = maybe_auto_recalc(source="import_clientes_nuevos")
+            if auto and auto.get("ran"):
+                self.stdout.write(
+                    self.style.SUCCESS(
+                        f"Auto-recalcular: {auto.get('periods_processed', 0)} período(s)."
+                    )
+                )
+        except Exception as exc:
+            self.stdout.write(
+                self.style.WARNING(f"Auto-recalcular no completó: {exc}")
+            )

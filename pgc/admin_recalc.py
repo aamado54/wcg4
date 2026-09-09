@@ -192,13 +192,49 @@ def _score_timestamp(plan: PGCPlan | None, year: int, month: int) -> datetime | 
 
 
 def _has_scoreable_data(year: int, month: int) -> bool:
-    return (
-        MonthlyTarget.objects.filter(year=year, month=month).exists()
-        or MonthlyMetricResult.objects.filter(year=year, month=month).exists()
-        or NewClientImportRow.objects.filter(year=year, month=month).exists()
+    return _period_has_operational_data(year, month)
+
+
+def _period_has_operational_data(year: int, month: int) -> bool:
+    """Mes con datos reales: imports, capturas, cumplimiento manual, etc.
+
+    No cuenta solo metas del plan (p. ej. meses 9–12 sin operación aún).
+    """
+    if (
+        NewClientImportRow.objects.filter(year=year, month=month).exists()
         or CrossSaleImportRow.objects.filter(year=year, month=month).exists()
         or ManualRequirementsCompliance.objects.filter(year=year, month=month).exists()
-    )
+        or InvestmentGrowthRow.objects.filter(year=year, month=month).exists()
+        or BankLoanMonthSnapshot.objects.filter(year=year, month=month).exists()
+    ):
+        return True
+    if FileUpload.objects.filter(detected_year=year, detected_month=month).exists():
+        return True
+    return MonthlyMetricResult.objects.filter(year=year, month=month).exclude(
+        measured_value__isnull=True
+    ).exists()
+
+
+def _period_needs_investment_ingresos(year: int, month: int) -> bool:
+    """Solo exigir cálculo Investment si hay insumos o resultado previo en ese mes."""
+    inv_une = _investment_une()
+    if not inv_une:
+        return False
+    if InvestmentGrowthRow.objects.filter(year=year, month=month).exists():
+        return True
+    if BankLoanMonthSnapshot.objects.filter(year=year, month=month).exists():
+        return True
+    if NewClientImportRow.objects.filter(year=year, month=month, une=inv_une).exists():
+        return True
+    metric = _ingresos_metric()
+    if not metric:
+        return False
+    return MonthlyMetricResult.objects.filter(
+        year=year,
+        month=month,
+        une=inv_une,
+        metric=metric,
+    ).exclude(measured_value__isnull=True).exists()
 
 
 def _score_complete(plan: PGCPlan | None, year: int, month: int) -> bool:
@@ -228,7 +264,7 @@ def period_pending_reasons(year: int, month: int) -> list[str]:
 
     inv_une = _investment_une()
     metric = _ingresos_metric()
-    if inv_une and has_investment_growth_data():
+    if inv_une and has_investment_growth_data() and _period_needs_investment_ingresos(year, month):
         latest_inv_ts = InvestmentGrowthRow.objects.aggregate(m=Max("updated_at"))["m"]
         latest_bank_ts = BankLoanMonthSnapshot.objects.aggregate(m=Max("updated_at"))["m"]
         latest_row_ts = max(
@@ -252,7 +288,7 @@ def period_pending_reasons(year: int, month: int) -> list[str]:
             reasons.append("Ingresos Investment desactualizados vs archivos AP/PG/bancos")
     elif inv_une and NewClientImportRow.objects.filter(
         year=year, month=month, une=inv_une
-    ).exists():
+    ).exists() and _period_has_operational_data(year, month):
         latest_row_ts = NewClientImportRow.objects.filter(
             year=year, month=month, une=inv_une
         ).aggregate(m=Max("updated_at"))["m"]
