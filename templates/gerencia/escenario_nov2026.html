@@ -4,31 +4,35 @@
 {% include "gerencia/_styles.html" %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
 <style>
-  .esc-driver { margin-bottom: 0.75rem; }
+  .esc-driver { margin-bottom: 0.65rem; }
   .esc-driver label { font-size: 0.72rem; font-weight: 600; color: var(--wcg-muted); display: flex; justify-content: space-between; }
-  .esc-driver output { font-weight: 700; color: #1e4d3a; }
-  .esc-driver input[type=range] { width: 100%; margin-top: 0.25rem; }
-  .esc-preset { font-size: 0.78rem; padding: 0.3rem 0.65rem; border-radius: 6px; border: 1px solid #b8cfc0; background: #fff; text-decoration: none; color: #3d5a4a; font-weight: 600; }
-  .esc-preset:hover { background: #e8f0eb; color: #1e4d3a; }
+  .esc-driver output { font-weight: 700; }
+  .esc-driver input[type=range] { width: 100%; margin-top: 0.2rem; }
+  .esc-col-base output { color: #5c4a1a; }
+  .esc-col-vivo output { color: #1e4d3a; }
+  .esc-preset { font-size: 0.75rem; padding: 0.25rem 0.55rem; border-radius: 6px; border: 1px solid #b8cfc0; background: #fff; text-decoration: none; color: #3d5a4a; font-weight: 600; }
   .esc-preset.on { background: #1e4d3a; color: #fff; border-color: #1e4d3a; }
-  .esc-flag { padding: 0.65rem 0.85rem; border-radius: 8px; border: 1px solid var(--wcg-line); margin-bottom: 0.5rem; font-size: 0.82rem; line-height: 1.4; }
-  .esc-flag.is-warn { background: #fbf6e9; border-left: 3px solid #a67c2a; }
-  .esc-flag.is-ok { background: #f0f6f2; border-left: 3px solid #2f5c4e; }
-  .esc-flag strong { display: block; font-size: 0.78rem; margin-bottom: 0.15rem; }
-  .ge-stat.is-ok .n { color: #2f5c4e; }
-  .ge-stat.is-warn .n { color: #7a6320; }
-  .ge-stat.is-risk .n { color: #8a3a34; }
+  .esc-mini th, .esc-mini td { font-size: 0.8rem; padding: 0.35rem 0.5rem; vertical-align: middle; }
+  .esc-mini .side-h { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--wcg-muted); font-weight: 700; }
+  .esc-phase-bar { display: flex; gap: 2px; margin-top: 0.5rem; font-size: 0.65rem; text-align: center; }
+  .esc-phase-bar span { flex: 1; padding: 0.25rem 0.1rem; border-radius: 4px; color: #fff; font-weight: 600; }
+  .esc-phase-bar .prep { background: #7a9bb8; }
+  .esc-phase-bar .apertura { background: #a67c2a; }
+  .esc-phase-bar .crisis { background: #8a3a34; }
+  .esc-phase-bar .secuela { background: #5b7c99; }
+  .cmp-worse { color: #8a3a34; font-weight: 600; }
+  .cmp-better { color: #2f5c4e; font-weight: 600; }
 </style>
 {% endblock %}
 {% block content %}
 <div class="ge-wrap mx-auto mt-2 mb-4">
   <div class="mb-2 d-flex justify-content-between align-items-start flex-wrap gap-2">
     <div>
-      <div class="ge-kicker">Escenarios · stress test</div>
+      <div class="ge-kicker">Escenarios · stress test comparativo</div>
       <h1 class="ge-title">Noviembre 2026 · Midterms EUA</h1>
       <p class="ge-sub mb-0">
-        Base <strong>{{ board.base_period }}</strong> · TC ref. Q{{ board.fx_ref }}/USD ·
-        pasivo USD sensible ~{{ board.usd_pasiva_share|floatformat:0 }}% · unidades {{ unit_label }}
+        Referencia <strong>{{ board.base_period }}</strong> · elecciones <strong>3 nov 2026</strong> ·
+        TC ref. Q{{ board.fx_ref }}/USD · {{ unit_label }}
       </p>
     </div>
     <a href="{% url 'gerencia:escenarios' %}" class="btn btn-sm btn-outline-secondary">← Escenarios</a>
@@ -36,186 +40,104 @@
   {% include "gerencia/_nav.html" %}
 
   {% if board.status != "ok" %}
-  <div class="ge-break">No hay datos financieros suficientes para este escenario.</div>
+  <div class="ge-break">No hay datos financieros suficientes.</div>
   {% else %}
 
-  <div class="ge-story mb-3">
-    Postura recomendada: <strong>defensiva, líquida y flexible</strong> — no alarmista.
-    El riesgo principal no es colapso súbito del dólar, sino la combinación de tasas altas,
-    volatilidad cambiaria, pivot de factoraje e inversiones crecientes sobre pasivo.
-  </div>
+  <div class="ge-story mb-3">{{ board.timeline_note }}</div>
 
-  <div class="row g-2 mb-3">
-    {% for card in board.base_cards %}
-    <div class="col-6 col-md-4 col-xl-2">
-      <div class="ge-stat is-{{ card.tone|default:'ok' }}">
-        <div class="n">{{ card.value }}</div>
-        <div class="l">{{ card.label }}</div>
-        {% if card.hint %}<div class="m">{{ card.hint }}</div>{% endif %}
-      </div>
-    </div>
-    {% endfor %}
-  </div>
-
-  <div class="row g-3">
-    <div class="col-lg-4">
-      <div class="ge-panel">
-        <div class="ge-panel-h">Drivers del escenario</div>
-        <div class="ge-panel-b">
-          <div class="d-flex flex-wrap gap-1 mb-3">
-            {% for row in board.preset_rows %}
-            <a href="?preset={{ row.id }}" class="esc-preset{% if preset == row.id %} on{% endif %}">{{ row.label }}</a>
-            {% endfor %}
-          </div>
-          <form method="get" id="escForm">
-            <div class="esc-driver">
-              <label>USD/GTQ (+ depreciación) <output id="oFx">{{ shocks.fx_pct|floatformat:1 }}%</output></label>
-              <input type="range" name="fx_pct" min="0" max="25" step="0.5" value="{{ shocks.fx_pct }}"
-                     oninput="oFx.value=this.value+'%'">
-            </div>
-            <div class="esc-driver">
-              <label>Tasas fondeo (+ pb) <output id="oRates">{{ shocks.rates_bp|floatformat:0 }}</output></label>
-              <input type="range" name="rates_bp" min="0" max="600" step="25" value="{{ shocks.rates_bp }}"
-                     oninput="oRates.textContent=this.value">
-            </div>
-            <div class="esc-driver">
-              <label>Mora clientes (+) <output id="oMora">{{ shocks.mora_pct|floatformat:0 }}%</output></label>
-              <input type="range" name="mora_pct" min="0" max="100" step="5" value="{{ shocks.mora_pct }}"
-                     oninput="oMora.value=this.value+'%'">
-            </div>
-            <div class="esc-driver">
-              <label>Retiros pasivas (+) <output id="oWd">{{ shocks.withdrawals_pct|floatformat:0 }}%</output></label>
-              <input type="range" name="withdrawals_pct" min="0" max="40" step="5" value="{{ shocks.withdrawals_pct }}"
-                     oninput="oWd.value=this.value+'%'">
-            </div>
-            <div class="esc-driver">
-              <label>Caída remesas / clientes (+) <output id="oRem">{{ shocks.remittances_pct|floatformat:0 }}%</output></label>
-              <input type="range" name="remittances_pct" min="0" max="30" step="5" value="{{ shocks.remittances_pct }}"
-                     oninput="oRem.value=this.value+'%'">
-            </div>
-            <div class="esc-driver">
-              <label>Recuperación cartera (−) <output id="oRec">{{ shocks.recovery_pct|floatformat:0 }}%</output></label>
-              <input type="range" name="recovery_pct" min="0" max="40" step="5" value="{{ shocks.recovery_pct }}"
-                     oninput="oRec.value=this.value+'%'">
-            </div>
-            <div class="esc-driver">
-              <label>Cartera factoraje / mes <output id="oFac">{{ shocks.factoraje_mom_pct|floatformat:1 }}%</output></label>
-              <input type="range" name="factoraje_mom_pct" min="-8" max="3" step="0.5" value="{{ shocks.factoraje_mom_pct }}"
-                     oninput="oFac.value=this.value+'%'">
-            </div>
-            <button type="submit" class="btn btn-sm btn-primary w-100 mt-2">Recalcular escenario</button>
-          </form>
-        </div>
-      </div>
-
-      <div class="ge-panel">
-        <div class="ge-panel-h">Contexto estratégico WCG</div>
-        <div class="ge-panel-b pt-2">
-          {% for flag in board.strategy_flags %}
-          <div class="esc-flag is-{{ flag.tone }}">
-            <strong>{{ flag.title }}</strong>
-            {{ flag.body }}
-          </div>
-          {% endfor %}
-        </div>
-      </div>
-    </div>
-
-    <div class="col-lg-8">
-      <div class="row g-2 mb-2">
-        <div class="col-md-4">
-          <div class="ge-stat is-{{ board.stressed.liquidez_tone }}">
-            <div class="n">{{ board.stressed.liquidez_display }}</div>
-            <div class="l">Liquidez estresada</div>
-          </div>
-        </div>
-        <div class="col-md-4">
-          <div class="ge-stat">
-            <div class="n">{{ board.stressed.util_display }}</div>
-            <div class="l">Utilidad mensual estresada</div>
-          </div>
-        </div>
-        <div class="col-md-4">
-          <div class="ge-stat">
-            <div class="n">{{ board.projection.utilidad_acum_q4|floatformat:0 }}</div>
-            <div class="l">Util. acum. sep–dic (estresada)</div>
-          </div>
-        </div>
-      </div>
-
-      <div class="ge-panel">
-        <div class="ge-panel-h">Proyección Q4 2026 → midterms (nov) y cierre</div>
-        <div class="ge-panel-b">
-          <div class="ge-chart" style="height:240px"><canvas id="escProj"></canvas></div>
-          <p class="small text-muted mb-0 mt-2">
-            Noviembre marca ventana electoral USA. La proyección aplica crecimiento mensual de cartera
-            y un factor de tensión en nov si FX ≥ 5%.
+  <div class="row g-3 mb-3">
+    <div class="col-lg-6">
+      <div class="ge-panel h-100">
+        <div class="ge-panel-h">Mini balance · corte {{ board.base_period }}</div>
+        <div class="ge-panel-b p-0">
+          <table class="table table-sm esc-mini mb-0">
+            <thead>
+              <tr>
+                <th class="side-h">Activo</th><th class="text-end">Monto</th>
+                <th class="side-h">Pasivo / fondeo</th><th class="text-end">Monto</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in board.mini_balance_rows %}
+              <tr>
+                <td>{{ row.activo_label }}</td>
+                <td class="text-end fw-semibold">{{ row.activo_value }}</td>
+                <td>{{ row.pasivo_label }}</td>
+                <td class="text-end fw-semibold">{{ row.pasivo_value }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          <p class="small text-muted px-3 py-2 mb-0 border-top">
+            Liquidez AC/PC al corte: <strong>{{ board.mini_balance.liquidez_display }}</strong>
           </p>
         </div>
       </div>
-
-      <div class="row g-3">
-        <div class="col-md-6">
-          <div class="ge-panel mb-0">
-            <div class="ge-panel-h">Impactos del mes (desglose)</div>
-            <div class="ge-panel-b p-0">
-              <table class="table table-sm ge-table mb-0">
-                <tbody>
-                  {% for row in board.impact_rows %}
-                  <tr><td>{{ row.label }}</td><td class="text-end">{{ row.value }}</td></tr>
-                  {% endfor %}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-        <div class="col-md-6">
-          <div class="ge-panel mb-0">
-            <div class="ge-panel-h">Comparación de presets</div>
-            <div class="ge-panel-b p-0">
-              <table class="table table-sm ge-table mb-0">
-                <thead><tr><th>Escenario</th><th class="text-end">Util/mes</th><th class="text-end">Liq nov</th><th class="text-end">Util Q4</th></tr></thead>
-                <tbody>
-                  {% for row in board.preset_rows %}
-                  <tr>
-                    <td><a href="?preset={{ row.id }}">{{ row.label }}</a></td>
-                    <td class="text-end">{{ row.util_mes_display }}</td>
-                    <td class="text-end">{{ row.liquidez_nov_display }}</td>
-                    <td class="text-end">{{ row.util_q4_display }}</td>
-                  </tr>
-                  {% endfor %}
-                </tbody>
-              </table>
-            </div>
-          </div>
+    </div>
+    <div class="col-lg-6">
+      <div class="ge-panel h-100">
+        <div class="ge-panel-h">Mini resultados · acumulado {{ board.base_period|slice:":4" }}</div>
+        <div class="ge-panel-b p-0">
+          <table class="table table-sm esc-mini mb-0">
+            <tbody>
+              {% for row in board.mini_results %}
+              <tr>
+                <td>{{ row.label }}</td>
+                <td class="text-end fw-semibold">{{ row.value }}</td>
+              </tr>
+              <tr><td colspan="2" class="text-muted small pt-0 pb-2">{{ row.hint }}</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
   </div>
 
-  <div class="ge-panel mt-3">
-    <div class="ge-panel-h">Sensibilidad tipo de cambio · márgenes y liquidez</div>
+  <form method="get" id="escForm">
+    <div class="row g-3 mb-3">
+      <div class="col-lg-6">
+        <div class="ge-panel esc-col-base">
+          <div class="ge-panel-h">Escenario base · drivers</div>
+          <div class="ge-panel-b">
+            <p class="small text-muted">Continuidad / preparación (sep–oct sin shock). Compare contra el vivo.</p>
+            {% include "gerencia/_escenario_drivers.html" with prefix="base" shocks=shocks_base only %}
+          </div>
+        </div>
+      </div>
+      <div class="col-lg-6">
+        <div class="ge-panel esc-col-vivo">
+          <div class="ge-panel-h">Escenario vivo · drivers</div>
+          <div class="ge-panel-b">
+            <div class="d-flex flex-wrap gap-1 mb-2">
+              {% for key, preset in board.vivo_presets.items %}
+              <a href="?preset_vivo={{ key }}" class="esc-preset{% if preset_vivo == key %} on{% endif %}">{{ preset.label }}</a>
+              {% endfor %}
+            </div>
+            {% include "gerencia/_escenario_drivers.html" with prefix="vivo" shocks=shocks_vivo only %}
+          </div>
+        </div>
+      </div>
+    </div>
+    <button type="submit" class="btn btn-sm btn-primary mb-3">Recalcular comparación</button>
+  </form>
+
+  <div class="ge-panel mb-3">
+    <div class="ge-panel-h">Comparación base vs vivo</div>
     <div class="ge-panel-b p-0">
-      <table class="table table-sm ge-table mb-0">
+      <table class="table table-sm esc-mini mb-0">
         <thead>
-          <tr>
-            <th>Shock USD/GTQ</th>
-            <th class="text-end">TC ref.</th>
-            <th class="text-end">Liquidez</th>
-            <th class="text-end">Spread mín. sug.</th>
-            <th class="text-end">Colchón liq. (000)</th>
-            <th class="text-end">Util/mes</th>
-          </tr>
+          <tr><th>Métrica</th><th class="text-end">Base</th><th class="text-end">Vivo</th><th class="text-end">Δ</th></tr>
         </thead>
         <tbody>
-          {% for row in board.fx_matrix %}
+          {% for row in board.compare_rows %}
           <tr>
-            <td>+{{ row.fx_pct|floatformat:0 }}%</td>
-            <td class="text-end">Q{{ row.usd_gtq }}</td>
-            <td class="text-end">{{ row.liquidez_display }}</td>
-            <td class="text-end">{{ row.min_spread_pp }} pp</td>
-            <td class="text-end">{{ row.liquidity_buffer_000|floatformat:0 }}</td>
-            <td class="text-end">{{ row.util_mes|floatformat:0 }}</td>
+            <td>{{ row.label }}</td>
+            <td class="text-end">{{ row.base }}</td>
+            <td class="text-end">{{ row.vivo }}</td>
+            <td class="text-end {% if row.tone == 'risk' %}cmp-worse{% elif row.tone == 'warn' %}cmp-worse{% else %}cmp-better{% endif %}">
+              {{ row.delta_display }}
+            </td>
           </tr>
           {% endfor %}
         </tbody>
@@ -223,10 +145,57 @@
     </div>
   </div>
 
-  <div class="ge-panel mt-3">
-    <div class="ge-panel-h">Precauciones operativas (según escenario activo)</div>
+  <div class="ge-panel mb-3">
+    <div class="ge-panel-h">Línea de tiempo · sep-2026 → jul-2027</div>
     <div class="ge-panel-b">
-      <ul class="mb-0" style="padding-left:1.1rem;font-size:0.88rem;line-height:1.45;">
+      <div class="ge-chart" style="height:280px"><canvas id="escTimeline"></canvas></div>
+      <div class="esc-phase-bar" aria-hidden="true">
+        <span class="prep" style="flex:2">Sep–Oct prep.</span>
+        <span class="apertura">Nov</span>
+        <span class="crisis" style="flex:2">Dic–Ene crisis</span>
+        <span class="secuela" style="flex:6">Feb–Jul secuela</span>
+      </div>
+      <p class="small text-muted mb-0 mt-2">
+        <strong>Sep–oct:</strong> sin impacto del stress (tiempo de preparación).
+        <strong>Nov:</strong> apertura parcial (35%) — hipótesis de escalada tardía post 3-nov.
+        <strong>Dic–ene:</strong> crisis plena. <strong>Feb–jul:</strong> secuela decreciente (~6 meses).
+      </p>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-3">
+    <div class="col-md-6">
+      <div class="ge-panel mb-0">
+        <div class="ge-panel-h">Mini balance · fin simulación · base</div>
+        <div class="ge-panel-b p-0">
+          <table class="table table-sm esc-mini mb-0">
+            {% for row in board.mini_balance_base_crisis.pasivos %}
+            <tr><td>{{ row.label }}</td><td class="text-end">{{ row.value }}</td></tr>
+            {% endfor %}
+            <tr class="table-light"><td>Liquidez simulada</td><td class="text-end">{{ board.mini_balance_base_crisis.liquidez_display }}</td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="ge-panel mb-0">
+        <div class="ge-panel-h">Mini balance · fin simulación · vivo</div>
+        <div class="ge-panel-b p-0">
+          <table class="table table-sm esc-mini mb-0">
+            {% for row in board.mini_balance_vivo_crisis.pasivos %}
+            <tr><td>{{ row.label }}</td><td class="text-end">{{ row.value }}</td></tr>
+            {% endfor %}
+            <tr class="table-light"><td>Liquidez simulada</td><td class="text-end">{{ board.mini_balance_vivo_crisis.liquidez_display }}</td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ge-panel">
+    <div class="ge-panel-h">Precauciones (escenario vivo)</div>
+    <div class="ge-panel-b">
+      <ul class="mb-0" style="padding-left:1.1rem;font-size:0.88rem;">
         {% for item in board.precautions %}
         <li class="mb-1">{{ item }}</li>
         {% endfor %}
@@ -243,7 +212,7 @@ document.addEventListener('DOMContentLoaded', function () {
   if (!window.Chart) return;
   const raw = {{ chart_json|safe }};
   if (!raw.labels) return;
-  new Chart(document.getElementById('escProj'), {
+  new Chart(document.getElementById('escTimeline'), {
     type: 'line',
     data: raw,
     options: {
@@ -252,8 +221,8 @@ document.addEventListener('DOMContentLoaded', function () {
       interaction: { mode: 'index', intersect: false },
       plugins: { legend: { labels: { font: { size: 10 }, boxWidth: 12 } } },
       scales: {
-        y: { position: 'left', title: { display: true, text: 'Utilidad (000)', font: { size: 10 } } },
-        y1: { position: 'right', grid: { drawOnChartArea: false }, title: { display: true, text: 'Liquidez ×', font: { size: 10 } } }
+        y: { position: 'left', title: { display: true, text: 'Liquidez ×', font: { size: 10 } } },
+        y1: { position: 'right', grid: { drawOnChartArea: false }, title: { display: true, text: 'Utilidad (000)', font: { size: 10 } } }
       }
     }
   });

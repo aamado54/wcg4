@@ -78,8 +78,9 @@ class GerenciaCalcTests(TestCase):
         board = build_nov2026_board(load_finance())
         self.assertEqual(board["status"], "ok")
         self.assertEqual(board["base_period"], "2026-08")
-        self.assertGreaterEqual(len(board["preset_rows"]), 4)
-        self.assertGreaterEqual(len(board["fx_matrix"]), 5)
+        self.assertIn("mini_balance_rows", board)
+        self.assertIn("compare_rows", board)
+        self.assertEqual(len(board["chart_timeline"]["labels"]), 11)
 
 
 class GerenciaViewTests(TestCase):
@@ -122,13 +123,14 @@ class GerenciaViewTests(TestCase):
     def test_escenario_nov2026_200(self):
         resp = self.client.get(reverse("gerencia:escenario_nov2026"))
         self.assertEqual(resp.status_code, 200)
-        self.assertContains(resp, "Midterms EUA")
-        self.assertContains(resp, "Sensibilidad tipo de cambio")
+        self.assertContains(resp, "Mini balance")
+        self.assertContains(resp, "Escenario base")
+        self.assertContains(resp, "Escenario vivo")
 
     def test_escenario_preset(self):
-        resp = self.client.get(reverse("gerencia:escenario_nov2026") + "?preset=severo")
+        resp = self.client.get(reverse("gerencia:escenario_nov2026") + "?preset_vivo=severo")
         self.assertEqual(resp.status_code, 200)
-        self.assertContains(resp, "Comparación de presets")
+        self.assertContains(resp, "Comparación base vs vivo")
 
     def test_whatif_200(self):
         resp = self.client.get(reverse("gerencia:whatif"))

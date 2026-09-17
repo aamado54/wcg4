@@ -1,0 +1,35 @@
+<div class="esc-driver">
+  <label>USD/GTQ (+ depreciación) <output id="o{{ prefix }}Fx">{{ shocks.fx_pct|floatformat:1 }}%</output></label>
+  <input type="range" name="{{ prefix }}_fx_pct" min="0" max="25" step="0.5" value="{{ shocks.fx_pct }}"
+         oninput="document.getElementById('o{{ prefix }}Fx').textContent=this.value+'%'">
+</div>
+<div class="esc-driver">
+  <label>Tasas fondeo (+ pb) <output id="o{{ prefix }}Rates">{{ shocks.rates_bp|floatformat:0 }}</output></label>
+  <input type="range" name="{{ prefix }}_rates_bp" min="0" max="600" step="25" value="{{ shocks.rates_bp }}"
+         oninput="document.getElementById('o{{ prefix }}Rates').textContent=this.value">
+</div>
+<div class="esc-driver">
+  <label>Mora clientes (+) <output id="o{{ prefix }}Mora">{{ shocks.mora_pct|floatformat:0 }}%</output></label>
+  <input type="range" name="{{ prefix }}_mora_pct" min="0" max="100" step="5" value="{{ shocks.mora_pct }}"
+         oninput="document.getElementById('o{{ prefix }}Mora').textContent=this.value+'%'">
+</div>
+<div class="esc-driver">
+  <label>Retiros pasivas (+) <output id="o{{ prefix }}Wd">{{ shocks.withdrawals_pct|floatformat:0 }}%</output></label>
+  <input type="range" name="{{ prefix }}_withdrawals_pct" min="0" max="40" step="5" value="{{ shocks.withdrawals_pct }}"
+         oninput="document.getElementById('o{{ prefix }}Wd').textContent=this.value+'%'">
+</div>
+<div class="esc-driver">
+  <label>Caída remesas (+) <output id="o{{ prefix }}Rem">{{ shocks.remittances_pct|floatformat:0 }}%</output></label>
+  <input type="range" name="{{ prefix }}_remittances_pct" min="0" max="30" step="5" value="{{ shocks.remittances_pct }}"
+         oninput="document.getElementById('o{{ prefix }}Rem').textContent=this.value+'%'">
+</div>
+<div class="esc-driver">
+  <label>Recuperación cartera (−) <output id="o{{ prefix }}Rec">{{ shocks.recovery_pct|floatformat:0 }}%</output></label>
+  <input type="range" name="{{ prefix }}_recovery_pct" min="0" max="40" step="5" value="{{ shocks.recovery_pct }}"
+         oninput="document.getElementById('o{{ prefix }}Rec').textContent=this.value+'%'">
+</div>
+<div class="esc-driver">
+  <label>Cartera / mes <output id="o{{ prefix }}Fac">{{ shocks.factoraje_mom_pct|floatformat:1 }}%</output></label>
+  <input type="range" name="{{ prefix }}_factoraje_mom_pct" min="-8" max="3" step="0.5" value="{{ shocks.factoraje_mom_pct }}"
+         oninput="document.getElementById('o{{ prefix }}Fac').textContent=this.value+'%'">
+</div>

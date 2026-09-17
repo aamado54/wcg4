@@ -212,33 +212,34 @@ def escenarios(request):
     )
 
 
-def _parse_escenario_shocks(request) -> dict[str, float]:
+def _parse_shock_set(request, prefix: str) -> dict[str, float]:
     from .calc.escenarios import default_shocks, parse_shock
 
     base = default_shocks()
     g = request.GET
-    return {
-        "fx_pct": parse_shock(g.get("fx_pct"), base["fx_pct"]),
-        "rates_bp": parse_shock(g.get("rates_bp"), base["rates_bp"]),
-        "mora_pct": parse_shock(g.get("mora_pct"), base["mora_pct"]),
-        "withdrawals_pct": parse_shock(g.get("withdrawals_pct"), base["withdrawals_pct"]),
-        "remittances_pct": parse_shock(g.get("remittances_pct"), base["remittances_pct"]),
-        "recovery_pct": parse_shock(g.get("recovery_pct"), base["recovery_pct"]),
-        "factoraje_mom_pct": parse_shock(g.get("factoraje_mom_pct"), base["factoraje_mom_pct"]),
-    }
+    keys = default_shocks().keys()
+    return {k: parse_shock(g.get(f"{prefix}_{k}"), base[k]) for k in keys}
 
 
 @risk_gerencia_required
 def escenario_nov2026(request):
-    preset = (request.GET.get("preset") or "").strip().lower()
-    shocks = _parse_escenario_shocks(request)
-    if preset in engine.ESCENARIO_PRESETS:
-        for k in shocks:
-            if k in engine.ESCENARIO_PRESETS[preset]:
-                shocks[k] = float(engine.ESCENARIO_PRESETS[preset][k])
+    preset_vivo = (request.GET.get("preset_vivo") or "").strip().lower()
+    shocks_base = _parse_shock_set(request, "base")
+    shocks_vivo = _parse_shock_set(request, "vivo")
+    if preset_vivo in engine.ESCENARIO_PRESETS and preset_vivo != "base":
+        preset = engine.ESCENARIO_PRESETS[preset_vivo]
+        for k in shocks_vivo:
+            if k in preset:
+                shocks_vivo[k] = float(preset[k])
     ccy = _ccy(request)
     fx = _fx("2026-08")
-    board = engine.board_escenario_nov2026(shocks=shocks, bu="T", ccy=ccy, fx=fx)
+    board = engine.board_escenario_nov2026(
+        shocks_base=shocks_base,
+        shocks_vivo=shocks_vivo,
+        bu="T",
+        ccy=ccy,
+        fx=fx,
+    )
     return render(
         request,
         "gerencia/escenario_nov2026.html",
@@ -246,9 +247,10 @@ def escenario_nov2026(request):
             request,
             "escenarios",
             board=board,
-            shocks=shocks,
-            preset=preset,
-            chart_json=json.dumps(board.get("chart_projection") or {}),
+            shocks_base=shocks_base,
+            shocks_vivo=shocks_vivo,
+            preset_vivo=preset_vivo,
+            chart_json=json.dumps(board.get("chart_timeline") or {}),
             breadcrumbs=_crumbs("Escenarios", "Noviembre 2026"),
         ),
     )
