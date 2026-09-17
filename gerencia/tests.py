@@ -72,6 +72,15 @@ class GerenciaCalcTests(TestCase):
         self.assertEqual(board["status"], "ok")
         self.assertGreaterEqual(len(board["rows"]), 5)
 
+    def test_escenario_nov2026_board(self):
+        from gerencia.calc.escenarios import build_nov2026_board
+
+        board = build_nov2026_board(load_finance())
+        self.assertEqual(board["status"], "ok")
+        self.assertEqual(board["base_period"], "2026-08")
+        self.assertGreaterEqual(len(board["preset_rows"]), 4)
+        self.assertGreaterEqual(len(board["fx_matrix"]), 5)
+
 
 class GerenciaViewTests(TestCase):
     def setUp(self):
@@ -103,6 +112,23 @@ class GerenciaViewTests(TestCase):
     def test_comando_200(self):
         resp = self.client.get(reverse("gerencia:comando"))
         self.assertEqual(resp.status_code, 200)
+
+    def test_escenarios_200(self):
+        resp = self.client.get(reverse("gerencia:escenarios"))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Escenarios")
+        self.assertContains(resp, "ge-nav-scenarios")
+
+    def test_escenario_nov2026_200(self):
+        resp = self.client.get(reverse("gerencia:escenario_nov2026"))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Midterms EUA")
+        self.assertContains(resp, "Sensibilidad tipo de cambio")
+
+    def test_escenario_preset(self):
+        resp = self.client.get(reverse("gerencia:escenario_nov2026") + "?preset=severo")
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Comparación de presets")
 
     def test_whatif_200(self):
         resp = self.client.get(reverse("gerencia:whatif"))

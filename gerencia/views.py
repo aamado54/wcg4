@@ -40,13 +40,14 @@ def _strict() -> bool:
 
 def _nav(active: str) -> list[dict]:
     items = [
-        ("intermediacion", "Intermediación", "gerencia:intermediacion", False),
-        ("liquidez", "Liquidez", "gerencia:liquidez", False),
-        ("estructura", "Estructura", "gerencia:estructura", False),
-        ("indices", "Índices", "gerencia:indices", False),
-        ("whatif", "What-if", "gerencia:whatif", False),
-        ("detalle", "Detalle", "gerencia:detalle", False),
-        ("comando", "✦ Comando", "gerencia:comando", True),
+        ("intermediacion", "Intermediación", "gerencia:intermediacion", None),
+        ("liquidez", "Liquidez", "gerencia:liquidez", None),
+        ("estructura", "Estructura", "gerencia:estructura", None),
+        ("indices", "Índices", "gerencia:indices", None),
+        ("whatif", "What-if", "gerencia:whatif", None),
+        ("detalle", "Detalle", "gerencia:detalle", None),
+        ("escenarios", "Escenarios", "gerencia:escenarios", "secondary"),
+        ("comando", "✦ Comando", "gerencia:comando", "primary"),
     ]
     return [
         {"key": k, "label": lab, "url_name": u, "active": k == active, "launch": launch}
@@ -194,6 +195,61 @@ def estructura(request):
             chart_activos_json=json.dumps(board.get("chart_activos") or {}),
             chart_deuda_json=json.dumps(board.get("chart_deuda") or {}),
             breadcrumbs=_crumbs("Estructura"),
+        ),
+    )
+
+
+@risk_gerencia_required
+def escenarios(request):
+    return render(
+        request,
+        "gerencia/escenarios.html",
+        _page(
+            request,
+            "escenarios",
+            breadcrumbs=_crumbs("Escenarios"),
+        ),
+    )
+
+
+def _parse_escenario_shocks(request) -> dict[str, float]:
+    from .calc.escenarios import default_shocks, parse_shock
+
+    base = default_shocks()
+    g = request.GET
+    return {
+        "fx_pct": parse_shock(g.get("fx_pct"), base["fx_pct"]),
+        "rates_bp": parse_shock(g.get("rates_bp"), base["rates_bp"]),
+        "mora_pct": parse_shock(g.get("mora_pct"), base["mora_pct"]),
+        "withdrawals_pct": parse_shock(g.get("withdrawals_pct"), base["withdrawals_pct"]),
+        "remittances_pct": parse_shock(g.get("remittances_pct"), base["remittances_pct"]),
+        "recovery_pct": parse_shock(g.get("recovery_pct"), base["recovery_pct"]),
+        "factoraje_mom_pct": parse_shock(g.get("factoraje_mom_pct"), base["factoraje_mom_pct"]),
+    }
+
+
+@risk_gerencia_required
+def escenario_nov2026(request):
+    preset = (request.GET.get("preset") or "").strip().lower()
+    shocks = _parse_escenario_shocks(request)
+    if preset in engine.ESCENARIO_PRESETS:
+        for k in shocks:
+            if k in engine.ESCENARIO_PRESETS[preset]:
+                shocks[k] = float(engine.ESCENARIO_PRESETS[preset][k])
+    ccy = _ccy(request)
+    fx = _fx("2026-08")
+    board = engine.board_escenario_nov2026(shocks=shocks, bu="T", ccy=ccy, fx=fx)
+    return render(
+        request,
+        "gerencia/escenario_nov2026.html",
+        _page(
+            request,
+            "escenarios",
+            board=board,
+            shocks=shocks,
+            preset=preset,
+            chart_json=json.dumps(board.get("chart_projection") or {}),
+            breadcrumbs=_crumbs("Escenarios", "Noviembre 2026"),
         ),
     )
 

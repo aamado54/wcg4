@@ -17,6 +17,7 @@ from .liquidez import build_estructura_board, build_liquidez_board
 from .utils import rates_from_meta
 from .pasivas_growth import build_pasivas_growth_board
 from .whatif import DEFAULT_DRIVERS, drivers_as_pct_display, format_pct, parse_pct, run_whatif
+from .escenarios import PRESETS as ESCENARIO_PRESETS, build_nov2026_board, default_shocks, parse_shock
 
 
 def load_finance() -> dict[str, Any]:
@@ -64,6 +65,10 @@ def board_whatif(**kwargs) -> dict[str, Any]:
     return run_whatif(load_finance(), **kwargs)
 
 
+def board_escenario_nov2026(**kwargs) -> dict[str, Any]:
+    return build_nov2026_board(load_finance(), **kwargs)
+
+
 def board_trimestral(bu: str = "T", mode: str = "gerencial") -> dict[str, Any]:
     data = load_finance()
     periods = list(data.get("periods") or [])
@@ -107,5 +112,9 @@ __all__ = [
     "board_comando",
     "board_pasivas_growth",
     "board_whatif",
+    "board_escenario_nov2026",
     "board_trimestral",
+    "default_shocks",
+    "parse_shock",
+    "ESCENARIO_PRESETS",
 ]

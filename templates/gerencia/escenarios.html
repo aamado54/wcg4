@@ -1,0 +1,36 @@
+{% extends "base_wcg.html" %}
+{% block title %}Escenarios — Centro Gerencial{% endblock %}
+{% block extra_head %}{% include "gerencia/_styles.html" %}{% endblock %}
+{% block content %}
+<div class="ge-wrap mx-auto mt-2 mb-4">
+  <div class="mb-2">
+    <div class="ge-kicker">Centro Gerencial · análisis de riesgo</div>
+    <h1 class="ge-title">Escenarios</h1>
+    <p class="ge-sub">
+      Ejercicios de stress test y sensibilidad sobre la situación de WCG.
+      Parte de estados financieros al corte de agosto 2026.
+    </p>
+  </div>
+  {% include "gerencia/_nav.html" %}
+
+  <div class="row g-3 mt-1">
+    <div class="col-md-6 col-lg-5">
+      <a href="{% url 'gerencia:escenario_nov2026' %}" class="text-decoration-none text-reset d-block h-100">
+        <div class="ge-panel h-100" style="transition:box-shadow .12s;">
+          <div class="ge-panel-h d-flex justify-content-between align-items-center">
+            <span>Noviembre 2026 · Midterms EUA</span>
+            <span class="badge text-bg-success">Activo</span>
+          </div>
+          <div class="ge-panel-b">
+            <p class="small text-muted mb-2">
+              Situación agosto, proyección Q4, sensibilidad cambiaria y presets
+              moderado / severo / extremo. Drivers ajustables.
+            </p>
+            <span class="small fw-semibold" style="color:#1e4d3a;">Abrir escenario →</span>
+          </div>
+        </div>
+      </a>
+    </div>
+  </div>
+</div>
+{% endblock %}

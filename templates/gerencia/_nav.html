@@ -1,8 +1,11 @@
 <nav class="ge-nav" aria-label="Centro Gerencial">
   {% for item in nav %}
-  {% if item.launch %}
+  {% if item.launch == "primary" %}
   <a href="{% url item.url_name %}"
      class="ge-nav-launch {% if item.active %}active{% endif %}">{{ item.label }}</a>
+  {% elif item.launch == "secondary" %}
+  <a href="{% url item.url_name %}"
+     class="ge-nav-scenarios {% if item.active %}active{% endif %}">{{ item.label }}</a>
   {% else %}
   <a href="{% url item.url_name %}{% if bu %}?bu={{ bu }}{% endif %}{% if vista %}&amp;vista={{ vista }}{% endif %}"
      class="{% if item.active %}active{% endif %}">{{ item.label }}</a>
