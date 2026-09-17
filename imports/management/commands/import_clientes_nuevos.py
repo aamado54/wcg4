@@ -116,11 +116,21 @@ class Command(BaseCommand):
         currency_warnings: list[str] = []
         q_alias_count = 0
 
-        with path.open("r", encoding="utf-8-sig") as f:
+        with path.open("r", encoding="utf-8-sig", newline="") as f:
             sample = f.read(4096)
             f.seek(0)
-            dialect = csv.Sniffer().sniff(sample, delimiters=[",", "\t", ";"])
-            reader = csv.DictReader(f, dialect=dialect)
+            # Coma estándar primero (Sniffer rompe nombres con coma entre comillas).
+            try:
+                reader = csv.DictReader(f)
+                peek = next(iter(reader), None)
+                f.seek(0)
+                reader = csv.DictReader(f)
+                if peek is None or not row_get(peek, "AnioMes", "anio_mes"):
+                    raise ValueError("encabezado no reconocido con coma")
+            except (StopIteration, ValueError, csv.Error):
+                f.seek(0)
+                dialect = csv.Sniffer().sniff(sample, delimiters=[",", "\t", ";"])
+                reader = csv.DictReader(f, dialect=dialect)
 
             replaced_months: set[tuple[int, int]] = set()
             for line_no, row in enumerate(reader, start=2):
@@ -280,7 +290,7 @@ class Command(BaseCommand):
                 )[:2000]
                 source_upload.save(update_fields=["parsing_notes"])
 
-        years_in_file = sorted({year for (year, _, _), _ in counts.items()})
+        years_in_file = sorted({year for year, _ in months_touched})
         if not years_in_file:
             # Puede haber filas guardadas sin counts_as_new; no es error duro.
             if rows_written:
@@ -307,42 +317,39 @@ class Command(BaseCommand):
             raise CommandError(f"No existe PGCPlan para año {year_for_plan}.")
 
         total_updated = 0
-        for (year, month, une_id), count in counts.items():
-            une = UNE.objects.get(id=une_id)
-            try:
-                target = MonthlyTarget.objects.get(
+        active_unes = list(UNE.objects.filter(is_active=True))
+        for year, month in sorted(months_touched):
+            for une in active_unes:
+                count = counts.get((year, month, une.id), 0)
+                try:
+                    target = MonthlyTarget.objects.get(
+                        plan=plan,
+                        une=une,
+                        metric=metric,
+                        year=year,
+                        month=month,
+                    )
+                except MonthlyTarget.DoesNotExist:
+                    continue
+
+                mmr, _ = MonthlyMetricResult.objects.get_or_create(
                     plan=plan,
                     une=une,
                     metric=metric,
                     year=year,
                     month=month,
+                    defaults={"target_value": target.target_value},
                 )
-            except MonthlyTarget.DoesNotExist:
+                mmr.target_value = target.target_value
+                mmr.measured_value = Decimal(str(count))
+                mmr.calculation_note = (
+                    f"{count} clientes nuevos contados desde {imported_file_name}"
+                )
+                mmr.save()
+                total_updated += 1
                 self.stdout.write(
-                    self.style.WARNING(
-                        f"Sin MonthlyTarget para {une.code} {year}-{month:02d}"
-                    )
+                    f"Actualizado CLIENTES_NUEVOS {une.code} {year}-{month:02d}: {count}"
                 )
-                continue
-
-            mmr, _ = MonthlyMetricResult.objects.get_or_create(
-                plan=plan,
-                une=une,
-                metric=metric,
-                year=year,
-                month=month,
-                defaults={"target_value": target.target_value},
-            )
-            mmr.target_value = target.target_value
-            mmr.measured_value = Decimal(str(count))
-            mmr.calculation_note = (
-                f"{count} clientes nuevos contados desde {imported_file_name}"
-            )
-            mmr.save()
-            total_updated += 1
-            self.stdout.write(
-                f"Actualizado CLIENTES_NUEVOS {une.code} {year}-{month:02d}: {count}"
-            )
 
         for year, month in sorted(months_touched):
             try:

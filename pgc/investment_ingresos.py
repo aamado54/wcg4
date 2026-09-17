@@ -131,6 +131,20 @@ def _previous_period(year: int, month: int) -> tuple[int, int]:
     return year - 1, 12
 
 
+def _banks_snapshot_exists(year: int, month: int) -> bool:
+    return BankLoanMonthSnapshot.objects.filter(year=year, month=month).exists()
+
+
+def _ap_pg_total_usd(gross: dict[str, Decimal | None]) -> Decimal | None:
+    if not gross.get("has_data"):
+        return None
+    ap = gross.get("ap_usd")
+    pg = gross.get("pg_usd")
+    if ap is None and pg is None:
+        return None
+    return (ap or Decimal("0")) + (pg or Decimal("0"))
+
+
 def investment_net_growth_usd(year: int, month: int) -> Decimal | None:
     """Incremento mensual del total dolarizado (USD completos). None si no hay mes previo."""
     current = investment_gross_usd(year, month)
@@ -141,6 +155,16 @@ def investment_net_growth_usd(year: int, month: int) -> Decimal | None:
     previous = investment_gross_usd(prev_year, prev_month)
     if not previous["has_data"] or previous["total_usd"] is None:
         return None
+
+    cur_banks = _banks_snapshot_exists(year, month)
+    prev_banks = _banks_snapshot_exists(prev_year, prev_month)
+    # Evita deltas falsos cuando un mes trae bancos y el otro no (p. ej. ago sin Bancos_Fin_de_mes).
+    if cur_banks != prev_banks:
+        cur_ap_pg = _ap_pg_total_usd(current)
+        prev_ap_pg = _ap_pg_total_usd(previous)
+        if cur_ap_pg is None or prev_ap_pg is None:
+            return None
+        return cur_ap_pg - prev_ap_pg
 
     return current["total_usd"] - previous["total_usd"]
 
@@ -267,6 +291,15 @@ def sum_investment_ingresos_usd(
                 "source": "investment_growth",
                 "note": "Sin mes anterior para calcular crecimiento neto.",
             }
+        note = ""
+        if (
+            summary["growth_usd"] is not None
+            and _banks_snapshot_exists(year, month)
+            != _banks_snapshot_exists(*_previous_period(year, month))
+        ):
+            note = (
+                "Crecimiento calculado solo AP+PG (un mes con bancos y el otro sin snapshot bancario)."
+            )
         return {
             "une": une,
             "total_usd": growth_miles,
@@ -275,7 +308,7 @@ def sum_investment_ingresos_usd(
             "growth_usd": summary["growth_usd"],
             "gross": summary["gross"],
             "source": "investment_growth",
-            "note": "",
+            "note": note,
         }
 
     if not une:

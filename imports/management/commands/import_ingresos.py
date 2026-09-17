@@ -71,6 +71,15 @@ class Command(BaseCommand):
                 f"No se pudo convertir a decimal ({context}). Valor bruto={raw_value!r}"
             )
 
+    def _saldo_fin_col(self, ws) -> int | None:
+        for col_idx, cell in enumerate(ws[1], start=1):
+            if cell.value is None:
+                continue
+            header = str(cell.value).strip().upper().replace(" ", "")
+            if header in ("SALDOFIN", "SALDOFINAL"):
+                return col_idx
+        return None
+
     def _sum_accounts_starting_with(self, ws, month: int, prefix: str) -> Decimal:
         """
         Suma cuentas contables que empiezan con `prefix` (ej: '4' o '8').
@@ -83,27 +92,21 @@ class Command(BaseCommand):
            - y tenga exactamente 9 dígitos
            - tomando el valor de la columna del mes en español.
         """
-        cuenta_col = 2  # B
-
-        # ---- Paso 1: detectar si existe CUENTA == prefix ----
+        # ---- Paso 1: fila con código de cuenta == prefix (NUMERO CUENTA o CUENTA) ----
         row_with_prefix = None
         for row in ws.iter_rows(min_row=2):
-            cuenta = row[cuenta_col - 1].value
-            if cuenta is None:
-                continue
-            if str(cuenta).strip() == prefix:
-                row_with_prefix = row
+            for cell in row[:4]:
+                if cell.value is None:
+                    continue
+                if str(cell.value).strip() == prefix:
+                    row_with_prefix = row
+                    break
+            if row_with_prefix is not None:
                 break
 
         # ---- Si existe CUENTA == prefix, usar SOLO esa lógica ----
         if row_with_prefix is not None:
-            saldo_fin_col = None
-            for col_idx, cell in enumerate(ws[1], start=1):
-                if cell.value is None:
-                    continue
-                if str(cell.value).strip().upper() == "SALDOFIN":
-                    saldo_fin_col = col_idx
-                    break
+            saldo_fin_col = self._saldo_fin_col(ws)
 
             if saldo_fin_col is None:
                 # No hay columna SALDOFIN, retornar cero (sin error)
