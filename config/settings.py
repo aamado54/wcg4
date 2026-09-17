@@ -184,6 +184,13 @@ WCG_EVALUACION_RIESGO_XLSX = Path(
         str(BASE_DIR / "docs" / "WCG-evaluacion-riesgo-clientes-2025.xlsx"),
     )
 )
+# Directorio de plantillas individuales por cliente (Task 3B).
+WCG_EVALUACION_PLANTILLAS_DIR = Path(
+    os.environ.get(
+        "WCG_EVALUACION_PLANTILLAS_DIR",
+        str(BASE_DIR.parent / "data" / "now" / "plantillas" / "ejemplos"),
+    )
+)
 
 LOGIN_URL = '/accounts/login/'
 LOGIN_REDIRECT_URL = '/panel/'

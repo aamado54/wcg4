@@ -1,5 +1,8 @@
 """Tests de la extensión evaluación financiera (aislada del Comando Balón)."""
 
+from pathlib import Path
+
+from django.conf import settings
 from django.test import SimpleTestCase, TestCase
 from django.urls import reverse
 
@@ -20,6 +23,15 @@ class EvaluacionReaderTests(SimpleTestCase):
         sample = ds.companies[0]
         self.assertTrue(sample.periods)
         self.assertIn("z_emergentes", sample.periods[-1].z_scores)
+
+    def test_load_from_plantillas_dir(self):
+        root = Path(settings.BASE_DIR).parent
+        source = root / "data" / "now" / "plantillas" / "ejemplos"
+        if not source.is_dir():
+            self.skipTest("Sin directorio de plantillas ejemplo")
+        ds = load_evaluacion(templates_dir=source)
+        self.assertIn(ds.status, ("ok", "partial"))
+        self.assertGreater(len(ds.companies), 0)
 
     def test_missing_file_safe(self):
         ds = load_evaluacion(path="/tmp/no-existe-evaluacion-wcg.xlsx")

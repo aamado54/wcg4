@@ -5,8 +5,9 @@ Fuente inicial: plantilla Excel `WCG-evaluacion-riesgo-clientes-2025.xlsx`
 operativos existentes.
 
 Costura para importación formal (sin reescribir la vista):
-    dataset = load_evaluacion()                      # path default / settings
+    dataset = load_evaluacion()                      # auto: plantillas o xlsx
     dataset = load_evaluacion(path="/ruta/plantilla.xlsx")
+    dataset = load_evaluacion(templates_dir="/ruta/plantillas/")
     dataset = load_evaluacion(uploaded_file=request.FILES["plantilla"])
     portfolio = build_portfolio_view(dataset)
 La vista solo consume `build_portfolio_view` + `EvaluacionDataset`; el origen

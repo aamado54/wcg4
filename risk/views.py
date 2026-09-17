@@ -124,8 +124,26 @@ def evaluacion_clientes(request):
     ``load_evaluacion(uploaded_file=…)`` → ``build_portfolio_view(dataset)``.
     """
     cliente = (request.GET.get("cliente") or "").strip() or None
+    source_mode = (request.GET.get("source") or "auto").strip().lower()
     try:
-        dataset = load_evaluacion()
+        if source_mode == "plantillas":
+            from django.conf import settings
+
+            plantillas_dir = getattr(settings, "WCG_EVALUACION_PLANTILLAS_DIR", None)
+            dataset = load_evaluacion(templates_dir=plantillas_dir)
+        elif source_mode == "consolidado":
+            dataset = load_evaluacion()
+        else:
+            from risk.evaluacion.reader import default_plantillas_dir, default_xlsx_path
+
+            xlsx = default_xlsx_path()
+            plantillas = default_plantillas_dir()
+            if plantillas and any(plantillas.glob("*.xlsx")):
+                dataset = load_evaluacion(templates_dir=plantillas)
+            elif xlsx.is_file():
+                dataset = load_evaluacion(path=xlsx)
+            else:
+                dataset = load_evaluacion()
         portfolio = build_portfolio_view(dataset, cliente=cliente)
     except Exception:
         # Última red de seguridad: nunca tumbar wcg4 por esta extensión.

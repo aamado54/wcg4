@@ -136,6 +136,43 @@ def default_xlsx_path() -> Path:
     return Path(settings.BASE_DIR) / "docs" / "WCG-evaluacion-riesgo-clientes-2025.xlsx"
 
 
+def default_plantillas_dir() -> Path | None:
+    configured = getattr(settings, "WCG_EVALUACION_PLANTILLAS_DIR", None)
+    if not configured:
+        return None
+    path = Path(configured)
+    return path if path.is_dir() else None
+
+
+def _load_from_plantillas_dir(
+    templates_dir: Path,
+    *,
+    reference_workbook: Path | None = None,
+) -> EvaluacionDataset:
+    """Consolida plantillas .xlsx del directorio y delega al lector estándar."""
+    import tempfile
+
+    from risk.evaluacion.plantillas import consolidate_templates
+
+    ref = reference_workbook
+    if ref is None:
+        default_ref = default_xlsx_path()
+        ref = default_ref if default_ref.is_file() else None
+
+    with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp:
+        out_path = Path(tmp.name)
+
+    try:
+        result = consolidate_templates(templates_dir, out_path, reference_workbook=ref)
+        dataset = load_evaluacion(path=out_path)
+        dataset.source = f"{templates_dir} → {result.output_path}"
+        if result.alerts:
+            dataset.errors = [*dataset.errors, *result.alerts[:20]]
+        return dataset
+    finally:
+        out_path.unlink(missing_ok=True)
+
+
 def _empty_dataset(source: str, errors: list[str]) -> EvaluacionDataset:
     return EvaluacionDataset(
         source=source or "(sin fuente)",
@@ -164,11 +201,34 @@ def load_evaluacion(
     path: str | Path | None = None,
     *,
     uploaded_file: BinaryIO | None = None,
+    templates_dir: str | Path | None = None,
 ) -> EvaluacionDataset:
-    """Carga la plantilla. Prioridad: uploaded_file > path > settings default.
+    """Carga la plantilla. Prioridad: uploaded_file > path (archivo o carpeta) >
+    templates_dir > xlsx default en settings.
 
     Nunca propaga excepciones: falla con EvaluacionDataset.status in {empty, error}.
     """
+    if uploaded_file is None:
+        if path is not None and Path(path).is_dir():
+            try:
+                return _load_from_plantillas_dir(Path(path))
+            except Exception:
+                logger.exception("Consolidación desde directorio de plantillas")
+                return _empty_dataset(
+                    str(path),
+                    ["No se pudo consolidar el directorio de plantillas."],
+                )
+        if templates_dir is not None:
+            td = Path(templates_dir)
+            if td.is_dir():
+                try:
+                    return _load_from_plantillas_dir(td)
+                except Exception:
+                    logger.exception("Consolidación templates_dir")
+                    return _empty_dataset(
+                        str(td),
+                        ["No se pudo consolidar el directorio de plantillas."],
+                    )
     try:
         import openpyxl
     except ImportError:  # pragma: no cover
