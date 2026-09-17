@@ -1,5 +1,6 @@
 # imports/management/commands/import_ingresos.py
 
+import re
 from decimal import Decimal
 from pathlib import Path
 
@@ -8,6 +9,7 @@ from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
 from core.models import UNE, MetricDefinition
+from pgc.income_conversion import apply_result_achievement
 from pgc.models import PGCPlan, MonthlyTarget, MonthlyMetricResult, MonthlyExchangeRate
 
 
@@ -35,6 +37,12 @@ class Command(BaseCommand):
             type=int,
             required=True,
             help="Mes del período, 1-12.",
+        )
+        parser.add_argument(
+            "--prev-path",
+            type=str,
+            default="",
+            help="ER del mes anterior (opcional; se infiere por nombre si falta).",
         )
 
     def _infer_une_from_filename(self, path: Path) -> UNE:
@@ -80,45 +88,7 @@ class Command(BaseCommand):
                 return col_idx
         return None
 
-    def _sum_accounts_starting_with(self, ws, month: int, prefix: str) -> Decimal:
-        """
-        Suma cuentas contables que empiezan con `prefix` (ej: '4' o '8').
-        
-        Lógica:
-        1) Buscar primero si existe una fila con CUENTA == prefix.
-           - Si existe, usar SALDOFIN y terminar.
-        2) Solo si NO existe CUENTA == prefix, usar la lógica alterna:
-           - sumar filas cuyo código empiece con prefix
-           - y tenga exactamente 9 dígitos
-           - tomando el valor de la columna del mes en español.
-        """
-        # ---- Paso 1: fila con código de cuenta == prefix (NUMERO CUENTA o CUENTA) ----
-        row_with_prefix = None
-        for row in ws.iter_rows(min_row=2):
-            for cell in row[:4]:
-                if cell.value is None:
-                    continue
-                if str(cell.value).strip() == prefix:
-                    row_with_prefix = row
-                    break
-            if row_with_prefix is not None:
-                break
-
-        # ---- Si existe CUENTA == prefix, usar SOLO esa lógica ----
-        if row_with_prefix is not None:
-            saldo_fin_col = self._saldo_fin_col(ws)
-
-            if saldo_fin_col is None:
-                # No hay columna SALDOFIN, retornar cero (sin error)
-                return Decimal("0")
-
-            saldo_value = row_with_prefix[saldo_fin_col - 1].value
-            return self._to_decimal(
-                saldo_value,
-                f"hoja Datos fila CUENTA={prefix} SALDOFIN",
-            )
-
-        # ---- Paso 2: solo si NO existe CUENTA == prefix, usar lógica mensual ----
+    def _month_col(self, ws, month: int) -> int | None:
         month_names = {
             1: "ENERO",
             2: "FEBRERO",
@@ -133,50 +103,117 @@ class Command(BaseCommand):
             11: "NOVIEMBRE",
             12: "DICIEMBRE",
         }
-
         month_name = month_names.get(month)
         if not month_name:
-            raise CommandError(f"Mes inválido: {month}")
-
-        month_col = None
+            return None
         for col_idx, cell in enumerate(ws[1], start=1):
             if cell.value is None:
                 continue
             if str(cell.value).strip().upper() == month_name:
-                month_col = col_idx
-                break
+                return col_idx
+        return None
 
+    def _ytd_from_summary_rows(self, ws, prefix: str) -> Decimal | None:
+        """Suma YTD de filas resumen NUMERO CUENTA == 4 u 8."""
+        saldo_fin_col = self._saldo_fin_col(ws)
+        if saldo_fin_col is None:
+            return None
+
+        for row in ws.iter_rows(min_row=2):
+            for cell in row[:4]:
+                if cell.value is None:
+                    continue
+                if str(cell.value).strip() == prefix:
+                    saldo_value = row[saldo_fin_col - 1].value
+                    return self._to_decimal(
+                        saldo_value,
+                        f"hoja Datos fila CUENTA={prefix} SALDOFIN",
+                    )
+        return None
+
+    def _sum_detail_month_column(self, ws, month: int, prefix: str) -> Decimal | None:
+        """Suma cuentas detalle (9 dígitos) en columna mensual ENERO..DICIEMBRE."""
+        month_col = self._month_col(ws, month)
         if month_col is None:
-            # No hay columna del mes, retornar cero (sin error)
-            return Decimal("0")
+            return None
 
         total = Decimal("0")
+        found = False
         for row in ws.iter_rows(min_row=2):
-            cuenta = row[cuenta_col - 1].value
+            cuenta = row[1].value if len(row) > 1 else None
             if cuenta is None:
                 continue
-
             cuenta_str = str(cuenta).strip()
             cuenta_digits = "".join(ch for ch in cuenta_str if ch.isdigit())
+            if not (cuenta_digits.startswith(prefix) and len(cuenta_digits) == 9):
+                continue
+            tipo = row[3].value if len(row) > 3 else None
+            if tipo != "D":
+                continue
+            month_value = row[month_col - 1].value
+            if month_value in (None, ""):
+                continue
+            total += self._to_decimal(
+                month_value,
+                f"cuenta {cuenta_str} columna mes {month}",
+            )
+            found = True
+        return total if found else None
 
-            if cuenta_digits.startswith(prefix) and len(cuenta_digits) == 9:
-                month_value = row[month_col - 1].value
-                if month_value in (None, ""):
-                    continue
+    def _ytd_total(self, ws) -> Decimal:
+        y4 = self._ytd_from_summary_rows(ws, "4")
+        y8 = self._ytd_from_summary_rows(ws, "8")
+        if y4 is not None or y8 is not None:
+            return (y4 or Decimal("0")) + (y8 or Decimal("0"))
 
-                total += self._to_decimal(
-                    month_value,
-                    f"cuenta {cuenta_str} columna {month_name}",
-                )
-
+        # Sin filas resumen: sumar detalle en SALDO FINAL (poco común).
+        saldo_fin_col = self._saldo_fin_col(ws)
+        if saldo_fin_col is None:
+            return Decimal("0")
+        total = Decimal("0")
+        for row in ws.iter_rows(min_row=2):
+            cuenta = row[1].value if len(row) > 1 else None
+            if cuenta is None:
+                continue
+            digits = "".join(ch for ch in str(cuenta).strip() if ch.isdigit())
+            if len(digits) != 9:
+                continue
+            if not (digits.startswith("4") or digits.startswith("8")):
+                continue
+            if (row[3].value if len(row) > 3 else None) != "D":
+                continue
+            total += self._to_decimal(
+                row[saldo_fin_col - 1].value,
+                f"detalle {cuenta}",
+            )
         return total
 
-    def _read_ingreso_from_excel(self, path: Path, month: int) -> Decimal:
+    def _infer_prev_path(self, path: Path, year: int, month: int) -> Path | None:
+        if month <= 1:
+            return None
+        m = re.search(r"(\d{4})\.xlsx$", path.name, re.I)
+        if not m:
+            return None
+        yymm = int(m.group(1))
+        prev_yymm = yymm - 1
+        if prev_yymm % 100 == 0:
+            prev_yymm = (yymm // 100 - 1) * 100 + 12
+        candidate = path.with_name(path.name.replace(f"{yymm:04d}", f"{prev_yymm:04d}"))
+        return candidate if candidate.is_file() else None
+
+    def _read_ingreso_from_excel(
+        self,
+        path: Path,
+        month: int,
+        *,
+        prev_path: Path | None,
+    ) -> tuple[Decimal, str]:
         """
-        Lee el ingreso bruto desde el estado de resultados.
-        
-        Regla fija: suma los ingresos de cuentas que empiezan con 4
-        MÁS los ingresos de cuentas que empiezan con 8.
+        Lee ingreso mensual GTQ (cuentas 4+8).
+
+        Prioridad:
+        1) Columna mensual (ENERO..DICIEMBRE) en cuentas detalle.
+        2) Delta YTD (SALDO FINAL mes actual − mes anterior).
         """
         try:
             wb = openpyxl.load_workbook(path, data_only=True)
@@ -190,23 +227,30 @@ class Command(BaseCommand):
             )
 
         ws = wb["Datos"]
+        monthly_4 = self._sum_detail_month_column(ws, month, "4")
+        monthly_8 = self._sum_detail_month_column(ws, month, "8")
+        if monthly_4 is not None or monthly_8 is not None:
+            total = (monthly_4 or Decimal("0")) + (monthly_8 or Decimal("0"))
+            wb.close()
+            return total, "columna_mensual"
 
-        # Suma cuentas que empiezan con 4
-        suma_4 = self._sum_accounts_starting_with(ws, month, "4")
-        
-        # Suma cuentas que empiezan con 8
-        suma_8 = self._sum_accounts_starting_with(ws, month, "8")
+        ytd_current = self._ytd_total(ws)
+        wb.close()
 
-        # Total = 4 + 8
-        total = suma_4 + suma_8
+        ytd_prev = Decimal("0")
+        method = "ytd_sin_previo"
+        if prev_path and prev_path.is_file():
+            try:
+                wb_prev = openpyxl.load_workbook(prev_path, data_only=True)
+                if "Datos" in wb_prev.sheetnames:
+                    ytd_prev = self._ytd_total(wb_prev["Datos"])
+                    method = "ytd_delta"
+                wb_prev.close()
+            except Exception:
+                method = "ytd_sin_previo"
 
-        self.stdout.write(
-            self.style.WARNING(
-                f"  Cuentas '4': {suma_4} | Cuentas '8': {suma_8} | Total: {total}"
-            )
-        )
-
-        return total
+        monthly = ytd_current - ytd_prev
+        return monthly, method
 
     def _get_exchange_rate(self, year: int, month: int) -> Decimal:
         try:
@@ -233,9 +277,17 @@ class Command(BaseCommand):
         if not path.exists():
             raise CommandError(f"Archivo no encontrado: {path}")
 
+        prev_path = (
+            Path(options["prev_path"]).expanduser()
+            if options.get("prev_path")
+            else self._infer_prev_path(path, year, month)
+        )
+
         self.stdout.write(
             self.style.WARNING(f"Leyendo estado de resultados desde {path} ...")
         )
+        if prev_path:
+            self.stdout.write(f"  ER mes anterior: {prev_path.name}")
 
         try:
             plan = PGCPlan.objects.get(year=year)
@@ -258,22 +310,17 @@ class Command(BaseCommand):
 
         self.stdout.write(self.style.WARNING(f"Archivo detectado para UNE={une.code}"))
 
-        ingreso_bruto_gtq = self._read_ingreso_from_excel(path, month)
-        
-        if ingreso_bruto_gtq is None:
-            raise CommandError(
-                f"_read_ingreso_from_excel devolvió None para {path.name} "
-                f"en {year}-{month:02d}."
-            )
+        ingreso_mensual_gtq, method = self._read_ingreso_from_excel(
+            path, month, prev_path=prev_path
+        )
 
-        # TERCERO del plan: Insurance también se divide entre mil
         if une.code in ("FACTORING", "LEASING", "INSURANCE"):
-            ingreso_ajustado_gtq = ingreso_bruto_gtq / Decimal("1000")
+            ingreso_ajustado_gtq = ingreso_mensual_gtq / Decimal("1000")
         else:
-            ingreso_ajustado_gtq = ingreso_bruto_gtq
+            ingreso_ajustado_gtq = ingreso_mensual_gtq
 
         tipo_cambio = self._get_exchange_rate(year, month)
-        ingreso_usd = ingreso_ajustado_gtq / tipo_cambio
+        ingreso_usd_miles = ingreso_ajustado_gtq / tipo_cambio
 
         try:
             target = MonthlyTarget.objects.get(
@@ -299,28 +346,28 @@ class Command(BaseCommand):
         )
 
         mmr.target_value = target.target_value
-        mmr.measured_value = ingreso_usd
+        mmr.source_currency = MonthlyMetricResult.CURRENCY_GTQ
+        mmr.source_value = ingreso_mensual_gtq
+        mmr.exchange_rate_used = tipo_cambio
+        mmr.conversion_status = MonthlyMetricResult.CONVERSION_CONVERTED
+        mmr.measured_value = ingreso_usd_miles
+        apply_result_achievement(mmr, target)
 
-        measured = mmr.measured_value or Decimal("0")
-        target_val = mmr.target_value or Decimal("0")
-        achieved = measured >= target_val
-
-        mmr.is_achieved = achieved
-        mmr.points_awarded = target.points_if_achieved if achieved else 0
         mmr.calculation_note = (
-            f"Ingreso importado desde {path.name}, hoja Datos. "
-            f"BrutoGTQ(4+8)={ingreso_bruto_gtq}, "
+            f"Ingreso importado desde {path.name}, hoja Datos ({method}). "
+            f"MensualGTQ(4+8)={ingreso_mensual_gtq}, "
             f"AjustadoGTQ={ingreso_ajustado_gtq}, "
             f"TipoCambioGTQxUSD={tipo_cambio}, "
-            f"USD={ingreso_usd}, UNE={une.code}."
+            f"USD miles={ingreso_usd_miles}, UNE={une.code}."
         )
         mmr.save()
 
         self.stdout.write(
             self.style.SUCCESS(
                 f"Actualizado INGRESOS {une.code} {year}-{month:02d}: "
-                f"real={measured} meta={target_val} "
-                f"logrado={achieved} puntos={mmr.points_awarded}"
+                f"real={mmr.measured_value} meta={mmr.target_value} "
+                f"logrado={mmr.is_achieved} puntos={mmr.points_awarded} "
+                f"({method})"
             )
         )
         self.stdout.write(self.style.SUCCESS("Import INGRESOS completado."))
@@ -339,4 +386,3 @@ class Command(BaseCommand):
             self.stdout.write(
                 self.style.WARNING(f"Auto-recalcular no completó: {exc}")
             )
-

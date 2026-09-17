@@ -1,6 +1,9 @@
 from decimal import Decimal
+from pathlib import Path
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.core.management import call_command
 from django.test import TestCase
 
 from core.models import MetricDefinition, UNE
@@ -404,3 +407,87 @@ class RequirementsReportTests(TestCase):
         result.refresh_from_db()
         self.assertTrue(result.is_achieved)
         self.assertEqual(result.points_awarded, Decimal("5"))
+
+
+class ImportPgcObjetivosTests(TestCase):
+    def setUp(self):
+        self.year = 2026
+        self.month = 8
+        self.plan = PGCPlan.objects.create(year=self.year, name="Plan test")
+        MonthlyExchangeRate.objects.create(
+            year=self.year, month=self.month, usd_to_gtq=Decimal("7.66")
+        )
+        self.metric_cli, _ = MetricDefinition.objects.get_or_create(
+            code=MetricDefinition.CODE_CLIENTES_NUEVOS,
+            defaults={"name": "Clientes", "is_scored": True},
+        )
+        self.metric_ing, _ = MetricDefinition.objects.get_or_create(
+            code=MetricDefinition.CODE_INGRESOS,
+            defaults={"name": "Ingresos", "is_scored": True},
+        )
+        for code, name in (
+            (MetricDefinition.CODE_VENTA_CRUZADA, "Venta cruzada"),
+            (MetricDefinition.CODE_RESPUESTA_REQS, "Respuesta reqs"),
+        ):
+            MetricDefinition.objects.get_or_create(
+                code=code, defaults={"name": name, "is_scored": True}
+            )
+        for code, name, order in (
+            ("FACTORING", "Factoraje", 1),
+            ("LEASING", "Leasing", 2),
+            ("INSURANCE", "Insurance", 3),
+            ("INVESTMENT", "Inversiones", 4),
+        ):
+            une = UNE.objects.create(code=code, name=name, name_es=name, sort_order=order)
+            metrics = [self.metric_cli, self.metric_ing]
+            for extra in (
+                MetricDefinition.CODE_VENTA_CRUZADA,
+                MetricDefinition.CODE_RESPUESTA_REQS,
+            ):
+                metrics.append(
+                    MetricDefinition.objects.get(code=extra)
+                )
+            for metric in metrics:
+                MonthlyTarget.objects.create(
+                    plan=self.plan,
+                    une=une,
+                    metric=metric,
+                    year=self.year,
+                    month=self.month,
+                    target_value=Decimal("100"),
+                    points_if_achieved=10,
+                )
+
+    def test_import_objetivos_august_2026(self):
+        root = Path(settings.BASE_DIR).parent
+        path = root / "data" / "now" / "PGC-ejecucion-vs-presupuesto-ago26-validar.xlsx"
+        if not path.is_file():
+            self.skipTest("Sin archivo de validación PGC")
+
+        call_command(
+            "import_pgc_objetivos",
+            path=str(path),
+            year=self.year,
+            month=self.month,
+        )
+
+        factoring = UNE.objects.get(code="FACTORING")
+        row = MonthlyMetricResult.objects.get(
+            plan=self.plan,
+            une=factoring,
+            metric=self.metric_ing,
+            year=self.year,
+            month=self.month,
+        )
+        self.assertAlmostEqual(float(row.measured_value), 60.089, places=2)
+        self.assertAlmostEqual(float(row.source_value), 460285.2820980406, places=2)
+
+        leasing = UNE.objects.get(code="LEASING")
+        cli = MonthlyMetricResult.objects.get(
+            plan=self.plan,
+            une=leasing,
+            metric=self.metric_cli,
+            year=self.year,
+            month=self.month,
+        )
+        self.assertEqual(cli.measured_value, Decimal("1"))
