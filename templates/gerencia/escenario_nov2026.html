@@ -52,9 +52,16 @@
   .esc-preset.base.on { background: #5c4a1a; border-color: #5c4a1a; }
   .esc-mini th, .esc-mini td { font-size: 0.76rem; padding: 0.28rem 0.45rem; vertical-align: middle; }
   .esc-mini .side-h { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--wcg-muted); font-weight: 700; }
-  .esc-drivers-wrap { display: flex; gap: 0.75rem; align-items: flex-start; flex-wrap: wrap; }
-  .esc-drivers { flex: 1 1 420px; min-width: 0; }
-  .esc-compare-side { flex: 0 1 280px; min-width: 220px; }
+  .esc-drivers-wrap { display: grid; grid-template-columns: 1fr 280px; gap: 0.75rem; align-items: start; }
+  .esc-drivers-col { min-width: 0; }
+  .esc-compare-col { min-width: 0; }
+  .esc-dual-head {
+    display: grid;
+    grid-template-columns: 1fr 280px;
+    gap: 0.75rem;
+    border-bottom: 1px solid var(--wcg-line);
+  }
+  .esc-dual-head .ge-panel-h { border-bottom: 0; margin: 0; }
   .esc-driver-row { display: grid; grid-template-columns: 9.5rem 1fr 3.2rem 1fr 3.2rem; gap: 0.35rem; align-items: center; margin-bottom: 0.28rem; font-size: 0.72rem; }
   .esc-driver-row label { font-weight: 600; color: var(--wcg-muted); margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .esc-driver-row input[type=range] { width: 100%; height: 0.9rem; margin: 0; }
@@ -64,12 +71,11 @@
   .esc-driver-head { display: grid; grid-template-columns: 9.5rem 1fr 3.2rem 1fr 3.2rem; gap: 0.35rem; font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--wcg-muted); font-weight: 700; margin-bottom: 0.35rem; }
   .esc-driver-head span:nth-child(2), .esc-driver-head span:nth-child(4) { text-align: center; }
   .esc-driver-head span:nth-child(3), .esc-driver-head span:nth-child(5) { text-align: right; }
-  .esc-end-wrap { display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: stretch; }
-  .esc-end-bal { flex: 1 1 200px; min-width: 180px; }
-  .esc-end-diff { flex: 0 1 170px; min-width: 150px; }
-  .esc-diff-box { border: 1px solid #d0ddd4; border-radius: 8px; background: #f7faf8; height: 100%; }
-  .esc-diff-box .ge-panel-h { font-size: 0.72rem; padding: 0.35rem 0.55rem; }
-  .esc-phase-bar { display: flex; gap: 2px; margin-top: 0.4rem; font-size: 0.62rem; text-align: center; }
+  .esc-end-table { width: 100%; }
+  @media (max-width: 900px) {
+    .esc-drivers-wrap, .esc-dual-head { grid-template-columns: 1fr; }
+    .esc-driver-row, .esc-driver-head { grid-template-columns: 7rem 1fr 2.8rem 1fr 2.8rem; }
+  }
   .esc-phase-bar span { flex: 1; padding: 0.2rem 0.05rem; border-radius: 3px; color: #fff; font-weight: 600; }
   .esc-phase-bar .prep { background: #7a9bb8; }
   .esc-phase-bar .apertura { background: #a67c2a; }
@@ -83,10 +89,7 @@
   .esc-prec-row span { font-size: 0.8rem; color: #4a5c52; line-height: 1.35; }
   .esc-recalc-hint { font-size: 0.68rem; color: var(--wcg-muted); min-height: 1rem; }
   .esc-hint-line { font-size: 0.68rem; color: var(--wcg-muted); line-height: 1.25; }
-  @media (max-width: 900px) {
-    .esc-compare-side { flex: 1 1 100%; }
-    .esc-driver-row, .esc-driver-head { grid-template-columns: 7rem 1fr 2.8rem 1fr 2.8rem; }
-  }
+  .esc-phase-bar { display: flex; gap: 2px; margin-top: 0.4rem; font-size: 0.62rem; text-align: center; }
 </style>
 {% endblock %}
 {% block content %}
@@ -162,27 +165,29 @@
         </div>
 
         <form method="get" id="escForm">
+          <input type="hidden" name="preset_base" id="presetBase" value="{{ preset_base }}">
+          <input type="hidden" name="preset_vivo" id="presetVivo" value="{{ preset_vivo }}">
           <div class="ge-panel mb-2">
-            <div class="ge-panel-h py-1 d-flex flex-wrap justify-content-between align-items-center gap-1">
-              <span>Drivers · base vs vivo</span>
-              <span class="esc-recalc-hint" id="escRecalcHint"></span>
+            <div class="d-flex flex-wrap gap-2 mb-2 px-2 pt-2 align-items-center">
+              <span class="small text-muted me-1">Base:</span>
+              {% for key, preset in board.base_presets.items %}
+              <a href="#" class="esc-preset base{% if preset_base == key %} on{% endif %}" data-preset-base="{{ key }}">{{ preset.label }}</a>
+              {% endfor %}
+              <span class="small text-muted ms-2 me-1">Vivo:</span>
+              {% for key, preset in board.vivo_presets.items %}
+              <a href="#" class="esc-preset{% if preset_vivo == key %} on{% endif %}" data-preset-vivo="{{ key }}">{{ preset.label }}</a>
+              {% endfor %}
+            </div>
+            <div class="esc-dual-head">
+              <div class="ge-panel-h py-1 d-flex flex-wrap justify-content-between align-items-center gap-1">
+                <span>Drivers · base vs vivo</span>
+                <span class="esc-recalc-hint" id="escRecalcHint"></span>
+              </div>
+              <div class="ge-panel-h py-1">Comparación base vs vivo</div>
             </div>
             <div class="ge-panel-b py-2">
-              <div class="d-flex flex-wrap gap-2 mb-2 align-items-center">
-                <span class="small text-muted me-1">Base:</span>
-                {% for key, preset in board.base_presets.items %}
-                <a href="#" class="esc-preset base{% if preset_base == key %} on{% endif %}" data-preset-base="{{ key }}">{{ preset.label }}</a>
-                {% endfor %}
-                <span class="small text-muted ms-2 me-1">Vivo:</span>
-                {% for key, preset in board.vivo_presets.items %}
-                <a href="#" class="esc-preset{% if preset_vivo == key %} on{% endif %}" data-preset-vivo="{{ key }}">{{ preset.label }}</a>
-                {% endfor %}
-              </div>
-              <input type="hidden" name="preset_base" id="presetBase" value="{{ preset_base }}">
-              <input type="hidden" name="preset_vivo" id="presetVivo" value="{{ preset_vivo }}">
-
               <div class="esc-drivers-wrap">
-                <div class="esc-drivers">
+                <div class="esc-drivers-col">
                   <div class="esc-driver-head">
                     <span>Variable</span><span>Base</span><span></span><span>Vivo</span><span></span>
                   </div>
@@ -202,27 +207,22 @@
                   </div>
                   {% endfor %}
                 </div>
-                <div class="esc-compare-side">
-                  <div class="ge-panel mb-0 h-100">
-                    <div class="ge-panel-h py-1">Comparación base vs vivo</div>
-                    <div class="ge-panel-b p-0">
-                      <table class="table table-sm esc-mini mb-0">
-                        <thead>
-                          <tr><th>Métrica</th><th class="text-end">B</th><th class="text-end">V</th><th class="text-end">Δ</th></tr>
-                        </thead>
-                        <tbody>
-                          {% for row in board.compare_rows %}
-                          <tr>
-                            <td>{{ row.label }}</td>
-                            <td class="text-end">{{ row.base }}</td>
-                            <td class="text-end">{{ row.vivo }}</td>
-                            <td class="text-end {% if row.tone == 'risk' or row.tone == 'warn' %}cmp-worse{% else %}cmp-better{% endif %}">{{ row.delta_display }}</td>
-                          </tr>
-                          {% endfor %}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
+                <div class="esc-compare-col">
+                  <table class="table table-sm esc-mini mb-0">
+                    <thead>
+                      <tr><th>Métrica</th><th class="text-end">B</th><th class="text-end">V</th><th class="text-end">Δ</th></tr>
+                    </thead>
+                    <tbody>
+                      {% for row in board.compare_rows %}
+                      <tr>
+                        <td>{{ row.label }}</td>
+                        <td class="text-end">{{ row.base }}</td>
+                        <td class="text-end">{{ row.vivo }}</td>
+                        <td class="text-end {% if row.tone == 'risk' or row.tone == 'warn' %}cmp-worse{% else %}cmp-better{% endif %}">{{ row.delta_display }}</td>
+                      </tr>
+                      {% endfor %}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             </div>
@@ -231,44 +231,29 @@
 
         <div class="ge-panel mb-0">
           <div class="ge-panel-h py-1">Mini balance · fin simulación (jul-2027)</div>
-          <div class="ge-panel-b py-2">
-            <div class="esc-end-wrap">
-              <div class="esc-end-bal">
-                <div class="small fw-bold text-muted mb-1">Base</div>
-                <table class="table table-sm esc-mini mb-0">
-                  {% for row in board.mini_balance_base_crisis.pasivos %}
-                  <tr><td>{{ row.label }}</td><td class="text-end">{{ row.value }}</td></tr>
-                  {% endfor %}
-                  <tr class="table-light"><td>Liquidez simulada</td><td class="text-end">{{ board.mini_balance_base_crisis.liquidez_display }}</td></tr>
-                </table>
-              </div>
-              <div class="esc-end-bal">
-                <div class="small fw-bold text-muted mb-1">Vivo</div>
-                <table class="table table-sm esc-mini mb-0">
-                  {% for row in board.mini_balance_vivo_crisis.pasivos %}
-                  <tr><td>{{ row.label }}</td><td class="text-end">{{ row.value }}</td></tr>
-                  {% endfor %}
-                  <tr class="table-light"><td>Liquidez simulada</td><td class="text-end">{{ board.mini_balance_vivo_crisis.liquidez_display }}</td></tr>
-                </table>
-              </div>
-              <div class="esc-end-diff">
-                <div class="esc-diff-box">
-                  <div class="ge-panel-h">Δ vivo − base</div>
-                  <table class="table table-sm esc-mini mb-0">
-                    <thead><tr><th></th><th class="text-end">Abs.</th><th class="text-end">%</th></tr></thead>
-                    <tbody>
-                      {% for row in board.balance_diff_rows %}
-                      <tr>
-                        <td>{{ row.label }}</td>
-                        <td class="text-end fw-semibold">{{ row.abs }}</td>
-                        <td class="text-end">{{ row.pct }}</td>
-                      </tr>
-                      {% endfor %}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
+          <div class="ge-panel-b p-0">
+            <table class="table table-sm esc-mini esc-end-table mb-0">
+              <thead>
+                <tr>
+                  <th></th>
+                  <th class="text-end">Base</th>
+                  <th class="text-end">Vivo</th>
+                  <th class="text-end">Δ abs.</th>
+                  <th class="text-end">Δ %</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for row in board.balance_end_rows %}
+                <tr>
+                  <td>{{ row.label }}</td>
+                  <td class="text-end">{{ row.base }}</td>
+                  <td class="text-end">{{ row.vivo }}</td>
+                  <td class="text-end fw-semibold">{{ row.abs }}</td>
+                  <td class="text-end">{{ row.pct }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
@@ -313,8 +298,32 @@
 <script>
 document.addEventListener('DOMContentLoaded', function () {
   const form = document.getElementById('escForm');
+  if (!form) return;
   const hint = document.getElementById('escRecalcHint');
+  const topPane = document.getElementById('escTop');
+  const botPane = document.getElementById('escBot');
   let debounceTimer = null;
+
+  function persistScroll() {
+    if (topPane) sessionStorage.setItem('escNovTopScroll', String(topPane.scrollTop));
+    if (botPane) sessionStorage.setItem('escNovBotScroll', String(botPane.scrollTop));
+  }
+
+  function restoreScroll() {
+    const t = sessionStorage.getItem('escNovTopScroll');
+    const b = sessionStorage.getItem('escNovBotScroll');
+    if (t && topPane) topPane.scrollTop = parseInt(t, 10) || 0;
+    if (b && botPane) botPane.scrollTop = parseInt(b, 10) || 0;
+  }
+
+  function submitForm() {
+    persistScroll();
+    form.submit();
+  }
+
+  requestAnimationFrame(function () {
+    requestAnimationFrame(restoreScroll);
+  });
 
   function fmtOut(el, val) {
     const suf = el.dataset.suffix || '';
@@ -332,7 +341,7 @@ document.addEventListener('DOMContentLoaded', function () {
       document.getElementById('presetVivo').value = '';
       if (hint) hint.textContent = 'Recalculando en 3 s…';
       clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(function () { form.submit(); }, 3000);
+      debounceTimer = setTimeout(submitForm, 3000);
     });
   });
 
@@ -340,21 +349,19 @@ document.addEventListener('DOMContentLoaded', function () {
     a.addEventListener('click', function (e) {
       e.preventDefault();
       document.getElementById('presetBase').value = a.dataset.presetBase;
-      form.submit();
+      submitForm();
     });
   });
   document.querySelectorAll('[data-preset-vivo]').forEach(function (a) {
     a.addEventListener('click', function (e) {
       e.preventDefault();
       document.getElementById('presetVivo').value = a.dataset.presetVivo;
-      form.submit();
+      submitForm();
     });
   });
 
   const split = document.getElementById('escSplit');
   const gutter = document.getElementById('escGutter');
-  const topPane = document.getElementById('escTop');
-  const botPane = document.getElementById('escBot');
   if (gutter && split && topPane && botPane) {
     let dragging = false;
     gutter.addEventListener('mousedown', function (e) {

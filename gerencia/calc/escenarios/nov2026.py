@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..accounts import div_pref_ytd, line, pagares_month, preferentes_stock
+from ..accounts import div_pref_ytd, line, preferentes_stock
 from ..bands import evaluate_ratio
 from ..indices import derived_metrics
 from ..intermediacion import _intermediation_slice
@@ -173,15 +173,6 @@ def _base_context(data: dict, bu: str = "T") -> dict[str, Any]:
     }
 
 
-def _pagares_ytd(data: dict, bu: str, period: str) -> float:
-    year = (period or "")[:4]
-    total = 0.0
-    for p in data.get("periods") or []:
-        if str(p).startswith(year) and str(p) <= period:
-            total += pagares_month(data, bu, p)
-    return total
-
-
 def _mini_balance(
     ctx: dict[str, Any],
     data: dict,
@@ -218,8 +209,8 @@ def _mini_balance(
             _line("Activo total", activo),
         ],
         "pasivos": [
-            _line("Pagarés AP/PG (201010106)", pagares),
-            _line("Acciones preferentes (301010106)", pref),
+            _line("Pagarés AP/PG", pagares),
+            _line("Acciones preferentes", pref),
             _line("Préstamos bancos (pasivo)", bancos),
             _line("Pasivo total (libros)", pasivo_books),
             _line("Fondeo total (Pas.+Pref.)", pasivo_books + pref),
@@ -234,31 +225,41 @@ def _mini_results(ctx: dict[str, Any], data: dict, bu: str, fm) -> list[dict[str
     mg = ctx["metrics"]
     ms = ctx["metrics_strict"]
     div_y = ctx["div_ytd"]
-    pag_y = _pagares_ytd(data, bu, BASE_PERIOD)
+    util_c = n(mc.get("utilidades"))
+    util_g = n(mg.get("util_vista"))
+    gap = util_c - util_g
     year = BASE_PERIOD[:4]
     return [
         {
             "label": f"Utilidad acum. contable ({year})",
-            "value": fm(mc.get("utilidades")),
+            "value": fm(util_c),
             "hint": (
-                f"Saldo YTD cuenta 302. Los intereses a pagarés ({fm(pag_y)}) ya están en libros; "
-                f"los dividendos a preferentes no restan aquí."
+                "Saldo YTD cuenta 302. Los dividendos pagados a preferentes no son gasto aquí: "
+                "contablemente son rendimiento al accionista, no costo de fondeo."
             ),
         },
         {
             "label": f"Utilidad acum. gerencial ({year})",
-            "value": fm(mg.get("util_vista")),
+            "value": fm(util_g),
             "hint": (
-                f"302 menos dividendos preferentes acumulados ({fm(div_y)}), pagados mes a mes. "
-                f"Esa diferencia existe siempre, no espera la vista estricta."
+                f"302 menos dividendos preferentes acumulados ({fm(div_y)}). Gerencialmente esos pagos "
+                f"sí son gasto — como un interés pagado — mes a mes. Por eso el número difiere del contable."
+            ),
+        },
+        {
+            "label": f"Brecha contable − gerencial ({year})",
+            "value": fm(gap),
+            "hint": (
+                "Casi toda la brecha son dividendos a preferentes. No confundir con la vista estricta: "
+                "esa solo reclasifica balance, no cambia utilidad."
             ),
         },
         {
             "label": f"Utilidad acum. ger. estricta ({year})",
             "value": fm(ms.get("util_vista")),
             "hint": (
-                "Misma utilidad que la gerencial. Solo reclasifica preferentes (301010106) "
-                "de patrimonio a pasivo a un año — ejercicio de balance, no de resultados."
+                f"Misma cifra que la gerencial ({fm(util_g)}). La estricta solo mueve preferentes "
+                "de patrimonio a pasivo en el balance a un año."
             ),
         },
     ]
@@ -424,15 +425,37 @@ def _diff_cell(base_raw: float | None, vivo_raw: float | None, *, fm, pct_fmt=Fa
     return {"abs": abs_disp, "pct": pct_disp}
 
 
-def _balance_diff_rows(base_mb: dict, vivo_mb: dict, fm) -> list[dict[str, Any]]:
+def _balance_end_rows(base_mb: dict, vivo_mb: dict, fm) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
-    b_items = {x["label"]: x.get("raw", 0.0) for x in base_mb["activos"] + base_mb["pasivos"]}
-    v_items = {x["label"]: x.get("raw", 0.0) for x in vivo_mb["activos"] + vivo_mb["pasivos"]}
+    b_items = {x["label"]: x for x in base_mb["activos"] + base_mb["pasivos"]}
+    v_items = {x["label"]: x for x in vivo_mb["activos"] + vivo_mb["pasivos"]}
+    seen: set[str] = set()
     for label in list(b_items.keys()) + [k for k in v_items if k not in b_items]:
-        diff = _diff_cell(b_items.get(label), v_items.get(label), fm=fm)
-        rows.append({"label": label, "abs": diff["abs"], "pct": diff["pct"]})
+        if label in seen:
+            continue
+        seen.add(label)
+        b_raw = b_items.get(label, {}).get("raw")
+        v_raw = v_items.get(label, {}).get("raw")
+        diff = _diff_cell(b_raw, v_raw, fm=fm)
+        rows.append(
+            {
+                "label": label,
+                "base": b_items.get(label, {}).get("value", "—"),
+                "vivo": v_items.get(label, {}).get("value", "—"),
+                "abs": diff["abs"],
+                "pct": diff["pct"],
+            }
+        )
     liq_diff = _diff_cell(base_mb.get("liquidez"), vivo_mb.get("liquidez"), fm=fm, pct_fmt=True)
-    rows.append({"label": "Liquidez simulada", "abs": liq_diff["abs"], "pct": liq_diff["pct"]})
+    rows.append(
+        {
+            "label": "Liquidez simulada",
+            "base": base_mb.get("liquidez_display", "—"),
+            "vivo": vivo_mb.get("liquidez_display", "—"),
+            "abs": liq_diff["abs"],
+            "pct": liq_diff["pct"],
+        }
+    )
     return rows
 
 
@@ -546,7 +569,7 @@ def build_nov2026_board(
         pasivo_extra=sim_vivo["end_pasivo_extra"],
         cartera_override=sim_vivo["end_cartera"],
     )
-    balance_diff_rows = _balance_diff_rows(bg_base_crisis, bg_vivo_crisis, fm)
+    balance_end_rows = _balance_end_rows(bg_base_crisis, bg_vivo_crisis, fm)
 
     liq_base_ev = evaluate_ratio("liquidez", sim_base.get("liquidez_min"))
     liq_vivo_ev = evaluate_ratio("liquidez", sim_vivo.get("liquidez_min"))
@@ -636,7 +659,7 @@ def build_nov2026_board(
         "mini_results": mini_res,
         "mini_balance_base_crisis": bg_base_crisis,
         "mini_balance_vivo_crisis": bg_vivo_crisis,
-        "balance_diff_rows": balance_diff_rows,
+        "balance_end_rows": balance_end_rows,
         "compare_rows": compare_rows,
         "sim_base": sim_base,
         "sim_vivo": sim_vivo,

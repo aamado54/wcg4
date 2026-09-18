@@ -80,7 +80,7 @@ class GerenciaCalcTests(TestCase):
         self.assertEqual(board["base_period"], "2026-08")
         self.assertIn("mini_balance_rows", board)
         self.assertIn("compare_rows", board)
-        self.assertIn("balance_diff_rows", board)
+        self.assertIn("balance_end_rows", board)
         self.assertEqual(len(board["chart_timeline"]["labels"]), 11)
         self.assertTrue(board["precautions"])
         self.assertIn("slug", board["precautions"][0])
