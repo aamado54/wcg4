@@ -97,7 +97,7 @@
   .esc-prec-row strong { display: block; color: #1e4d3a; font-size: 0.92rem; margin-bottom: 0.2rem; }
   .esc-prec-row span { font-size: 0.8rem; color: #4a5c52; line-height: 1.35; }
   .esc-recalc-hint { font-size: 0.68rem; color: var(--wcg-muted); min-height: 1rem; }
-  .esc-hint-line { font-size: 0.68rem; color: var(--wcg-muted); line-height: 1.25; }
+  .esc-corte-note { font-size: 0.68rem; color: var(--wcg-muted); padding: 0.35rem 0.65rem 0; line-height: 1.35; }
   .esc-phase-bar { display: flex; gap: 2px; margin-top: 0.4rem; font-size: 0.62rem; text-align: center; }
 </style>
 {% endblock %}
@@ -123,44 +123,62 @@
         </div>
 
         <div class="row g-2 mb-2">
-          <div class="col-lg-6">
+          <div class="col-lg-8">
             <div class="ge-panel mb-0">
               <div class="ge-panel-h py-1">Mini balance · corte {{ board.base_period }}</div>
+              <p class="esc-corte-note mb-0 px-2">{{ board.corte_note }}</p>
               <div class="ge-panel-b p-0">
                 <table class="table table-sm esc-mini mb-0">
                   <thead>
                     <tr>
-                      <th class="side-h">Activo</th><th class="text-end">Monto</th>
-                      <th class="side-h">Pasivo / fondeo</th><th class="text-end">Monto</th>
+                      <th class="side-h">Activo</th>
+                      <th class="text-end">Base</th>
+                      <th class="text-end">Vivo</th>
+                      <th class="side-h">Pasivo / fondeo</th>
+                      <th class="text-end">Base</th>
+                      <th class="text-end">Vivo</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {% for row in board.mini_balance_rows %}
+                    {% for row in board.mini_balance_corte_rows %}
                     <tr>
                       <td>{{ row.activo_label }}</td>
-                      <td class="text-end fw-semibold">{{ row.activo_value }}</td>
+                      <td class="text-end fw-semibold">{{ row.activo_base }}</td>
+                      <td class="text-end fw-semibold">{{ row.activo_vivo }}</td>
                       <td>{{ row.pasivo_label }}</td>
-                      <td class="text-end fw-semibold">{{ row.pasivo_value }}</td>
+                      <td class="text-end fw-semibold">{{ row.pasivo_base }}</td>
+                      <td class="text-end fw-semibold">{{ row.pasivo_vivo }}</td>
                     </tr>
                     {% endfor %}
                   </tbody>
                 </table>
                 <p class="small text-muted px-2 py-1 mb-0 border-top">
-                  Liquidez AC/PC: <strong>{{ board.mini_balance.liquidez_display }}</strong>
+                  Liquidez AC/PC:
+                  Base <strong>{{ board.liquidez_corte_base }}</strong>
+                  · Vivo <strong>{{ board.liquidez_corte_vivo }}</strong>
                 </p>
               </div>
             </div>
           </div>
-          <div class="col-lg-6">
+          <div class="col-lg-4">
             <div class="ge-panel mb-0">
               <div class="ge-panel-h py-1">Mini resultados · acumulado {{ board.base_period|slice:":4" }}</div>
+              <p class="esc-corte-note mb-0 px-2">{{ board.corte_note }}</p>
               <div class="ge-panel-b p-0">
                 <table class="table table-sm esc-mini mb-0">
+                  <thead>
+                    <tr>
+                      <th></th>
+                      <th class="text-end">Base</th>
+                      <th class="text-end">Vivo</th>
+                    </tr>
+                  </thead>
                   <tbody>
                     {% for row in board.mini_results %}
                     <tr>
                       <td>{{ row.label }}</td>
-                      <td class="text-end fw-semibold">{{ row.value }}</td>
+                      <td class="text-end fw-semibold">{{ row.base }}</td>
+                      <td class="text-end fw-semibold">{{ row.vivo }}</td>
                     </tr>
                     {% endfor %}
                   </tbody>

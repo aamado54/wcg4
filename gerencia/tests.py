@@ -78,7 +78,7 @@ class GerenciaCalcTests(TestCase):
         board = build_nov2026_board(load_finance())
         self.assertEqual(board["status"], "ok")
         self.assertEqual(board["base_period"], "2026-08")
-        self.assertIn("mini_balance_rows", board)
+        self.assertIn("mini_balance_corte_rows", board)
         self.assertIn("compare_rows", board)
         self.assertIn("balance_end_rows", board)
         self.assertEqual(len(board["chart_timeline"]["labels"]), 11)

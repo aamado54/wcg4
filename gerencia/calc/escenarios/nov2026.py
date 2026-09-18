@@ -235,14 +235,51 @@ def _mini_results(ctx: dict[str, Any], data: dict, bu: str, fm) -> list[dict[str
     util_c = n(mc.get("utilidades"))
     util_g = n(mg.get("util_vista"))
     year = period[:4]
+
+    def _row(label: str, val: float) -> dict[str, str]:
+        disp = fm(val)
+        return {"label": label, "base": disp, "vivo": disp}
+
     return [
-        {"label": "Productos financieros", "value": fm(agg["productos"])},
-        {"label": "Gastos financieros", "value": fm(agg["costos"])},
-        {"label": "Margen", "value": fm(agg["margen_bruto"])},
-        {"label": "Otros gastos", "value": fm(agg["overhead_neto"])},
-        {"label": f"Utilidad acum. contable ({year})", "value": fm(util_c)},
-        {"label": f"Utilidad acum. gerencial ({year})", "value": fm(util_g)},
+        _row("Productos financieros", agg["productos"]),
+        _row("Gastos financieros", agg["costos"]),
+        _row("Margen", agg["margen_bruto"]),
+        _row("Otros gastos", agg["overhead_neto"]),
+        _row(f"Utilidad acum. contable ({year})", util_c),
+        _row(f"Utilidad acum. gerencial ({year})", util_g),
     ]
+
+
+def _mini_balance_corte_rows(mini_bg: dict[str, Any]) -> list[dict[str, str]]:
+    rows: list[dict[str, str]] = []
+    pas = mini_bg["pasivos"]
+    for i, act in enumerate(mini_bg["activos"]):
+        pas_row = pas[i] if i < len(pas) else {"label": "", "value": ""}
+        val_a = act["value"]
+        val_p = pas_row.get("value", "")
+        rows.append(
+            {
+                "activo_label": act["label"],
+                "activo_base": val_a,
+                "activo_vivo": val_a,
+                "pasivo_label": pas_row.get("label", ""),
+                "pasivo_base": val_p,
+                "pasivo_vivo": val_p,
+            }
+        )
+    for j in range(len(mini_bg["activos"]), len(pas)):
+        val_p = pas[j]["value"]
+        rows.append(
+            {
+                "activo_label": "",
+                "activo_base": "",
+                "activo_vivo": "",
+                "pasivo_label": pas[j]["label"],
+                "pasivo_base": val_p,
+                "pasivo_vivo": val_p,
+            }
+        )
+    return rows
 
 
 def _scaled_shocks(shocks: dict[str, float], factor: float) -> dict[str, float]:
@@ -504,30 +541,11 @@ def build_nov2026_board(
 
     mini_bg = _mini_balance(ctx, data, bu, fm)
     mini_res = _mini_results(ctx, data, bu, fm)
+    mini_balance_corte_rows = _mini_balance_corte_rows(mini_bg)
     sim_base = _simulate_timeline(ctx, sb)
     sim_vivo = _simulate_timeline(ctx, sv)
 
-    balance_rows = []
-    pas = mini_bg["pasivos"]
-    for i, act in enumerate(mini_bg["activos"]):
-        pas_row = pas[i] if i < len(pas) else {"label": "", "value": ""}
-        balance_rows.append(
-            {
-                "activo_label": act["label"],
-                "activo_value": act["value"],
-                "pasivo_label": pas_row["label"],
-                "pasivo_value": pas_row["value"],
-            }
-        )
-    for j in range(len(mini_bg["activos"]), len(pas)):
-        balance_rows.append(
-            {
-                "activo_label": "",
-                "activo_value": "",
-                "pasivo_label": pas[j]["label"],
-                "pasivo_value": pas[j]["value"],
-            }
-        )
+    liq_corte = mini_bg.get("liquidez_display", "—")
 
     bg_base_crisis = _mini_balance(
         ctx,
@@ -632,10 +650,16 @@ def build_nov2026_board(
             "Nada ocurre en sep–oct: son meses de preparación. El stress arranca en noviembre "
             "(midterms 3 nov; hipótesis de escalada tardía), pico dic–ene, y secuela ~6 meses."
         ),
+        "corte_note": (
+            "Corte real en libros (ago-2026). No es escenario base ni vivo: punto de partida común "
+            "antes del stress. Base y Vivo muestran la misma foto inicial."
+        ),
         "shocks_base": sb,
         "shocks_vivo": sv,
         "mini_balance": mini_bg,
-        "mini_balance_rows": balance_rows,
+        "mini_balance_corte_rows": mini_balance_corte_rows,
+        "liquidez_corte_base": liq_corte,
+        "liquidez_corte_vivo": liq_corte,
         "mini_results": mini_res,
         "mini_balance_base_crisis": bg_base_crisis,
         "mini_balance_vivo_crisis": bg_vivo_crisis,
