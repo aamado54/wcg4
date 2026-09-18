@@ -79,21 +79,32 @@ class GerenciaCalcTests(TestCase):
         self.assertEqual(board["status"], "ok")
         self.assertEqual(board["base_period"], "2026-08")
         self.assertIn("mini_balance_corte_rows", board)
+        self.assertIn("mini_results_real", board)
+        self.assertIn("mini_results_sim", board)
         self.assertIn("compare_rows", board)
         self.assertIn("balance_end_rows", board)
         self.assertEqual(len(board["chart_timeline"]["labels"]), 11)
         self.assertTrue(board["precautions"])
         self.assertIn("slug", board["precautions"][0])
 
-    def test_corte_base_vivo_differ_with_extreme(self):
+    def test_sim_base_vivo_differ_with_extreme(self):
         from gerencia.calc.escenarios import BASE_PRESETS, VIVO_PRESETS, build_nov2026_board, default_shocks
 
         sb = {**default_shocks(), **{k: v for k, v in BASE_PRESETS["cero"].items() if k != "label"}}
         sv = {**default_shocks(), **{k: v for k, v in VIVO_PRESETS["extremo"].items() if k != "label"}}
         board = build_nov2026_board(load_finance(), shocks_base=sb, shocks_vivo=sv)
-        row = board["mini_balance_corte_rows"][0]
-        self.assertNotEqual(row["activo_base"], row["activo_vivo"])
-        self.assertNotEqual(board["mini_results"][0]["base"], board["mini_results"][0]["vivo"])
+        self.assertNotEqual(
+            board["balance_end_rows"][0]["base"],
+            board["balance_end_rows"][0]["vivo"],
+        )
+        self.assertNotEqual(
+            board["mini_results_sim"][0]["base"],
+            board["mini_results_sim"][0]["vivo"],
+        )
+        self.assertNotEqual(
+            board["mini_results_sim"][3]["base"],
+            board["mini_results_sim"][3]["vivo"],
+        )
 
     def test_factoraje_mom_affects_simulation(self):
         from gerencia.calc.escenarios import build_nov2026_board, default_shocks
