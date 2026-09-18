@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..accounts import div_pref_ytd, line, preferentes_stock
+from ..accounts import div_pref_ytd, line, pagares_month, preferentes_stock
 from ..bands import evaluate_ratio
 from ..indices import derived_metrics
 from ..intermediacion import _intermediation_slice
@@ -43,17 +43,23 @@ TIMELINE: list[tuple[str, str, float, str]] = [
     ("2027-07", "secuela", 0.48, "Secuela"),
 ]
 
+MODERADO_SHOCKS = {
+    "fx_pct": 5.0,
+    "rates_bp": 150.0,
+    "mora_pct": 25.0,
+    "withdrawals_pct": 10.0,
+    "remittances_pct": 5.0,
+    "recovery_pct": 10.0,
+    "factoraje_mom_pct": -1.0,
+}
+
+BASE_PRESETS: dict[str, dict[str, Any]] = {
+    "cero": {"label": "Base cero", **DEFAULT_SHOCKS},
+    "moderado": {"label": "Base moderado", **MODERADO_SHOCKS},
+}
+
 VIVO_PRESETS: dict[str, dict[str, Any]] = {
-    "moderado": {
-        "label": "Vivo moderado",
-        "fx_pct": 5.0,
-        "rates_bp": 150.0,
-        "mora_pct": 25.0,
-        "withdrawals_pct": 10.0,
-        "remittances_pct": 5.0,
-        "recovery_pct": 10.0,
-        "factoraje_mom_pct": -1.0,
-    },
+    "moderado": {"label": "Vivo moderado", **MODERADO_SHOCKS},
     "severo": {
         "label": "Vivo severo",
         "fx_pct": 10.0,
@@ -75,6 +81,16 @@ VIVO_PRESETS: dict[str, dict[str, Any]] = {
         "factoraje_mom_pct": -5.0,
     },
 }
+
+DRIVER_FIELDS: list[dict[str, Any]] = [
+    {"key": "fx_pct", "label": "USD/GTQ (+dep.)", "min": 0, "max": 25, "step": 0.5, "suffix": "%"},
+    {"key": "rates_bp", "label": "Tasas fondeo (+pb)", "min": 0, "max": 600, "step": 25, "suffix": ""},
+    {"key": "mora_pct", "label": "Mora (+)", "min": 0, "max": 100, "step": 5, "suffix": "%"},
+    {"key": "withdrawals_pct", "label": "Retiros pasivas (+)", "min": 0, "max": 40, "step": 5, "suffix": "%"},
+    {"key": "remittances_pct", "label": "Caída remesas (+)", "min": 0, "max": 30, "step": 5, "suffix": "%"},
+    {"key": "recovery_pct", "label": "Recup. cartera (−)", "min": 0, "max": 40, "step": 5, "suffix": "%"},
+    {"key": "factoraje_mom_pct", "label": "Colocaciones / mes", "min": -8, "max": 3, "step": 0.5, "suffix": "%"},
+]
 
 
 def parse_shock(raw: str | float | None, fallback: float) -> float:
@@ -157,6 +173,15 @@ def _base_context(data: dict, bu: str = "T") -> dict[str, Any]:
     }
 
 
+def _pagares_ytd(data: dict, bu: str, period: str) -> float:
+    year = (period or "")[:4]
+    total = 0.0
+    for p in data.get("periods") or []:
+        if str(p).startswith(year) and str(p) <= period:
+            total += pagares_month(data, bu, p)
+    return total
+
+
 def _mini_balance(
     ctx: dict[str, Any],
     data: dict,
@@ -166,6 +191,7 @@ def _mini_balance(
     ac: float | None = None,
     pc: float | None = None,
     pasivo_extra: float = 0.0,
+    cartera_override: float | None = None,
 ) -> dict[str, Any]:
     period = ctx["period"]
     row = kpi_row(data, bu, period)
@@ -174,48 +200,66 @@ def _mini_balance(
     pc_v = pc if pc is not None else n(m.get("pasivo_corriente_books") or m.get("pasivo_corriente"))
     pasivo_books = n(m.get("pasivo_books") or m.get("pasivo_total")) + pasivo_extra
     activo = n(row.get("activo")) or (n(row.get("activo_corriente")) + n(row.get("activo_no_corriente")))
-    cartera = n(m.get("cartera"))
+    base_cartera = n(m.get("cartera"))
+    cartera = cartera_override if cartera_override is not None else base_cartera
+    if cartera_override is not None and base_cartera:
+        activo = activo * (cartera / base_cartera)
     pref = ctx["pref"]
     pagares = _pagares_stock(data, bu, period)
     bancos = _bancos_pasivo(data, bu, period)
     liq = ac_v / pc_v if pc_v else m.get("liquidez")
+
+    def _line(label: str, raw: float) -> dict[str, Any]:
+        return {"label": label, "value": fm(raw), "raw": raw}
+
     return {
         "activos": [
-            {"label": "Colocaciones (cartera)", "value": fm(cartera)},
-            {"label": "Activo total", "value": fm(activo)},
+            _line("Colocaciones (cartera)", cartera),
+            _line("Activo total", activo),
         ],
         "pasivos": [
-            {"label": "Pagarés AP/PG (201010106)", "value": fm(pagares)},
-            {"label": "Acciones preferentes (301010106)", "value": fm(pref)},
-            {"label": "Préstamos bancos (pasivo)", "value": fm(bancos)},
-            {"label": "Pasivo total (libros)", "value": fm(pasivo_books)},
-            {"label": "Fondeo total (Pas.+Pref.)", "value": fm(pasivo_books + pref)},
+            _line("Pagarés AP/PG (201010106)", pagares),
+            _line("Acciones preferentes (301010106)", pref),
+            _line("Préstamos bancos (pasivo)", bancos),
+            _line("Pasivo total (libros)", pasivo_books),
+            _line("Fondeo total (Pas.+Pref.)", pasivo_books + pref),
         ],
         "liquidez": liq,
         "liquidez_display": f"{liq:.2f}×" if liq is not None else "—",
     }
 
 
-def _mini_results(ctx: dict[str, Any], fm) -> list[dict[str, str]]:
+def _mini_results(ctx: dict[str, Any], data: dict, bu: str, fm) -> list[dict[str, str]]:
     mc = ctx["metrics_cont"]
     mg = ctx["metrics"]
     ms = ctx["metrics_strict"]
+    div_y = ctx["div_ytd"]
+    pag_y = _pagares_ytd(data, bu, BASE_PERIOD)
     year = BASE_PERIOD[:4]
     return [
         {
             "label": f"Utilidad acum. contable ({year})",
             "value": fm(mc.get("utilidades")),
-            "hint": "Cuenta 302 · saldo YTD",
+            "hint": (
+                f"Saldo YTD cuenta 302. Los intereses a pagarés ({fm(pag_y)}) ya están en libros; "
+                f"los dividendos a preferentes no restan aquí."
+            ),
         },
         {
             "label": f"Utilidad acum. gerencial ({year})",
             "value": fm(mg.get("util_vista")),
-            "hint": "302 − dividendos preferentes (102020301)",
+            "hint": (
+                f"302 menos dividendos preferentes acumulados ({fm(div_y)}), pagados mes a mes. "
+                f"Esa diferencia existe siempre, no espera la vista estricta."
+            ),
         },
         {
             "label": f"Utilidad acum. ger. estricta ({year})",
             "value": fm(ms.get("util_vista")),
-            "hint": "Igual util.; preferentes reclasificados a pasivo a 1 año",
+            "hint": (
+                "Misma utilidad que la gerencial. Solo reclasifica preferentes (301010106) "
+                "de patrimonio a pasivo a un año — ejercicio de balance, no de resultados."
+            ),
         },
     ]
 
@@ -226,7 +270,13 @@ def _scaled_shocks(shocks: dict[str, float], factor: float) -> dict[str, float]:
     return {k: float(shocks.get(k, 0.0)) * factor for k in DEFAULT_SHOCKS}
 
 
-def _monthly_stress(ctx: dict[str, Any], shocks: dict[str, float]) -> dict[str, float]:
+def _monthly_stress(
+    ctx: dict[str, Any],
+    shocks: dict[str, float],
+    *,
+    cartera: float | None = None,
+    captacion: float | None = None,
+) -> dict[str, float]:
     sl = ctx["slice"]
     m = ctx["metrics"]
     fx = shocks["fx_pct"] / 100.0
@@ -236,27 +286,30 @@ def _monthly_stress(ctx: dict[str, Any], shocks: dict[str, float]) -> dict[str, 
     rec = shocks["recovery_pct"] / 100.0
     rate_add = shocks["rates_bp"] / 10000.0
 
-    cartera = n(sl.get("colocaciones"))
-    captacion = n(sl.get("captaciones"))
-    margen = n(sl.get("margen_bruto"))
-    overhead = n(sl.get("overhead_neto"))
-    ac = n(m.get("activo_corriente"))
-    pc = n(m.get("pasivo_corriente_books") or m.get("pasivo_corriente"))
-    pasivo = n(m.get("pasivo_books") or m.get("pasivo_total"))
-    pat = n(m.get("patrimonio_books") or m.get("patrimonio"))
+    base_cartera = n(sl.get("colocaciones")) or 1.0
+    base_capt = n(sl.get("captaciones")) or 1.0
+    cartera_v = base_cartera if cartera is None else cartera
+    captacion_v = base_capt if captacion is None else captacion
+    scale = cartera_v / base_cartera
 
-    cost_up = captacion * rate_add / 12.0
+    margen = n(sl.get("margen_bruto")) * scale
+    overhead = n(sl.get("overhead_neto"))
+    base_ac = n(m.get("activo_corriente")) * scale
+    pc = n(m.get("pasivo_corriente_books") or m.get("pasivo_corriente"))
+    pasivo = (n(m.get("pasivo_books") or m.get("pasivo_total"))) * (captacion_v / base_capt)
+
+    cost_up = captacion_v * rate_add / 12.0
     fx_pasivo_q = pasivo * USD_PASIVA_SHARE * fx
     fx_cost_month = fx_pasivo_q * 0.0025
-    yield_loss = cartera * sl["tasa_activa"] / 12.0 * (mora * 0.45 + rem * 0.25)
-    recovery_loss = cartera * 0.015 / 12.0 * rec
+    yield_loss = cartera_v * sl["tasa_activa"] / 12.0 * (mora * 0.45 + rem * 0.25)
+    recovery_loss = cartera_v * 0.015 / 12.0 * rec
     margen_stress = margen - cost_up - fx_cost_month - yield_loss - recovery_loss
-    wd_amt = captacion * wd
-    ac1 = max(ac - wd_amt * 0.85, 1.0)
+    wd_amt = captacion_v * wd
+    ac1 = max(base_ac - wd_amt * 0.85, 1.0)
     pc1 = pc + wd_amt + fx_pasivo_q * 0.15
     liq1 = ac1 / pc1 if pc1 else None
     util_stress = margen_stress - overhead
-    base_util = n(sl.get("utilidad"))
+    base_util = n(sl.get("utilidad")) * scale
 
     return {
         "util_base": base_util,
@@ -267,19 +320,19 @@ def _monthly_stress(ctx: dict[str, Any], shocks: dict[str, float]) -> dict[str, 
         "pc": pc1,
         "pasivo_extra": fx_pasivo_q * 0.15 + wd_amt,
         "margen_stress": margen_stress,
+        "cartera": cartera_v,
     }
 
 
 def _simulate_timeline(ctx: dict[str, Any], shocks: dict[str, float]) -> dict[str, Any]:
     sl = ctx["slice"]
     mom = shocks.get("factoraje_mom_pct", 0.0) / 100.0
-    full = _monthly_stress(ctx, shocks)
 
     ac = n(ctx["metrics"].get("activo_corriente"))
     pc = n(ctx["metrics"].get("pasivo_corriente_books") or ctx["metrics"].get("pasivo_corriente"))
     liq = n(ctx["metrics"].get("liquidez"))
     cartera = n(sl.get("colocaciones"))
-    util_base = n(sl.get("utilidad"))
+    captacion = n(sl.get("captaciones"))
 
     labels: list[str] = []
     phases: list[str] = []
@@ -293,13 +346,18 @@ def _simulate_timeline(ctx: dict[str, Any], shocks: dict[str, float]) -> dict[st
         phases.append(phase)
         phase_labels.append(phase_label)
         cartera *= 1 + mom
+        captacion *= 1 + mom
 
         if factor <= 0:
-            u = util_base
+            st = _monthly_stress(ctx, DEFAULT_SHOCKS, cartera=cartera, captacion=captacion)
+            u = st["util_stress"]
+            ac = st["ac"]
+            pc = st["pc"]
+            liq = st["liquidez_stress"]
         else:
             eff = _scaled_shocks(shocks, factor)
-            st = _monthly_stress(ctx, eff)
-            u = util_base + (st["util_stress"] - util_base)
+            st = _monthly_stress(ctx, eff, cartera=cartera, captacion=captacion)
+            u = st["util_stress"]
             pasivo_extra = st["pasivo_extra"]
             ac = st["ac"]
             pc = st["pc"]
@@ -326,6 +384,7 @@ def _simulate_timeline(ctx: dict[str, Any], shocks: dict[str, float]) -> dict[st
         "end_ac": ac,
         "end_pc": pc,
         "end_pasivo_extra": pasivo_extra,
+        "end_cartera": cartera,
     }
 
 
@@ -350,32 +409,76 @@ def _compare_row(label: str, base_val, vivo_val, *, display_fn, lower_is_worse=F
     return {"label": label, "base": b, "vivo": v, "delta": delta, "delta_display": delta_display, "tone": tone}
 
 
-def _precautions(vivo: dict[str, float], sim_vivo: dict[str, Any]) -> list[str]:
-    out: list[str] = []
+def _diff_cell(base_raw: float | None, vivo_raw: float | None, *, fm, pct_fmt=False) -> dict[str, str]:
+    if base_raw is None or vivo_raw is None:
+        return {"abs": "—", "pct": "—"}
+    delta = vivo_raw - base_raw
+    abs_disp = f"{delta:+.2f}" if pct_fmt else fm(delta)
+    if base_raw:
+        pct = (vivo_raw / base_raw - 1.0) * 100.0
+        pct_disp = f"{pct:+.1f}%"
+    elif vivo_raw:
+        pct_disp = "—"
+    else:
+        pct_disp = "0.0%"
+    return {"abs": abs_disp, "pct": pct_disp}
+
+
+def _balance_diff_rows(base_mb: dict, vivo_mb: dict, fm) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    b_items = {x["label"]: x.get("raw", 0.0) for x in base_mb["activos"] + base_mb["pasivos"]}
+    v_items = {x["label"]: x.get("raw", 0.0) for x in vivo_mb["activos"] + vivo_mb["pasivos"]}
+    for label in list(b_items.keys()) + [k for k in v_items if k not in b_items]:
+        diff = _diff_cell(b_items.get(label), v_items.get(label), fm=fm)
+        rows.append({"label": label, "abs": diff["abs"], "pct": diff["pct"]})
+    liq_diff = _diff_cell(base_mb.get("liquidez"), vivo_mb.get("liquidez"), fm=fm, pct_fmt=True)
+    rows.append({"label": "Liquidez simulada", "abs": liq_diff["abs"], "pct": liq_diff["pct"]})
+    return rows
+
+
+def _precautions(vivo: dict[str, float], sim_vivo: dict[str, Any]) -> list[dict[str, str]]:
+    from .precauciones import PRECAUTION_ARTICLES
+
+    out: list[dict[str, str]] = []
     liq = sim_vivo.get("liquidez_min")
     if liq is not None and liq < 1.25:
+        art = PRECAUTION_ARTICLES["liquidez-war-room"]
         out.append(
-            f"Escenario vivo: liquidez mínima simulada {liq:.2f}× en la ventana nov–jul. "
-            "Activar war room de liquidez y calendario diario de vencimientos."
+            {
+                "slug": "liquidez-war-room",
+                "title": art["title"],
+                "summary": f"Liquidez mínima simulada {liq:.2f}× (nov–jul). {art['summary']}",
+            }
         )
     if vivo.get("withdrawals_pct", 0) >= 10:
+        art = PRECAUTION_ARTICLES["back-to-back-sep-oct"]
         out.append(
-            "Sep–oct (ahora): confirmar back-to-backs y líneas bancarias antes del 3 nov; "
-            "no contar cupos no probados."
+            {
+                "slug": "back-to-back-sep-oct",
+                "title": art["title"],
+                "summary": art["summary"],
+            }
         )
     if vivo.get("fx_pct", 0) >= 8:
-        out.append(
-            "Reducir descalce USD/GTQ en cartera y exigir cobertura a clientes importadores."
-        )
+        art = PRECAUTION_ARTICLES["descalce-fx"]
+        out.append({"slug": "descalce-fx", "title": art["title"], "summary": art["summary"]})
     if sim_vivo.get("util_crisis_acum", 0) < 0:
+        art = PRECAUTION_ARTICLES["utilidad-crisis-cobranza"]
         out.append(
-            "Utilidad acumulada negativa en ventana de crisis: priorizar cobranza y congelar "
-            "riesgo especulativo en bonos largos."
+            {
+                "slug": "utilidad-crisis-cobranza",
+                "title": art["title"],
+                "summary": art["summary"],
+            }
         )
     if not out:
+        art = PRECAUTION_ARTICLES["preparacion-sep-oct"]
         out.append(
-            "Sep–oct: usar los dos meses de preparación para alinear tesorería; "
-            "el escenario vivo no dispara alertas extremas con los drivers actuales."
+            {
+                "slug": "preparacion-sep-oct",
+                "title": art["title"],
+                "summary": art["summary"],
+            }
         )
     return out
 
@@ -397,7 +500,7 @@ def build_nov2026_board(
     fm = lambda v, d=0: fmt_money(v, ccy, fx, d)
 
     mini_bg = _mini_balance(ctx, data, bu, fm)
-    mini_res = _mini_results(ctx, fm)
+    mini_res = _mini_results(ctx, data, bu, fm)
     sim_base = _simulate_timeline(ctx, sb)
     sim_vivo = _simulate_timeline(ctx, sv)
 
@@ -424,7 +527,14 @@ def build_nov2026_board(
         )
 
     bg_base_crisis = _mini_balance(
-        ctx, data, bu, fm, ac=sim_base["end_ac"], pc=sim_base["end_pc"], pasivo_extra=0
+        ctx,
+        data,
+        bu,
+        fm,
+        ac=sim_base["end_ac"],
+        pc=sim_base["end_pc"],
+        pasivo_extra=0,
+        cartera_override=sim_base["end_cartera"],
     )
     bg_vivo_crisis = _mini_balance(
         ctx,
@@ -434,7 +544,9 @@ def build_nov2026_board(
         ac=sim_vivo["end_ac"],
         pc=sim_vivo["end_pc"],
         pasivo_extra=sim_vivo["end_pasivo_extra"],
+        cartera_override=sim_vivo["end_cartera"],
     )
+    balance_diff_rows = _balance_diff_rows(bg_base_crisis, bg_vivo_crisis, fm)
 
     liq_base_ev = evaluate_ratio("liquidez", sim_base.get("liquidez_min"))
     liq_vivo_ev = evaluate_ratio("liquidez", sim_vivo.get("liquidez_min"))
@@ -524,11 +636,14 @@ def build_nov2026_board(
         "mini_results": mini_res,
         "mini_balance_base_crisis": bg_base_crisis,
         "mini_balance_vivo_crisis": bg_vivo_crisis,
+        "balance_diff_rows": balance_diff_rows,
         "compare_rows": compare_rows,
         "sim_base": sim_base,
         "sim_vivo": sim_vivo,
         "chart_timeline": chart,
+        "base_presets": BASE_PRESETS,
         "vivo_presets": VIVO_PRESETS,
+        "driver_fields": DRIVER_FIELDS,
         "precautions": _precautions(sv, sim_vivo),
         "liq_vivo_tone": liq_vivo_ev.get("tone"),
         "liq_base_tone": liq_base_ev.get("tone"),
@@ -536,4 +651,4 @@ def build_nov2026_board(
 
 
 # Compatibilidad con imports previos
-PRESETS = {"base": {"label": "Base", **DEFAULT_SHOCKS}, **VIVO_PRESETS}
+PRESETS = {**BASE_PRESETS, **VIVO_PRESETS}

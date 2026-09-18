@@ -73,14 +73,30 @@ class GerenciaCalcTests(TestCase):
         self.assertGreaterEqual(len(board["rows"]), 5)
 
     def test_escenario_nov2026_board(self):
-        from gerencia.calc.escenarios import build_nov2026_board
+        from gerencia.calc.escenarios import build_nov2026_board, default_shocks
 
         board = build_nov2026_board(load_finance())
         self.assertEqual(board["status"], "ok")
         self.assertEqual(board["base_period"], "2026-08")
         self.assertIn("mini_balance_rows", board)
         self.assertIn("compare_rows", board)
+        self.assertIn("balance_diff_rows", board)
         self.assertEqual(len(board["chart_timeline"]["labels"]), 11)
+        self.assertTrue(board["precautions"])
+        self.assertIn("slug", board["precautions"][0])
+
+    def test_factoraje_mom_affects_simulation(self):
+        from gerencia.calc.escenarios import build_nov2026_board, default_shocks
+
+        base = default_shocks()
+        flat = build_nov2026_board(load_finance(), shocks_base=base, shocks_vivo=base)
+        shrink = dict(base)
+        shrink["factoraje_mom_pct"] = -5.0
+        down = build_nov2026_board(load_finance(), shocks_base=shrink, shocks_vivo=shrink)
+        self.assertNotEqual(
+            flat["sim_vivo"]["utilidad"][-1],
+            down["sim_vivo"]["utilidad"][-1],
+        )
 
 
 class GerenciaViewTests(TestCase):
@@ -124,13 +140,27 @@ class GerenciaViewTests(TestCase):
         resp = self.client.get(reverse("gerencia:escenario_nov2026"))
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "Mini balance")
-        self.assertContains(resp, "Escenario base")
-        self.assertContains(resp, "Escenario vivo")
+        self.assertContains(resp, "Drivers · base vs vivo")
+        self.assertContains(resp, "Base cero")
+        self.assertContains(resp, "Vivo moderado")
 
     def test_escenario_preset(self):
         resp = self.client.get(reverse("gerencia:escenario_nov2026") + "?preset_vivo=severo")
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "Comparación base vs vivo")
+
+    def test_escenario_preset_base(self):
+        resp = self.client.get(reverse("gerencia:escenario_nov2026") + "?preset_base=moderado")
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Base moderado")
+
+    def test_escenario_precaucion(self):
+        resp = self.client.get(
+            reverse("gerencia:escenario_nov2026_precaucion", kwargs={"slug": "liquidez-war-room"})
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Regreso")
+        self.assertContains(resp, "Qué significa")
 
     def test_whatif_200(self):
         resp = self.client.get(reverse("gerencia:whatif"))

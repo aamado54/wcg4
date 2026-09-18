@@ -1,6 +1,7 @@
 import json
 
 from django.contrib import messages
+from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_http_methods
@@ -223,11 +224,17 @@ def _parse_shock_set(request, prefix: str) -> dict[str, float]:
 
 @risk_gerencia_required
 def escenario_nov2026(request):
+    preset_base = (request.GET.get("preset_base") or "").strip().lower()
     preset_vivo = (request.GET.get("preset_vivo") or "").strip().lower()
     shocks_base = _parse_shock_set(request, "base")
     shocks_vivo = _parse_shock_set(request, "vivo")
-    if preset_vivo in engine.ESCENARIO_PRESETS and preset_vivo != "base":
-        preset = engine.ESCENARIO_PRESETS[preset_vivo]
+    if preset_base in engine.ESCENARIO_BASE_PRESETS:
+        preset = engine.ESCENARIO_BASE_PRESETS[preset_base]
+        for k in shocks_base:
+            if k in preset:
+                shocks_base[k] = float(preset[k])
+    if preset_vivo in engine.ESCENARIO_VIVO_PRESETS:
+        preset = engine.ESCENARIO_VIVO_PRESETS[preset_vivo]
         for k in shocks_vivo:
             if k in preset:
                 shocks_vivo[k] = float(preset[k])
@@ -249,9 +256,37 @@ def escenario_nov2026(request):
             board=board,
             shocks_base=shocks_base,
             shocks_vivo=shocks_vivo,
+            preset_base=preset_base,
             preset_vivo=preset_vivo,
+            driver_fields=board.get("driver_fields") or engine.ESCENARIO_DRIVER_FIELDS,
+            driver_rows=[
+                {
+                    **f,
+                    "base_val": shocks_base.get(f["key"], 0),
+                    "vivo_val": shocks_vivo.get(f["key"], 0),
+                }
+                for f in (board.get("driver_fields") or engine.ESCENARIO_DRIVER_FIELDS)
+            ],
             chart_json=json.dumps(board.get("chart_timeline") or {}),
             breadcrumbs=_crumbs("Escenarios", "Noviembre 2026"),
+        ),
+    )
+
+
+@risk_gerencia_required
+def escenario_nov2026_precaucion(request, slug: str):
+    article = engine.get_precaution_article(slug)
+    if not article:
+        raise Http404
+    return render(
+        request,
+        "gerencia/escenario_precaucion.html",
+        _page(
+            request,
+            "escenarios",
+            article=article,
+            slug=slug,
+            breadcrumbs=_crumbs("Escenarios", "Noviembre 2026", article["title"]),
         ),
     )
 

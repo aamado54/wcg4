@@ -11,6 +11,11 @@ urlpatterns = [
     path("estructura/", views.estructura, name="estructura"),
     path("escenarios/", views.escenarios, name="escenarios"),
     path("escenarios/nov-2026/", views.escenario_nov2026, name="escenario_nov2026"),
+    path(
+        "escenarios/nov-2026/precaucion/<slug>/",
+        views.escenario_nov2026_precaucion,
+        name="escenario_nov2026_precaucion",
+    ),
     path("comando/", views.comando, name="comando"),
     path("indices/", views.indices, name="indices"),
     path("whatif/", views.whatif, name="whatif"),

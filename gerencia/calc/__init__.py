@@ -17,7 +17,16 @@ from .liquidez import build_estructura_board, build_liquidez_board
 from .utils import rates_from_meta
 from .pasivas_growth import build_pasivas_growth_board
 from .whatif import DEFAULT_DRIVERS, drivers_as_pct_display, format_pct, parse_pct, run_whatif
-from .escenarios import PRESETS as ESCENARIO_PRESETS, build_nov2026_board, default_shocks, parse_shock
+from .escenarios import (
+    BASE_PRESETS as ESCENARIO_BASE_PRESETS,
+    DRIVER_FIELDS as ESCENARIO_DRIVER_FIELDS,
+    PRESETS as ESCENARIO_PRESETS,
+    VIVO_PRESETS as ESCENARIO_VIVO_PRESETS,
+    build_nov2026_board,
+    default_shocks,
+    get_precaution_article,
+    parse_shock,
+)
 
 
 def load_finance() -> dict[str, Any]:
@@ -116,5 +125,9 @@ __all__ = [
     "board_trimestral",
     "default_shocks",
     "parse_shock",
+    "get_precaution_article",
     "ESCENARIO_PRESETS",
+    "ESCENARIO_BASE_PRESETS",
+    "ESCENARIO_VIVO_PRESETS",
+    "ESCENARIO_DRIVER_FIELDS",
 ]

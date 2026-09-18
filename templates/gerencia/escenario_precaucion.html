@@ -1,0 +1,35 @@
+{% extends "base_wcg.html" %}
+{% block title %}{{ article.title }} — Escenarios{% endblock %}
+{% block extra_head %}
+{% include "gerencia/_styles.html" %}
+<style>
+  .prec-body { max-width: 42rem; line-height: 1.55; }
+  .prec-section { margin-bottom: 1.5rem; }
+  .prec-section h2 { font-size: 1.05rem; color: #1e4d3a; margin-bottom: 0.5rem; }
+  .prec-section p { font-size: 0.95rem; color: #3a4540; margin-bottom: 0.65rem; }
+  .prec-lead { font-size: 1rem; color: #4a5c52; margin-bottom: 1.25rem; padding: 0.75rem 1rem; background: #f4faf6; border-radius: 8px; border-left: 4px solid #1e4d3a; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="ge-wrap mx-auto mt-2 mb-4">
+  <div class="mb-3">
+    <div class="ge-kicker">Precaución · escenario vivo</div>
+    <h1 class="ge-title">{{ article.title }}</h1>
+  </div>
+  {% include "gerencia/_nav.html" %}
+
+  <div class="ge-panel mb-3">
+    <div class="ge-panel-b prec-body">
+      <p class="prec-lead">{{ article.summary }}</p>
+      {% for section in article.sections %}
+      <div class="prec-section">
+        <h2>{{ section.title }}</h2>
+        <p>{{ section.body }}</p>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <button type="button" class="btn btn-primary" onclick="history.back()">← Regreso</button>
+</div>
+{% endblock %}
