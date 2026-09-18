@@ -4,13 +4,49 @@
 {% include "gerencia/_styles.html" %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
 <style>
-  .esc-split { display: flex; flex-direction: column; height: calc(100vh - 11rem); min-height: 520px; border: 1px solid #d8e0dc; border-radius: 10px; overflow: hidden; background: #fff; }
-  .esc-pane { overflow: auto; min-height: 120px; }
+  main > .container > nav[aria-label="breadcrumb"] { display: none; }
+  main { padding-top: 0.35rem !important; padding-bottom: 0.5rem !important; }
+  .esc-back-fixed {
+    position: fixed;
+    top: 4rem;
+    right: 0.65rem;
+    z-index: 1040;
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 0.22rem 0.55rem;
+    border-radius: 6px;
+    border: 1px solid #b8cfc0;
+    background: #fff;
+    color: #3d5a4a;
+    text-decoration: none;
+    box-shadow: 0 1px 4px rgba(42, 52, 65, 0.08);
+  }
+  .esc-back-fixed:hover { background: #f4faf6; color: #1e4d3a; border-color: #1e4d3a; }
+  .esc-page {
+    max-width: 1180px;
+    margin: 0 auto;
+    height: calc(100vh - 4.25rem);
+    min-height: 420px;
+    display: flex;
+    flex-direction: column;
+  }
+  .esc-split {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+    border: 1px solid #d8e0dc;
+    border-radius: 10px;
+    overflow: hidden;
+    background: #fff;
+  }
+  .esc-pane { overflow: auto; min-height: 100px; min-width: 0; }
   .esc-pane-top { flex: 1 1 52%; }
-  .esc-pane-bot { flex: 1 1 48%; border-top: 1px solid transparent; }
+  .esc-pane-bot { flex: 1 1 48%; }
   .esc-gutter { flex: 0 0 8px; cursor: row-resize; background: linear-gradient(#eef2ef,#dfe8e2); border-top: 1px solid #c8d4cc; border-bottom: 1px solid #c8d4cc; touch-action: none; }
   .esc-gutter:hover, .esc-gutter.drag { background: #c8ddd2; }
   .esc-inner { padding: 0.75rem 1rem; }
+  .esc-head { padding-right: 5.5rem; margin-bottom: 0.65rem; }
   .esc-preset { font-size: 0.68rem; padding: 0.15rem 0.45rem; border-radius: 5px; border: 1px solid #b8cfc0; background: #fff; text-decoration: none; color: #3d5a4a; font-weight: 600; white-space: nowrap; }
   .esc-preset.on { background: #1e4d3a; color: #fff; border-color: #1e4d3a; }
   .esc-preset.base.on { background: #5c4a1a; border-color: #5c4a1a; }
@@ -54,29 +90,26 @@
 </style>
 {% endblock %}
 {% block content %}
-<div class="ge-wrap mx-auto mt-2 mb-4">
-  <div class="mb-2 d-flex justify-content-between align-items-start flex-wrap gap-2">
-    <div>
-      <div class="ge-kicker">Escenarios · stress test comparativo</div>
-      <h1 class="ge-title">Noviembre 2026 · Midterms EUA</h1>
-      <p class="ge-sub mb-0">
-        Referencia <strong>{{ board.base_period }}</strong> · elecciones <strong>3 nov 2026</strong> ·
-        TC ref. Q{{ board.fx_ref }}/USD · {{ unit_label }}
-      </p>
-    </div>
-    <a href="{% url 'gerencia:escenarios' %}" class="btn btn-sm btn-outline-secondary">← Escenarios</a>
-  </div>
-  {% include "gerencia/_nav.html" %}
-
+<a href="{% url 'gerencia:escenarios' %}" class="esc-back-fixed">Escenarios</a>
+<div class="esc-page">
   {% if board.status != "ok" %}
   <div class="ge-break">No hay datos financieros suficientes.</div>
   {% else %}
 
-  <div class="ge-story mb-2 small">{{ board.timeline_note }}</div>
-
   <div class="esc-split" id="escSplit">
     <div class="esc-pane esc-pane-top" id="escTop">
       <div class="esc-inner">
+        <div class="esc-head">
+          <div class="ge-kicker">Escenarios · stress test comparativo</div>
+          <h1 class="ge-title">Noviembre 2026 · Midterms EUA</h1>
+          <p class="ge-sub mb-2">
+            Referencia <strong>{{ board.base_period }}</strong> · elecciones <strong>3 nov 2026</strong> ·
+            TC ref. Q{{ board.fx_ref }}/USD · {{ unit_label }}
+          </p>
+          {% include "gerencia/_nav.html" %}
+          <div class="ge-story mb-0 small">{{ board.timeline_note }}</div>
+        </div>
+
         <div class="row g-2 mb-2">
           <div class="col-lg-6">
             <div class="ge-panel mb-0">
