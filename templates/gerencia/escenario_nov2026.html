@@ -51,7 +51,12 @@
   .esc-preset.on { background: #1e4d3a; color: #fff; border-color: #1e4d3a; }
   .esc-preset.base.on { background: #5c4a1a; border-color: #5c4a1a; }
   .esc-mini th, .esc-mini td { font-size: 0.76rem; padding: 0.28rem 0.45rem; vertical-align: middle; }
+  .esc-mini.esc-triple th, .esc-mini.esc-triple td { font-size: 0.64rem; padding: 0.18rem 0.22rem; }
+  .esc-mini.esc-triple .col-real { color: #4a5568; }
+  .esc-mini.esc-triple .col-base { color: #5c4a1a; }
+  .esc-mini.esc-triple .col-vivo { color: #1e4d3a; }
   .esc-mini .side-h { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--wcg-muted); font-weight: 700; }
+  .esc-mini.esc-triple .side-h { font-size: 0.6rem; }
   .esc-drivers-wrap { display: grid; grid-template-columns: minmax(0, 1fr) minmax(390px, 40%); gap: 0.75rem; align-items: start; }
   .esc-drivers-col { min-width: 0; max-width: 100%; }
   .esc-compare-col { min-width: 0; }
@@ -125,46 +130,67 @@
         <div class="row g-2 mb-2">
           <div class="col-lg-8">
             <div class="ge-panel mb-0">
-              <div class="ge-panel-h py-1">Mini balance · corte {{ board.base_period }}</div>
+              <div class="ge-panel-h py-1">Mini balance · real {{ board.base_period }} + proy. jul-2027</div>
               <p class="esc-corte-note mb-0 px-2">{{ board.corte_note }}</p>
               <div class="ge-panel-b p-0">
-                <table class="table table-sm esc-mini mb-0">
+                <table class="table table-sm esc-mini esc-triple mb-0">
                   <thead>
                     <tr>
                       <th class="side-h">Activo</th>
-                      <th class="text-end">Monto</th>
+                      <th class="text-end col-real">Real</th>
+                      <th class="text-end col-base">Base</th>
+                      <th class="text-end col-vivo">Vivo</th>
                       <th class="side-h">Pasivo / fondeo</th>
-                      <th class="text-end">Monto</th>
+                      <th class="text-end col-real">Real</th>
+                      <th class="text-end col-base">Base</th>
+                      <th class="text-end col-vivo">Vivo</th>
                     </tr>
                   </thead>
                   <tbody>
                     {% for row in board.mini_balance_corte_rows %}
                     <tr>
                       <td>{{ row.activo_label }}</td>
-                      <td class="text-end fw-semibold">{{ row.activo_value }}</td>
+                      <td class="text-end fw-semibold col-real">{{ row.activo_real }}</td>
+                      <td class="text-end fw-semibold col-base">{{ row.activo_base }}</td>
+                      <td class="text-end fw-semibold col-vivo">{{ row.activo_vivo }}</td>
                       <td>{{ row.pasivo_label }}</td>
-                      <td class="text-end fw-semibold">{{ row.pasivo_value }}</td>
+                      <td class="text-end fw-semibold col-real">{{ row.pasivo_real }}</td>
+                      <td class="text-end fw-semibold col-base">{{ row.pasivo_base }}</td>
+                      <td class="text-end fw-semibold col-vivo">{{ row.pasivo_vivo }}</td>
                     </tr>
                     {% endfor %}
                   </tbody>
                 </table>
                 <p class="small text-muted px-2 py-1 mb-0 border-top">
-                  Liquidez AC/PC: <strong>{{ board.liquidez_corte }}</strong>
+                  Liquidez AC/PC:
+                  Real <strong>{{ board.liquidez_corte }}</strong>
+                  · Base <strong>{{ board.liquidez_corte_base }}</strong>
+                  · Vivo <strong>{{ board.liquidez_corte_vivo }}</strong>
                 </p>
               </div>
             </div>
           </div>
           <div class="col-lg-4">
             <div class="ge-panel mb-0">
-              <div class="ge-panel-h py-1">Mini resultados · real ene–{{ board.base_period|slice:"5:7" }} {{ board.base_period|slice:":4" }}</div>
-              <p class="esc-corte-note mb-0 px-2">{{ board.corte_note }}</p>
+              <div class="ge-panel-h py-1">Mini resultados · real ene–ago + sim sep–jul</div>
+              <p class="esc-corte-note mb-0 px-2">{{ board.results_note }}</p>
               <div class="ge-panel-b p-0">
-                <table class="table table-sm esc-mini mb-0">
+                <table class="table table-sm esc-mini esc-triple mb-0">
+                  <thead>
+                    <tr>
+                      <th></th>
+                      <th class="text-end col-real">Real</th>
+                      <th class="text-end col-base">Base</th>
+                      <th class="text-end col-vivo">Vivo</th>
+                    </tr>
+                  </thead>
                   <tbody>
-                    {% for row in board.mini_results_real %}
+                    {% for row in board.mini_results %}
                     <tr>
                       <td>{{ row.label }}</td>
-                      <td class="text-end fw-semibold">{{ row.value }}</td>
+                      <td class="text-end fw-semibold col-real">{{ row.real }}</td>
+                      <td class="text-end fw-semibold col-base">{{ row.base }}</td>
+                      <td class="text-end fw-semibold col-vivo">{{ row.vivo }}</td>
                     </tr>
                     {% endfor %}
                   </tbody>
@@ -239,62 +265,32 @@
           </div>
         </form>
 
-        <div class="row g-2 mb-0">
-          <div class="col-lg-8">
-            <div class="ge-panel mb-0">
-              <div class="ge-panel-h py-1">Mini balance · proy. jul-2027</div>
-              <p class="esc-corte-note mb-0 px-2">{{ board.sim_note }}</p>
-              <div class="ge-panel-b p-0">
-                <table class="table table-sm esc-mini esc-end-table mb-0">
-                  <thead>
-                    <tr>
-                      <th></th>
-                      <th class="text-end">Base</th>
-                      <th class="text-end">Vivo</th>
-                      <th class="text-end">Δ abs.</th>
-                      <th class="text-end">Δ %</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {% for row in board.balance_end_rows %}
-                    <tr>
-                      <td>{{ row.label }}</td>
-                      <td class="text-end">{{ row.base }}</td>
-                      <td class="text-end">{{ row.vivo }}</td>
-                      <td class="text-end fw-semibold">{{ row.abs }}</td>
-                      <td class="text-end">{{ row.pct }}</td>
-                    </tr>
-                    {% endfor %}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-          <div class="col-lg-4">
-            <div class="ge-panel mb-0">
-              <div class="ge-panel-h py-1">Mini resultados · sim sep–jul</div>
-              <p class="esc-corte-note mb-0 px-2">{{ board.sim_note }}</p>
-              <div class="ge-panel-b p-0">
-                <table class="table table-sm esc-mini mb-0">
-                  <thead>
-                    <tr>
-                      <th></th>
-                      <th class="text-end">Base</th>
-                      <th class="text-end">Vivo</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {% for row in board.mini_results_sim %}
-                    <tr>
-                      <td>{{ row.label }}</td>
-                      <td class="text-end fw-semibold">{{ row.base }}</td>
-                      <td class="text-end fw-semibold">{{ row.vivo }}</td>
-                    </tr>
-                    {% endfor %}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+        <div class="ge-panel mb-0">
+          <div class="ge-panel-h py-1">Mini balance · fin simulación jul-2027 · base vs vivo</div>
+          <p class="esc-corte-note mb-0 px-2">{{ board.sim_note }}</p>
+          <div class="ge-panel-b p-0">
+            <table class="table table-sm esc-mini esc-end-table mb-0">
+              <thead>
+                <tr>
+                  <th></th>
+                  <th class="text-end">Base</th>
+                  <th class="text-end">Vivo</th>
+                  <th class="text-end">Δ abs.</th>
+                  <th class="text-end">Δ %</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for row in board.balance_end_rows %}
+                <tr>
+                  <td>{{ row.label }}</td>
+                  <td class="text-end">{{ row.base }}</td>
+                  <td class="text-end">{{ row.vivo }}</td>
+                  <td class="text-end fw-semibold">{{ row.abs }}</td>
+                  <td class="text-end">{{ row.pct }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
           </div>
         </div>
       </div>

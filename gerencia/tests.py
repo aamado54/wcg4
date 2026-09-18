@@ -79,6 +79,7 @@ class GerenciaCalcTests(TestCase):
         self.assertEqual(board["status"], "ok")
         self.assertEqual(board["base_period"], "2026-08")
         self.assertIn("mini_balance_corte_rows", board)
+        self.assertIn("mini_results", board)
         self.assertIn("mini_results_real", board)
         self.assertIn("mini_results_sim", board)
         self.assertIn("compare_rows", board)
@@ -97,9 +98,12 @@ class GerenciaCalcTests(TestCase):
             board["balance_end_rows"][0]["base"],
             board["balance_end_rows"][0]["vivo"],
         )
+        row = board["mini_balance_corte_rows"][0]
+        self.assertNotEqual(row["activo_base"], row["activo_vivo"])
+        self.assertNotEqual(row["activo_real"], row["activo_vivo"])
         self.assertNotEqual(
-            board["mini_results_sim"][0]["base"],
-            board["mini_results_sim"][0]["vivo"],
+            board["mini_results"][0]["base"],
+            board["mini_results"][0]["vivo"],
         )
         self.assertNotEqual(
             board["mini_results_sim"][3]["base"],

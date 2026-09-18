@@ -225,29 +225,83 @@ def _ytd_periods(data: dict, period: str) -> list[str]:
     return [p for p in data.get("periods") or [] if str(p).startswith(year) and str(p) <= period]
 
 
-def _mini_balance_real_rows(mini_bg: dict[str, Any]) -> list[dict[str, str]]:
+def _mini_balance_triple_rows(
+    real_mb: dict[str, Any],
+    base_mb: dict[str, Any],
+    vivo_mb: dict[str, Any],
+) -> list[dict[str, str]]:
     rows: list[dict[str, str]] = []
-    pas = mini_bg["pasivos"]
-    for i, act in enumerate(mini_bg["activos"]):
-        pas_row = pas[i] if i < len(pas) else {"label": "", "value": ""}
+    r_pas = real_mb["pasivos"]
+    b_pas = base_mb["pasivos"]
+    v_pas = vivo_mb["pasivos"]
+    for i, r_act in enumerate(real_mb["activos"]):
+        b_act = base_mb["activos"][i] if i < len(base_mb["activos"]) else {"label": "", "value": ""}
+        v_act = vivo_mb["activos"][i] if i < len(vivo_mb["activos"]) else {"label": "", "value": ""}
+        r_pas_row = r_pas[i] if i < len(r_pas) else {"label": "", "value": ""}
+        b_pas_row = b_pas[i] if i < len(b_pas) else {"label": "", "value": ""}
+        v_pas_row = v_pas[i] if i < len(v_pas) else {"label": "", "value": ""}
         rows.append(
             {
-                "activo_label": act["label"],
-                "activo_value": act["value"],
-                "pasivo_label": pas_row.get("label", ""),
-                "pasivo_value": pas_row.get("value", ""),
+                "activo_label": r_act["label"],
+                "activo_real": r_act["value"],
+                "activo_base": b_act["value"],
+                "activo_vivo": v_act["value"],
+                "pasivo_label": r_pas_row.get("label", ""),
+                "pasivo_real": r_pas_row.get("value", ""),
+                "pasivo_base": b_pas_row.get("value", ""),
+                "pasivo_vivo": v_pas_row.get("value", ""),
             }
         )
-    for j in range(len(mini_bg["activos"]), len(pas)):
+    for j in range(len(real_mb["activos"]), len(r_pas)):
+        b_pas_row = b_pas[j] if j < len(b_pas) else {"label": "", "value": ""}
+        v_pas_row = v_pas[j] if j < len(v_pas) else {"label": "", "value": ""}
         rows.append(
             {
                 "activo_label": "",
-                "activo_value": "",
-                "pasivo_label": pas[j]["label"],
-                "pasivo_value": pas[j]["value"],
+                "activo_real": "",
+                "activo_base": "",
+                "activo_vivo": "",
+                "pasivo_label": r_pas[j]["label"],
+                "pasivo_real": r_pas[j]["value"],
+                "pasivo_base": b_pas_row.get("value", ""),
+                "pasivo_vivo": v_pas_row.get("value", ""),
             }
         )
     return rows
+
+
+def _mini_results_triple(
+    real_rows: list[dict[str, str]],
+    sim_rows: list[dict[str, str]],
+) -> list[dict[str, str]]:
+    out: list[dict[str, str]] = []
+    for i in range(min(4, len(real_rows), len(sim_rows))):
+        out.append(
+            {
+                "label": real_rows[i]["label"],
+                "real": real_rows[i]["value"],
+                "base": sim_rows[i]["base"],
+                "vivo": sim_rows[i]["vivo"],
+            }
+        )
+    if len(real_rows) >= 6 and len(sim_rows) >= 6:
+        out.append(
+            {
+                "label": "Util. contable",
+                "real": real_rows[4]["value"],
+                "base": sim_rows[4]["base"],
+                "vivo": sim_rows[4]["vivo"],
+            }
+        )
+        out.append(
+            {
+                "label": "Util. gerencial",
+                "real": real_rows[5]["value"],
+                "base": sim_rows[5]["base"],
+                "vivo": sim_rows[5]["vivo"],
+            }
+        )
+    return out
 
 
 def _mini_results_real(ctx: dict[str, Any], data: dict, bu: str, fm) -> list[dict[str, str]]:
@@ -603,9 +657,10 @@ def build_nov2026_board(
         pasivo_extra=sim_vivo["end_pasivo_extra"],
         cartera_override=sim_vivo["end_cartera"],
     )
-    mini_balance_corte_rows = _mini_balance_real_rows(mini_bg)
+    mini_balance_corte_rows = _mini_balance_triple_rows(mini_bg, bg_base_crisis, bg_vivo_crisis)
     mini_results_real = _mini_results_real(ctx, data, bu, fm)
     mini_results_sim = _mini_results_compare(ctx, sb, sv, fm)
+    mini_results = _mini_results_triple(mini_results_real, mini_results_sim)
     balance_end_rows = _balance_end_rows(bg_base_crisis, bg_vivo_crisis, fm)
 
     liq_base_ev = evaluate_ratio("liquidez", sim_base.get("liquidez_min"))
@@ -690,16 +745,22 @@ def build_nov2026_board(
             "(midterms 3 nov; hipótesis de escalada tardía), pico dic–ene, y secuela ~6 meses."
         ),
         "corte_note": (
-            "Corte real en libros · punto de partida común para base y vivo antes del stress (sep–oct sin impacto)."
+            "Real = corte ago-2026 en libros (común). Base y Vivo = proyección al cierre de la simulación (jul-2027) según drivers."
+        ),
+        "results_note": (
+            "Real = acumulado ene–ago 2026. Base y Vivo = simulación acumulada sep–jul según drivers."
         ),
         "sim_note": (
-            "Proyección al cierre de la simulación (jul-2027) y resultados acumulados sep–jul según drivers de cada escenario."
+            "Comparación base vs vivo al cierre jul-2027 (Δ respecto al escenario base)."
         ),
         "shocks_base": sb,
         "shocks_vivo": sv,
         "mini_balance": mini_bg,
         "mini_balance_corte_rows": mini_balance_corte_rows,
         "liquidez_corte": mini_bg.get("liquidez_display", "—"),
+        "liquidez_corte_base": bg_base_crisis.get("liquidez_display", "—"),
+        "liquidez_corte_vivo": bg_vivo_crisis.get("liquidez_display", "—"),
+        "mini_results": mini_results,
         "mini_results_real": mini_results_real,
         "mini_results_sim": mini_results_sim,
         "mini_balance_base_crisis": bg_base_crisis,
