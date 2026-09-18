@@ -37,12 +37,22 @@
     min-height: 0;
     border: 1px solid #d8e0dc;
     border-radius: 10px;
-    overflow: hidden;
+    overflow: visible;
     background: #fff;
   }
   .esc-pane { overflow: auto; min-height: 100px; min-width: 0; position: relative; }
-  .esc-pane-top { flex: 1 1 52%; }
-  .esc-pane-bot { flex: 1 1 48%; }
+  .esc-pane-top {
+    flex: 1 1 52%;
+    border-top-left-radius: 9px;
+    border-top-right-radius: 9px;
+    background: #fff;
+  }
+  .esc-pane-bot {
+    flex: 1 1 48%;
+    border-bottom-left-radius: 9px;
+    border-bottom-right-radius: 9px;
+    background: #fff;
+  }
   .esc-pane.esc-pane--more { box-shadow: inset 0 -12px 10px -10px rgba(42, 52, 65, 0.1); }
   .esc-pane-bar {
     position: sticky;
@@ -75,6 +85,8 @@
     border-top: 1px solid #c8d4cc;
     border-bottom: 1px solid #c8d4cc;
     touch-action: none;
+    overflow: visible;
+    z-index: 4;
   }
   .esc-gutter:hover, .esc-gutter.drag { background: #c8ddd2; }
   .esc-gutter-grip {
@@ -98,7 +110,7 @@
     left: 50%;
     bottom: calc(100% + 0.35rem);
     transform: translateX(-50%);
-    z-index: 5;
+    z-index: 6;
     display: flex;
     align-items: center;
     gap: 0.35rem;
@@ -547,7 +559,7 @@ document.addEventListener('DOMContentLoaded', function () {
   if (gutter && split && topPane && botPane) {
     if (!sessionStorage.getItem(SPLIT_COACH_KEY)) {
       gutter.classList.add('coach-on');
-      splitCoachTimer = setTimeout(dismissSplitCoach, 8000);
+      splitCoachTimer = setTimeout(dismissSplitCoach, 16000);
     } else {
       if (splitCoach) splitCoach.classList.add('gone');
       paneChips.forEach(function (chip) { chip.classList.add('gone'); });
