@@ -52,29 +52,38 @@
   .esc-preset.base.on { background: #5c4a1a; border-color: #5c4a1a; }
   .esc-mini th, .esc-mini td { font-size: 0.76rem; padding: 0.28rem 0.45rem; vertical-align: middle; }
   .esc-mini .side-h { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--wcg-muted); font-weight: 700; }
-  .esc-drivers-wrap { display: grid; grid-template-columns: 1fr 280px; gap: 0.75rem; align-items: start; }
-  .esc-drivers-col { min-width: 0; }
+  .esc-drivers-wrap { display: grid; grid-template-columns: minmax(0, 1fr) minmax(390px, 40%); gap: 0.75rem; align-items: start; }
+  .esc-drivers-col { min-width: 0; max-width: 100%; }
   .esc-compare-col { min-width: 0; }
   .esc-dual-head {
     display: grid;
-    grid-template-columns: 1fr 280px;
+    grid-template-columns: minmax(0, 1fr) minmax(390px, 40%);
     gap: 0.75rem;
     border-bottom: 1px solid var(--wcg-line);
   }
   .esc-dual-head .ge-panel-h { border-bottom: 0; margin: 0; }
-  .esc-driver-row { display: grid; grid-template-columns: 9.5rem 1fr 3.2rem 1fr 3.2rem; gap: 0.35rem; align-items: center; margin-bottom: 0.28rem; font-size: 0.72rem; }
+  .esc-driver-row { display: grid; grid-template-columns: 7.5rem 0.9fr 2.6rem 0.9fr 2.6rem; gap: 0.3rem; align-items: center; margin-bottom: 0.28rem; font-size: 0.72rem; }
   .esc-driver-row label { font-weight: 600; color: var(--wcg-muted); margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .esc-driver-row input[type=range] { width: 100%; height: 0.9rem; margin: 0; }
   .esc-driver-row output { text-align: right; font-weight: 700; font-size: 0.72rem; }
   .esc-driver-row .out-base { color: #5c4a1a; }
   .esc-driver-row .out-vivo { color: #1e4d3a; }
-  .esc-driver-head { display: grid; grid-template-columns: 9.5rem 1fr 3.2rem 1fr 3.2rem; gap: 0.35rem; font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--wcg-muted); font-weight: 700; margin-bottom: 0.35rem; }
+  .esc-driver-head { display: grid; grid-template-columns: 7.5rem 0.9fr 2.6rem 0.9fr 2.6rem; gap: 0.3rem; font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--wcg-muted); font-weight: 700; margin-bottom: 0.35rem; }
   .esc-driver-head span:nth-child(2), .esc-driver-head span:nth-child(4) { text-align: center; }
   .esc-driver-head span:nth-child(3), .esc-driver-head span:nth-child(5) { text-align: right; }
+  .esc-compare-col th { white-space: nowrap; }
+  .esc-compare-col td:first-child { white-space: nowrap; }
+  .esc-prec-hint {
+    font-size: 0.72rem;
+    color: var(--wcg-muted);
+    font-weight: 400;
+    transition: opacity 0.45s ease, visibility 0.45s ease;
+  }
+  .esc-prec-hint.gone { opacity: 0; visibility: hidden; }
   .esc-end-table { width: 100%; }
   @media (max-width: 900px) {
     .esc-drivers-wrap, .esc-dual-head { grid-template-columns: 1fr; }
-    .esc-driver-row, .esc-driver-head { grid-template-columns: 7rem 1fr 2.8rem 1fr 2.8rem; }
+    .esc-driver-row, .esc-driver-head { grid-template-columns: 6.5rem 0.85fr 2.4rem 0.85fr 2.4rem; }
   }
   .esc-phase-bar span { flex: 1; padding: 0.2rem 0.05rem; border-radius: 3px; color: #fff; font-weight: 600; }
   .esc-phase-bar .prep { background: #7a9bb8; }
@@ -150,11 +159,8 @@
                   <tbody>
                     {% for row in board.mini_results %}
                     <tr>
-                      <td>
-                        <div>{{ row.label }}</div>
-                        <div class="esc-hint-line">{{ row.hint }}</div>
-                      </td>
-                      <td class="text-end fw-semibold align-top">{{ row.value }}</td>
+                      <td>{{ row.label }}</td>
+                      <td class="text-end fw-semibold">{{ row.value }}</td>
                     </tr>
                     {% endfor %}
                   </tbody>
@@ -210,7 +216,7 @@
                 <div class="esc-compare-col">
                   <table class="table table-sm esc-mini mb-0">
                     <thead>
-                      <tr><th>Métrica</th><th class="text-end">B</th><th class="text-end">V</th><th class="text-end">Δ</th></tr>
+                      <tr><th>Métrica</th><th class="text-end">Base</th><th class="text-end">Vivo</th><th class="text-end">Δ</th></tr>
                     </thead>
                     <tbody>
                       {% for row in board.compare_rows %}
@@ -276,8 +282,11 @@
           </div>
         </div>
 
-        <div class="ge-panel mb-0">
-          <div class="ge-panel-h py-1">Precauciones · escenario vivo</div>
+        <div class="ge-panel mb-0 esc-prec-panel">
+          <div class="ge-panel-h py-1 d-flex justify-content-between align-items-center gap-2 flex-wrap">
+            <span>Precauciones · escenario vivo</span>
+            <span class="esc-prec-hint" id="escPrecHint">Dar click a cada precaución para una descripción detallada.</span>
+          </div>
           <div class="ge-panel-b">
             {% for item in board.precautions %}
             <a href="{% url 'gerencia:escenario_nov2026_precaucion' item.slug %}" class="esc-prec-row">
@@ -381,6 +390,22 @@ document.addEventListener('DOMContentLoaded', function () {
       dragging = false;
       gutter.classList.remove('drag');
     });
+  }
+
+  const precPanel = document.querySelector('.esc-prec-panel');
+  const precHint = document.getElementById('escPrecHint');
+  if (precPanel && precHint && 'IntersectionObserver' in window) {
+    let hideTimer = null;
+    const obs = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting && !hideTimer && !precHint.classList.contains('gone')) {
+          hideTimer = setTimeout(function () {
+            precHint.classList.add('gone');
+          }, 5000);
+        }
+      });
+    }, { threshold: 0.25 });
+    obs.observe(precPanel);
   }
 
   if (!window.Chart) return;

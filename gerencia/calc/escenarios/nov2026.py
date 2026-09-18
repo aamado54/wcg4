@@ -7,7 +7,7 @@ from typing import Any
 from ..accounts import div_pref_ytd, line, preferentes_stock
 from ..bands import evaluate_ratio
 from ..indices import derived_metrics
-from ..intermediacion import _intermediation_slice
+from ..intermediacion import _aggregate, _build_slices, _intermediation_slice
 from ..money import fmt_money
 from ..utils import kpi_row, n, rates_from_meta
 
@@ -220,48 +220,28 @@ def _mini_balance(
     }
 
 
+def _ytd_periods(data: dict, period: str) -> list[str]:
+    year = (period or "")[:4]
+    return [p for p in data.get("periods") or [] if str(p).startswith(year) and str(p) <= period]
+
+
 def _mini_results(ctx: dict[str, Any], data: dict, bu: str, fm) -> list[dict[str, str]]:
     mc = ctx["metrics_cont"]
     mg = ctx["metrics"]
-    ms = ctx["metrics_strict"]
-    div_y = ctx["div_ytd"]
+    period = ctx["period"]
+    rates = ctx["rates"]
+    ytd_slices = _build_slices(data, bu, _ytd_periods(data, period), rates, "gerencial")
+    agg = _aggregate(ytd_slices)
     util_c = n(mc.get("utilidades"))
     util_g = n(mg.get("util_vista"))
-    gap = util_c - util_g
-    year = BASE_PERIOD[:4]
+    year = period[:4]
     return [
-        {
-            "label": f"Utilidad acum. contable ({year})",
-            "value": fm(util_c),
-            "hint": (
-                "Saldo YTD cuenta 302. Los dividendos pagados a preferentes no son gasto aquí: "
-                "contablemente son rendimiento al accionista, no costo de fondeo."
-            ),
-        },
-        {
-            "label": f"Utilidad acum. gerencial ({year})",
-            "value": fm(util_g),
-            "hint": (
-                f"302 menos dividendos preferentes acumulados ({fm(div_y)}). Gerencialmente esos pagos "
-                f"sí son gasto — como un interés pagado — mes a mes. Por eso el número difiere del contable."
-            ),
-        },
-        {
-            "label": f"Brecha contable − gerencial ({year})",
-            "value": fm(gap),
-            "hint": (
-                "Casi toda la brecha son dividendos a preferentes. No confundir con la vista estricta: "
-                "esa solo reclasifica balance, no cambia utilidad."
-            ),
-        },
-        {
-            "label": f"Utilidad acum. ger. estricta ({year})",
-            "value": fm(ms.get("util_vista")),
-            "hint": (
-                f"Misma cifra que la gerencial ({fm(util_g)}). La estricta solo mueve preferentes "
-                "de patrimonio a pasivo en el balance a un año."
-            ),
-        },
+        {"label": "Productos financieros", "value": fm(agg["productos"])},
+        {"label": "Gastos financieros", "value": fm(agg["costos"])},
+        {"label": "Margen", "value": fm(agg["margen_bruto"])},
+        {"label": "Otros gastos", "value": fm(agg["overhead_neto"])},
+        {"label": f"Utilidad acum. contable ({year})", "value": fm(util_c)},
+        {"label": f"Utilidad acum. gerencial ({year})", "value": fm(util_g)},
     ]
 
 
