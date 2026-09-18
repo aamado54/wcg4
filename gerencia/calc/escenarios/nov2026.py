@@ -7,7 +7,7 @@ from typing import Any
 from ..accounts import div_pref_ytd, line, preferentes_stock
 from ..bands import evaluate_ratio
 from ..indices import derived_metrics
-from ..intermediacion import _aggregate, _build_slices, _intermediation_slice
+from ..intermediacion import _intermediation_slice
 from ..money import fmt_money
 from ..utils import kpi_row, n, rates_from_meta
 
@@ -220,63 +220,86 @@ def _mini_balance(
     }
 
 
-def _ytd_periods(data: dict, period: str) -> list[str]:
-    year = (period or "")[:4]
-    return [p for p in data.get("periods") or [] if str(p).startswith(year) and str(p) <= period]
+def _scenario_pnl_totals(ctx: dict[str, Any], shocks: dict[str, float]) -> dict[str, float]:
+    sl = ctx["slice"]
+    mom = shocks.get("factoraje_mom_pct", 0.0) / 100.0
+    cartera = n(sl.get("colocaciones"))
+    captacion = n(sl.get("captaciones"))
+    base_cartera = cartera or 1.0
+    t_act = sl["tasa_activa"]
+    div_m = n(sl.get("div_pref_mes"))
+
+    productos = costos = margen = overhead = util_c = util_g = 0.0
+    for _, _, factor, _ in TIMELINE:
+        cartera *= 1 + mom
+        captacion *= 1 + mom
+        eff = DEFAULT_SHOCKS if factor <= 0 else _scaled_shocks(shocks, factor)
+        st = _monthly_stress(ctx, eff, cartera=cartera, captacion=captacion)
+        prod_m = cartera * t_act / 12.0
+        marg_m = st["margen_stress"]
+        util_m = st["util_stress"]
+        oh_m = marg_m - util_m
+        productos += prod_m
+        margen += marg_m
+        costos += prod_m - marg_m
+        overhead += oh_m
+        util_g += util_m
+        util_c += util_m + div_m
+    return {
+        "productos": productos,
+        "costos": costos,
+        "margen_bruto": margen,
+        "overhead_neto": overhead,
+        "util_cont": util_c,
+        "util_ger": util_g,
+    }
 
 
-def _mini_results(ctx: dict[str, Any], data: dict, bu: str, fm) -> list[dict[str, str]]:
-    mc = ctx["metrics_cont"]
-    mg = ctx["metrics"]
-    period = ctx["period"]
-    rates = ctx["rates"]
-    ytd_slices = _build_slices(data, bu, _ytd_periods(data, period), rates, "gerencial")
-    agg = _aggregate(ytd_slices)
-    util_c = n(mc.get("utilidades"))
-    util_g = n(mg.get("util_vista"))
-    year = period[:4]
+def _mini_results_compare(ctx: dict[str, Any], shocks_base: dict[str, float], shocks_vivo: dict[str, float], fm) -> list[dict[str, str]]:
+    agg_b = _scenario_pnl_totals(ctx, shocks_base)
+    agg_v = _scenario_pnl_totals(ctx, shocks_vivo)
 
-    def _row(label: str, val: float) -> dict[str, str]:
-        disp = fm(val)
-        return {"label": label, "base": disp, "vivo": disp}
+    def _row(label: str, key: str) -> dict[str, str]:
+        return {"label": label, "base": fm(agg_b[key]), "vivo": fm(agg_v[key])}
 
     return [
-        _row("Productos financieros", agg["productos"]),
-        _row("Gastos financieros", agg["costos"]),
-        _row("Margen", agg["margen_bruto"]),
-        _row("Otros gastos", agg["overhead_neto"]),
-        _row(f"Utilidad acum. contable ({year})", util_c),
-        _row(f"Utilidad acum. gerencial ({year})", util_g),
+        _row("Productos financieros", "productos"),
+        _row("Gastos financieros", "costos"),
+        _row("Margen", "margen_bruto"),
+        _row("Otros gastos", "overhead_neto"),
+        _row(f"Utilidad sim. contable (sep–jul)", "util_cont"),
+        _row(f"Utilidad sim. gerencial (sep–jul)", "util_ger"),
     ]
 
 
-def _mini_balance_corte_rows(mini_bg: dict[str, Any]) -> list[dict[str, str]]:
+def _mini_balance_pair_rows(base_mb: dict[str, Any], vivo_mb: dict[str, Any]) -> list[dict[str, str]]:
     rows: list[dict[str, str]] = []
-    pas = mini_bg["pasivos"]
-    for i, act in enumerate(mini_bg["activos"]):
-        pas_row = pas[i] if i < len(pas) else {"label": "", "value": ""}
-        val_a = act["value"]
-        val_p = pas_row.get("value", "")
+    b_pas = base_mb["pasivos"]
+    v_pas = vivo_mb["pasivos"]
+    for i, b_act in enumerate(base_mb["activos"]):
+        v_act = vivo_mb["activos"][i] if i < len(vivo_mb["activos"]) else {"label": "", "value": ""}
+        b_pas_row = b_pas[i] if i < len(b_pas) else {"label": "", "value": ""}
+        v_pas_row = v_pas[i] if i < len(v_pas) else {"label": "", "value": ""}
         rows.append(
             {
-                "activo_label": act["label"],
-                "activo_base": val_a,
-                "activo_vivo": val_a,
-                "pasivo_label": pas_row.get("label", ""),
-                "pasivo_base": val_p,
-                "pasivo_vivo": val_p,
+                "activo_label": b_act["label"],
+                "activo_base": b_act["value"],
+                "activo_vivo": v_act["value"],
+                "pasivo_label": b_pas_row["label"],
+                "pasivo_base": b_pas_row["value"],
+                "pasivo_vivo": v_pas_row["value"],
             }
         )
-    for j in range(len(mini_bg["activos"]), len(pas)):
-        val_p = pas[j]["value"]
+    for j in range(len(base_mb["activos"]), len(b_pas)):
+        v_pas_row = v_pas[j] if j < len(v_pas) else {"label": "", "value": ""}
         rows.append(
             {
                 "activo_label": "",
                 "activo_base": "",
                 "activo_vivo": "",
-                "pasivo_label": pas[j]["label"],
-                "pasivo_base": val_p,
-                "pasivo_vivo": val_p,
+                "pasivo_label": b_pas[j]["label"],
+                "pasivo_base": b_pas[j]["value"],
+                "pasivo_vivo": v_pas_row["value"],
             }
         )
     return rows
@@ -540,12 +563,8 @@ def build_nov2026_board(
     fm = lambda v, d=0: fmt_money(v, ccy, fx, d)
 
     mini_bg = _mini_balance(ctx, data, bu, fm)
-    mini_res = _mini_results(ctx, data, bu, fm)
-    mini_balance_corte_rows = _mini_balance_corte_rows(mini_bg)
     sim_base = _simulate_timeline(ctx, sb)
     sim_vivo = _simulate_timeline(ctx, sv)
-
-    liq_corte = mini_bg.get("liquidez_display", "—")
 
     bg_base_crisis = _mini_balance(
         ctx,
@@ -567,6 +586,8 @@ def build_nov2026_board(
         pasivo_extra=sim_vivo["end_pasivo_extra"],
         cartera_override=sim_vivo["end_cartera"],
     )
+    mini_balance_corte_rows = _mini_balance_pair_rows(bg_base_crisis, bg_vivo_crisis)
+    mini_res = _mini_results_compare(ctx, sb, sv, fm)
     balance_end_rows = _balance_end_rows(bg_base_crisis, bg_vivo_crisis, fm)
 
     liq_base_ev = evaluate_ratio("liquidez", sim_base.get("liquidez_min"))
@@ -651,15 +672,15 @@ def build_nov2026_board(
             "(midterms 3 nov; hipótesis de escalada tardía), pico dic–ene, y secuela ~6 meses."
         ),
         "corte_note": (
-            "Corte real en libros (ago-2026). No es escenario base ni vivo: punto de partida común "
-            "antes del stress. Base y Vivo muestran la misma foto inicial."
+            "Columnas Base y Vivo según los drivers de cada escenario (sim sep-2026 → jul-2027). "
+            "El corte real ago-2026 en libros es el punto de partida común antes del stress."
         ),
         "shocks_base": sb,
         "shocks_vivo": sv,
         "mini_balance": mini_bg,
         "mini_balance_corte_rows": mini_balance_corte_rows,
-        "liquidez_corte_base": liq_corte,
-        "liquidez_corte_vivo": liq_corte,
+        "liquidez_corte_base": bg_base_crisis.get("liquidez_display", "—"),
+        "liquidez_corte_vivo": bg_vivo_crisis.get("liquidez_display", "—"),
         "mini_results": mini_res,
         "mini_balance_base_crisis": bg_base_crisis,
         "mini_balance_vivo_crisis": bg_vivo_crisis,
