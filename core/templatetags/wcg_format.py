@@ -5,6 +5,8 @@ from __future__ import annotations
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
 from django import template
+from django.utils.html import conditional_escape
+from django.utils.safestring import mark_safe
 
 register = template.Library()
 
@@ -48,3 +50,16 @@ def wcg_miles(value, decimals=1):
     except (TypeError, ValueError):
         d = 1
     return _format(value, max(0, min(d, 1)))
+
+
+@register.filter(name="methodology_lead")
+def methodology_lead(value: str) -> str:
+    """Primera cláusula antes de ': ' en semibold (texto metodología escenario)."""
+    text = str(value or "")
+    if ": " not in text:
+        return conditional_escape(text)
+    topic, body = text.split(": ", 1)
+    return mark_safe(
+        f'<span class="esc-method-topic">{conditional_escape(topic)}</span>: '
+        f"{conditional_escape(body)}"
+    )

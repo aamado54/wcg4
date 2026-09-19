@@ -1,4 +1,5 @@
 {% extends "base_wcg.html" %}
+{% load wcg_format %}
 {% block title %}Noviembre 2026 — Escenarios{% endblock %}
 {% block extra_head %}
 {% include "gerencia/_styles.html" %}
@@ -212,6 +213,143 @@
   .esc-recalc-hint { font-size: 0.68rem; color: var(--wcg-muted); min-height: 1rem; }
   .esc-corte-note { font-size: 0.68rem; color: var(--wcg-muted); padding: 0.35rem 0.65rem 0; line-height: 1.35; }
   .esc-phase-bar { display: flex; gap: 2px; margin-top: 0.4rem; font-size: 0.62rem; text-align: center; }
+  .esc-method-link {
+    display: inline-block;
+    margin-top: 0.65rem;
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: #3d5a4a;
+    text-decoration: none;
+    border: 0;
+    background: transparent;
+    padding: 0;
+    cursor: pointer;
+  }
+  .esc-method-link:hover { color: #1e4d3a; text-decoration: underline; }
+  .esc-method-foot { padding: 0.5rem 0.75rem 0.75rem; border-top: 1px solid var(--wcg-line); text-align: center; }
+  .esc-method-dialog {
+    max-width: 36rem;
+    width: calc(100vw - 2rem);
+    padding: 0;
+    border: 1px solid #c8d4cc;
+    border-radius: 10px;
+    box-shadow: 0 8px 32px rgba(42, 52, 65, 0.18);
+  }
+  .esc-method-dialog::backdrop { background: rgba(42, 52, 65, 0.35); }
+  .esc-method-dialog-h {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.65rem 0.85rem;
+    border-bottom: 1px solid var(--wcg-line);
+    background: #f4faf6;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #1e4d3a;
+  }
+  .esc-method-dialog-h > span { flex: 1; min-width: 0; }
+  .esc-method-zoom {
+    display: flex;
+    align-items: center;
+    gap: 0.15rem;
+    flex-shrink: 0;
+  }
+  .esc-method-zoom-icon {
+    font-size: 0.75rem;
+    color: #6b7c72;
+    margin: 0 0.1rem;
+    user-select: none;
+  }
+  .esc-method-zoom-btn {
+    border: 1px solid #c8d4cc;
+    background: #fff;
+    color: #3d5a4a;
+    width: 1.65rem;
+    height: 1.65rem;
+    border-radius: 6px;
+    font-size: 1rem;
+    line-height: 1;
+    font-weight: 700;
+    cursor: pointer;
+    padding: 0;
+  }
+  .esc-method-zoom-btn:hover:not(:disabled) { background: #e8f3ec; border-color: #1e4d3a; }
+  .esc-method-zoom-btn:disabled { opacity: 0.35; cursor: default; }
+  .esc-method-dialog-x {
+    border: 0;
+    background: transparent;
+    font-size: 1.25rem;
+    line-height: 1;
+    color: #6b7c72;
+    cursor: pointer;
+    padding: 0 0.25rem;
+  }
+  .esc-method-dialog-x:hover { color: #1e4d3a; }
+  .esc-method-dialog-b {
+    max-height: min(70vh, 32rem);
+    overflow: auto;
+    padding: 1rem 1.1rem 1.35rem;
+    font-family: Georgia, "Palatino Linotype", Palatino, "Times New Roman", serif;
+    font-size: 0.82rem;
+    line-height: 1.58;
+    color: #2c3338;
+    background: linear-gradient(180deg, #fafcf9 0%, #f6f9f7 100%);
+  }
+  .esc-method-block {
+    max-width: 42em;
+    margin: 0 auto 0.85rem;
+    padding: 0.75rem 0.9rem 0.65rem;
+    background: #fff;
+    border: 1px solid #dce8e0;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(42, 52, 65, 0.06);
+  }
+  .esc-method-block:last-child { margin-bottom: 0; }
+  .esc-method-p {
+    margin: 0;
+    text-align: justify;
+    hyphens: auto;
+  }
+  .esc-method-topic {
+    font-weight: 700;
+    color: #1e4d3a;
+    letter-spacing: 0.01em;
+  }
+  .esc-method-ul {
+    list-style: none;
+    padding: 0.45rem 0 0;
+    margin: 0.55rem 0 0;
+    border-top: 1px solid #e8f0eb;
+  }
+  .esc-method-ul li {
+    position: relative;
+    padding: 0 0 0.55em 1.15rem;
+    margin: 0;
+    line-height: 1.5;
+  }
+  .esc-method-ul li::before {
+    content: "—";
+    position: absolute;
+    left: 0;
+    color: #8aa396;
+    font-weight: 600;
+  }
+  .esc-method-dialog.esc-method-zoom-1 .esc-method-dialog-b {
+    font-size: 0.92rem;
+    max-height: min(75vh, 36rem);
+  }
+  .esc-method-dialog.esc-method-zoom-2 .esc-method-dialog-b {
+    font-size: 1.02rem;
+    max-height: min(80vh, 40rem);
+  }
+  .esc-method-dialog.esc-method-zoom-3 .esc-method-dialog-b {
+    font-size: 1.12rem;
+    max-height: min(85vh, 44rem);
+  }
+  .esc-method-dialog.esc-method-zoom-1 { max-width: 40rem; }
+  .esc-method-dialog.esc-method-zoom-2 { max-width: 44rem; }
+  .esc-method-dialog.esc-method-zoom-3 { max-width: 48rem; }
 </style>
 {% endblock %}
 {% block content %}
@@ -370,6 +508,9 @@
                       {% endfor %}
                     </tbody>
                   </table>
+                  <button type="button" class="esc-method-link" id="escMethodologyOpenCompare" data-open-methodology>
+                    Metodología de cálculo →
+                  </button>
                 </div>
               </div>
             </div>
@@ -446,10 +587,41 @@
             </a>
             {% endfor %}
           </div>
+          <div class="esc-method-foot">
+            <button type="button" class="esc-method-link" data-open-methodology>Metodología de cálculo →</button>
+          </div>
         </div>
       </div>
     </div>
   </div>
+
+  <dialog class="esc-method-dialog" id="escMethodology" aria-labelledby="escMethodologyTitle">
+    <div class="esc-method-dialog-h">
+      <span id="escMethodologyTitle">Metodología · drivers base vs vivo</span>
+      <div class="esc-method-zoom" aria-label="Tamaño del texto">
+        <button type="button" class="esc-method-zoom-btn" id="escMethodZoomOut" aria-label="Reducir tamaño de letra">−</button>
+        <span class="esc-method-zoom-icon" aria-hidden="true">🔍</span>
+        <button type="button" class="esc-method-zoom-btn" id="escMethodZoomIn" aria-label="Aumentar tamaño de letra">+</button>
+      </div>
+      <button type="button" class="esc-method-dialog-x" id="escMethodologyClose" aria-label="Cerrar">×</button>
+    </div>
+    <div class="esc-method-dialog-b">
+      {% for block in board.methodology %}
+      <article class="esc-method-block">
+        {% if block.text %}
+        <p class="esc-method-p">{{ block.text|methodology_lead }}</p>
+        {% endif %}
+        {% if block.bullets %}
+        <ul class="esc-method-ul">
+          {% for line in block.bullets %}
+          <li>{{ line }}</li>
+          {% endfor %}
+        </ul>
+        {% endif %}
+      </article>
+      {% endfor %}
+    </div>
+  </dialog>
 
   {% endif %}
 </div>
@@ -621,6 +793,61 @@ document.addEventListener('DOMContentLoaded', function () {
       });
     }, { threshold: 0.25 });
     obs.observe(precPanel);
+  }
+
+  const methDlg = document.getElementById('escMethodology');
+  const methClose = document.getElementById('escMethodologyClose');
+  const methZoomIn = document.getElementById('escMethodZoomIn');
+  const methZoomOut = document.getElementById('escMethodZoomOut');
+  const METH_ZOOM_KEY = 'escNovMethodZoom';
+  const METH_ZOOM_MAX = 3;
+  let methZoom = 0;
+
+  function applyMethodZoom() {
+    if (!methDlg) return;
+    methDlg.classList.remove('esc-method-zoom-1', 'esc-method-zoom-2', 'esc-method-zoom-3');
+    if (methZoom > 0) methDlg.classList.add('esc-method-zoom-' + methZoom);
+    if (methZoomIn) methZoomIn.disabled = methZoom >= METH_ZOOM_MAX;
+    if (methZoomOut) methZoomOut.disabled = methZoom <= 0;
+    try { sessionStorage.setItem(METH_ZOOM_KEY, String(methZoom)); } catch (e) {}
+  }
+
+  function openMethodology() {
+    if (methDlg && typeof methDlg.showModal === 'function') methDlg.showModal();
+  }
+  document.querySelectorAll('[data-open-methodology]').forEach(function (btn) {
+    btn.addEventListener('click', openMethodology);
+  });
+  if (methClose && methDlg) {
+    methClose.addEventListener('click', function () { methDlg.close(); });
+  }
+  if (methDlg) {
+    methDlg.addEventListener('click', function (e) {
+      if (e.target === methDlg) methDlg.close();
+    });
+  }
+  if (methDlg) {
+    try {
+      const saved = parseInt(sessionStorage.getItem(METH_ZOOM_KEY) || '0', 10);
+      if (saved >= 0 && saved <= METH_ZOOM_MAX) methZoom = saved;
+    } catch (e) {}
+    applyMethodZoom();
+  }
+  if (methZoomIn) {
+    methZoomIn.addEventListener('click', function () {
+      if (methZoom < METH_ZOOM_MAX) {
+        methZoom += 1;
+        applyMethodZoom();
+      }
+    });
+  }
+  if (methZoomOut) {
+    methZoomOut.addEventListener('click', function () {
+      if (methZoom > 0) {
+        methZoom -= 1;
+        applyMethodZoom();
+      }
+    });
   }
 
   if (!window.Chart) return;

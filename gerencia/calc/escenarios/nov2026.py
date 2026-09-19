@@ -617,6 +617,154 @@ def _precautions(vivo: dict[str, float], sim_vivo: dict[str, Any]) -> list[dict[
     return out
 
 
+def methodology_sections() -> list[dict[str, Any]]:
+    """Texto de metodología alineado con TIMELINE y _monthly_stress."""
+
+    def _p(label: str, *parts: str) -> dict[str, Any]:
+        return {"text": f"{label}: {' '.join(parts)}"}
+
+    timeline_lines = []
+    for period, phase, factor, phase_label in TIMELINE:
+        if factor <= 0:
+            eff = "sin shock (drivers de estrés en 0; colocaciones/mes aparte)"
+        else:
+            eff = f"intensidad ×{factor:g} sobre los valores del slider"
+        timeline_lines.append(f"{period} ({phase_label}) — {eff}")
+
+    base_label = BASE_PERIOD.replace("-", " ")
+    mod = MODERADO_SHOCKS
+
+    return [
+        _p(
+            "Punto de partida",
+            f"El corte Real usa libros de {base_label} (agosto 2026): balance, margen y tasas del slice "
+            "de intermediación gerencial.",
+            "Base y Vivo son simulaciones independientes desde ese mismo corte, recorriendo once meses "
+            "(sep-2026 → jul-2027); no se re-simula enero–agosto 2026.",
+        ),
+        _p(
+            "Calendario de intensidad del shock",
+            "Los sliders definen el shock pleno (100 % activo). Cada mes aplica un factor multiplicador "
+            "solo a los drivers de estrés (tipo de cambio, tasas, mora, retiros, remesas, recuperación); "
+            "colocaciones/mes no usa ese factor.",
+            "Agosto es la ancla contable y no entra en la línea simulada.",
+            "Septiembre y octubre tienen factor 0 (sin estrés), aunque la cartera puede moverse por colocaciones/mes.",
+        ),
+        {
+            "text": "Detalle mes a mes:",
+            "bullets": timeline_lines,
+        },
+        _p(
+            "Presets cero, moderado, severo y extremo",
+            "Base cero deja todos los drivers en 0.",
+            "Base moderado y vivo moderado comparten el paquete numérico moderado; severo y extremo "
+            "solo en el escenario vivo.",
+            "Los valores corresponden al preset seleccionado en pantalla; la simulación los escala con el calendario.",
+        ),
+        {
+            "text": (
+                f"Referencia moderado: FX +{mod['fx_pct']:g} %, tasas +{mod['rates_bp']:.0f} pb, "
+                f"mora +{mod['mora_pct']:.0f} %, retiros +{mod['withdrawals_pct']:.0f} %, "
+                f"remesas +{mod['remittances_pct']:.0f} %, recuperación +{mod['recovery_pct']:.0f} %, "
+                f"colocaciones {mod['factoraje_mom_pct']:+.1f} %/mes."
+            ),
+            "bullets": ["Severo y extremo elevan esos ejes (según sliders del preset vivo)."],
+        },
+        _p(
+            "Colocaciones / mes (factoraje)",
+            "Cada mes (incluidos sep–oct): cartera ← cartera × (1 + colocaciones/mes) y captaciones ← "
+            "captaciones × (1 + colocaciones/mes), con el slider del escenario.",
+            "Margen bruto, overhead y activo corriente escalan con cartera y captación respecto al corte de agosto.",
+        ),
+        _p(
+            "Tipo de cambio (USD/GTQ +dep.)",
+            f"Se asume {USD_PASIVA_SHARE:.0%} del pasivo sensible a depreciación.",
+            f"Notional FX = pasivo × {USD_PASIVA_SHARE:.2f} × (fx_pct/100), escalado por captación.",
+            "Costo mensual en resultados: notional FX × 0,25 %.",
+            "En balance: pasivo corriente sube notional FX × 15 % (liquidez/contingencia simplificada).",
+        ),
+        _p(
+            "Tasas de fondeo (+ pb)",
+            "Costo mensual adicional = captaciones × (rates_bp / 10 000) / 12,",
+            "interpretado como spread anual extra sobre el stock de captaciones del mes, repartido en doce.",
+        ),
+        _p(
+            "Mora (+) y caída de remesas (+)",
+            "Pérdida de rendimiento mensual: cartera × tasa activa/12 × (mora×0,45 + remesas×0,25).",
+            "Coeficientes fijos sobre ingreso financiero bruto; no hay provisiones contables línea a línea.",
+        ),
+        _p(
+            "Recuperación de cartera (−)",
+            "Penaliza el margen: cartera × 1,5 % anual × (recovery_pct/100) / 12.",
+            "Un recovery_pct mayor reduce margen en el mes estresado.",
+        ),
+        _p(
+            "Retiros de pasivas (+)",
+            "Salida mensual = captaciones × (withdrawals_pct/100).",
+            "Activo corriente baja salida × 85 %; pasivo corriente sube la salida (más ajuste FX en PC).",
+            "Liquidez del mes = activo corriente ajustado / pasivo corriente ajustado.",
+        ),
+        _p(
+            "Utilidad y margen mensual",
+            "Margen estresado = margen bruto escalado − costo tasas − costo FX − mora/remesas − recuperación.",
+            "Utilidad gerencial = margen estresado − overhead neto escalado.",
+            "Utilidad contable = utilidad gerencial + dividendos preferentes del mes (constante del corte).",
+        ),
+        _p(
+            "Mini resultados (Base vs Vivo)",
+            "Productos: suma mensual cartera × tasa activa / 12 (sep–jul).",
+            "Gastos financieros: productos − margen estresado acumulado.",
+            "Margen, overhead y utilidades: suma de los once meses simulados.",
+            "La columna Real es ene–ago 2026 en libros; no mezcla la simulación.",
+        ),
+        _p(
+            "Mini balance fin jul-2027",
+            "Tras el último mes se usan activo corriente, pasivo corriente, cartera simulada y pasivo extra "
+            "(retiros + FX) para reconstruir activo, pasivo, patrimonio y liquidez.",
+            "El Δ compara vivo vs base al mismo cierre simulado.",
+        ),
+        _p(
+            "Simplificaciones",
+            f"Referencia FX {FX_REF} GTQ/USD; sin path diario del tipo de cambio.",
+            "Noviembre intensidad 0,35 (apertura tardía post 3-nov), pico dic–ene ×1,0, secuela feb–jul hasta ×0,48.",
+            "Stress test gerencial para comparar escenarios, no forecast auditado.",
+        ),
+        {
+            "text": (
+                "Primeros refinamientos (si más adelante se prefiere afinar el cálculo): "
+                "El modelo actual se queda así: sensibilidad con pocas relaciones explícitas. "
+                "Para acercarse a una simulación más completa, estos serían los primeros pasos razonables:"
+            ),
+            "bullets": [
+                "Provisiones y castigos por tramos de mora (A–E), ligados a mora_pct y saldos reales.",
+                "Pasivo desagregado: pagarés vs bancos, GTQ vs USD, con elasticidades distintas en FX y retiros.",
+                "Colocaciones por producto (factoraje, hipotecario, consumo) con tasas y prepagos propias.",
+                "Overhead con tramo fijo + variable y recortes diferidos en secuela.",
+                "Liquidez con colchón regulatorio, líneas de respaldo y costo de oportunidad del efectivo.",
+                "Correlaciones entre drivers en meses de crisis (FX, retiros, remesas).",
+                "Calibración histórica de coeficientes (0,45 / 0,25 / 0,25 % FX) si hubiera meses de estrés.",
+            ],
+        },
+        _p(
+            "Qué tan impactantes serían esos refinamientos",
+            "Ninguna simulación reproduce fielmente un caso real.",
+            "Este MVP sirve sobre todo para comparar base vs vivo en la misma lógica: dirección y orden "
+            "de magnitud suelen ser útiles; la cifra exacta de utilidad o liquidez mínima no es pronóstico contable.",
+        ),
+        _p(
+            "Precisión orientativa",
+            "Frente a un motor refinado (provisiones, pasivo desagregado, productos), en los totales agregados "
+            "(utilidad acumulada sep–jul, margen, liquidez mínima) puede estimarse un ~10–20 % menos error "
+            "relativo si esos refinamientos estuvieran bien calibrados: menos sesgo por simplificar mora, FX y retiros, "
+            "no una «precisión absoluta».",
+            "En partidas sueltas —un mes concreto, liquidez en ene-2027, Δ patrimonio al cierre— la brecha con "
+            "un modelo fino puede seguir siendo amplia (±20–40 % o más en severo/extremo), porque aquí faltan "
+            "correlaciones, colchones regulatorios y castigos explícitos.",
+            "Los refinamientos anteriores atacan sobre todo ese segundo tipo de error; el juicio gerencial sigue siendo indispensable.",
+        ),
+    ]
+
+
 def build_nov2026_board(
     data: dict,
     shocks_base: dict[str, float] | None = None,
@@ -774,6 +922,7 @@ def build_nov2026_board(
         "vivo_presets": VIVO_PRESETS,
         "driver_fields": DRIVER_FIELDS,
         "precautions": _precautions(sv, sim_vivo),
+        "methodology": methodology_sections(),
         "liq_vivo_tone": liq_vivo_ev.get("tone"),
         "liq_base_tone": liq_base_ev.get("tone"),
     }

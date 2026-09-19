@@ -170,6 +170,13 @@ class GerenciaViewTests(TestCase):
         self.assertContains(resp, "Vivo moderado")
         self.assertContains(resp, "esc-split-coach")
         self.assertContains(resp, "Scroll en cada mitad")
+        self.assertContains(resp, "Metodología de cálculo")
+        self.assertContains(resp, "Punto de partida")
+        self.assertContains(resp, "Precisión orientativa")
+        self.assertContains(resp, "esc-method-topic")
+        self.assertNotContains(resp, "('text',")
+        self.assertContains(resp, "esc-method-block")
+        self.assertContains(resp, "intensidad ×0.35")
 
     def test_escenario_preset(self):
         resp = self.client.get(reverse("gerencia:escenario_nov2026") + "?preset_vivo=severo")
