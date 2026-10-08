@@ -155,8 +155,21 @@
     .btn-outline-primary { color: #3d5a73; background: #e4eef6; border-color: #c5d4e2; }
     .btn-outline-secondary { color: #4a5562; background: #e8edf2; border-color: #d0d8e0; }
     .wcg-home-link {
-      background: #ffffff !important;
-      border-color: #b7c9d8 !important;
+      display: inline-flex;
+      align-items: center;
+      padding: 0.45rem 0.85rem 0.45rem 0;
+      margin-right: 0.65rem;
+      border: none;
+      border-right: 1px solid var(--wcg-line);
+      border-radius: 0;
+      background: none !important;
+      font-weight: 600;
+      font-size: 0.82rem;
+      text-decoration: none;
+    }
+    .wcg-home-link:hover {
+      text-decoration: underline;
+      text-underline-offset: 3px;
     }
     footer.wcg-footer {
       border-top: 1px solid var(--wcg-line);
