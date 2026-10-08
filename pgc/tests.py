@@ -260,8 +260,9 @@ class IngresosYearGridTests(TestCase):
         row = next(r for r in ctx["month_rows"] if r["month"] == 2)
         inv_cell = next(c for c in row["cells"] if c["is_investment"])
         audit = inv_cell["investment_audit"]
-        self.assertEqual(audit["inversiones_display"], "1100000")
+        self.assertEqual(audit["inversiones_display"], "1,100")
         self.assertEqual(audit["growth_usd"], Decimal("100000"))
+        self.assertEqual(audit["growth_miles"], Decimal("100"))
         self.assertTrue(audit["growth_matches_levels"])
 
     def test_year_grid_display_caps_currency_decimals(self):
@@ -287,6 +288,12 @@ class IngresosYearGridTests(TestCase):
         cell = row["cells"][0]
         self.assertEqual(cell["value"], "970.123")
         self.assertEqual(cell["measured_usd_display"], "123.457")
+
+    def test_wcg_amount_format(self):
+        from core.number_format import format_wcg_amount
+
+        self.assertEqual(format_wcg_amount(Decimal("1234.5000")), "1,234.5")
+        self.assertEqual(format_wcg_amount(Decimal("1000")), "1,000")
 
     def test_year_grid_usd_without_fx(self):
         from pgc.admin_ingresos_year import save_ingresos_year

@@ -31,15 +31,12 @@ def gtq_to_usd(gtq: Decimal, usd_to_gtq: Decimal) -> Decimal:
 def format_currency_display(
     value: Decimal | None, *, max_decimal_places: int = 3
 ) -> str:
-    """Muestra montos con hasta `max_decimal_places` decimales (sin ceros de relleno)."""
+    """Coma miles, punto decimal, hasta N decimales sin ceros finales (matriz admin)."""
+    from core.number_format import format_wcg_amount
+
     if value is None:
         return ""
-    q = Decimal(10) ** -max_decimal_places
-    normalized = Decimal(str(value)).quantize(q, rounding=ROUND_HALF_UP)
-    text = format(normalized, "f")
-    if "." in text:
-        text = text.rstrip("0").rstrip(".")
-    return text
+    return format_wcg_amount(value, max_decimal_places=max_decimal_places)
 
 
 def format_usd_3(value: Decimal | None) -> str:

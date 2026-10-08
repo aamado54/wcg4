@@ -24,11 +24,15 @@ Por eso la matriz antigua parecía “ingresos en dólares” pero eran **miles*
 
 ## Matriz anual admin (`/admin-hub/mensual/ingresos/`)
 
-Tres columnas solo para Inversiones:
+**Unidades en pantalla:** igual que Factoraje/Leasing/Seguros, todo el score PGC usa **miles de US$** (no millones). Los saldos brutos en base están en USD completos; la matriz los divide entre 1 000 para mostrarlos.
+
+Tres columnas solo para Inversiones (todas en miles USD):
 
 1. Saldo AP+PG  
 2. Saldo préstamos  
-3. Δ captaciones (con subtexto en miles USD para PGC)
+3. Δ captaciones (incremento mensual PGC)
+
+**Formato:** coma miles, punto decimal, hasta 3 decimales sin ceros finales (`format_wcg_amount`).
 
 La UI marca advertencias si el valor guardado en PGC no coincide con el recálculo o si el Δ no cuadra con la diferencia de captaciones (meses con bancos asimétricos).
 

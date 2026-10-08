@@ -22,12 +22,17 @@
 
     <div class="adm-panel">
         <h3 style="margin-top:0;">Ingresos por UNE · enero a diciembre</h3>
+        <div class="adm-units-note" role="note">
+            <strong>Unidades y formato (PGC)</strong>
+            <ul>
+                <li>Todas las cifras de <strong>ingresos para el score PGC</strong> están en <strong>miles de US$</strong> (miles USD), <em>no</em> en millones ni en dólares enteros del saldo bruto.</li>
+                <li><strong>Factoraje, Leasing, Seguros:</strong> celdas editables en Q o $ según el selector; el valor canónico del tablero es miles USD (línea «USD» bajo la celda en modo Q).</li>
+                <li><strong>Inversiones:</strong> tres columnas en <strong>miles USD</strong> — saldo AP+PG, préstamos bancarios y Δ captaciones (incremento mensual que puntúa el PGC).</li>
+                <li><strong>Formato numérico:</strong> coma para miles, punto decimal; hasta 3 decimales, sin ceros finales después del punto.</li>
+            </ul>
+        </div>
         <p class="subtitle">
-            Columnas = las 4 UNEs (Inversiones desglosada en saldos + incremento). Filas = 12 meses fijos.
-            Para Factoraje, Leasing e Insurance: captura manual en <strong>Q</strong> o <strong>$</strong> (canónico USD).
-            <strong>Inversiones:</strong> saldos AP+PG y préstamos desde importaciones; la columna
-            <strong>Δ captaciones</strong> es el incremento mensual que usa el PGC (en miles USD en score).
-            La columna TC es tipo de cambio del mes (1 USD = X GTQ), editable.
+            Filas = 12 meses fijos. Columna <strong>TC</strong> = tipo de cambio del mes (1 USD = X GTQ), editable.
         </p>
 
         <form method="get" class="adm-currency-bar" style="margin-bottom:14px;">
@@ -78,11 +83,11 @@
                             {% if investment_une and une.id == investment_une.id %}
                             <th>
                                 Inversiones (AP+PG)<br>
-                                <span class="adm-currency-tag">saldo dolarizado</span>
+                                <span class="adm-currency-tag">miles USD</span>
                             </th>
                             <th>
                                 Préstamos<br>
-                                <span class="adm-currency-tag">saldo bancos</span>
+                                <span class="adm-currency-tag">miles USD</span>
                             </th>
                             <th>
                                 Δ captaciones<br>

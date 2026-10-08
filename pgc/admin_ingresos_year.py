@@ -58,22 +58,32 @@ def _ingresos_metric() -> MetricDefinition | None:
     return MetricDefinition.objects.filter(code=MetricDefinition.CODE_INGRESOS).first()
 
 
-def _display_money_usd_gtq(
-    usd: Decimal | None,
+def _display_pgc_miles(
+    miles_usd: Decimal | None,
     *,
     fx: Decimal | None,
     currency: str,
+    usd_full_for_gtq: Decimal | None = None,
 ) -> tuple[str | None, str | None]:
-    """Par (principal, subtexto USD) según moneda de captura elegida en la UI."""
-    if usd is None:
+    """
+    PGC matriz: cifras en miles USD (misma dimensión que measured_value / tablero).
+    En modo Q, el principal sigue en miles USD; subtexto con referencia en Q si hay TC.
+    """
+    if miles_usd is None:
         return None, None
-    usd_label = format_currency_display(usd)
+    miles_label = format_currency_display(miles_usd)
     if currency == MonthlyMetricResult.CURRENCY_GTQ:
-        if fx and fx > 0:
-            gtq = usd * fx
-            return format_currency_display(gtq), f"USD: {usd_label}"
-        return None, f"USD: {usd_label} (sin TC)"
-    return usd_label, None
+        if fx and fx > 0 and usd_full_for_gtq is not None:
+            gtq_ref = usd_full_for_gtq * fx
+            return miles_label, f"Q ref: {format_currency_display(gtq_ref)}"
+        return miles_label, None
+    return miles_label, None
+
+
+def _usd_full_to_miles(usd: Decimal | None) -> Decimal | None:
+    if usd is None:
+        return None
+    return usd / MILES_DIVISOR
 
 
 def _build_investment_audit(
@@ -123,9 +133,17 @@ def _build_investment_audit(
             == stored_miles.quantize(Decimal("0.001"))
         )
 
-    inv_disp, inv_sub = _display_money_usd_gtq(inv_usd, fx=fx, currency=currency)
-    loans_disp, loans_sub = _display_money_usd_gtq(loans_usd, fx=fx, currency=currency)
-    growth_disp, growth_sub = _display_money_usd_gtq(growth_usd, fx=fx, currency=currency)
+    inv_miles = _usd_full_to_miles(inv_usd)
+    loans_miles = _usd_full_to_miles(loans_usd)
+    inv_disp, inv_sub = _display_pgc_miles(
+        inv_miles, fx=fx, currency=currency, usd_full_for_gtq=inv_usd
+    )
+    loans_disp, loans_sub = _display_pgc_miles(
+        loans_miles, fx=fx, currency=currency, usd_full_for_gtq=loans_usd
+    )
+    growth_disp, growth_sub = _display_pgc_miles(
+        growth_miles, fx=fx, currency=currency, usd_full_for_gtq=growth_usd
+    )
 
     return {
         "has_ap_pg": bool(
@@ -138,14 +156,7 @@ def _build_investment_audit(
         "prestamos_display": loans_disp,
         "prestamos_sub": loans_sub,
         "growth_display": growth_disp,
-        "growth_sub": (
-            growth_sub
-            or (
-                f"PGC (miles USD): {format_currency_display(growth_miles)}"
-                if growth_miles is not None
-                else None
-            )
-        ),
+        "growth_sub": growth_sub,
         "growth_miles": growth_miles,
         "stored_miles": stored_miles,
         "growth_usd": growth_usd,
