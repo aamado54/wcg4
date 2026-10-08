@@ -231,6 +231,30 @@ class IngresosYearGridTests(TestCase):
             )
         self.assertIn("Falta tipo de cambio", str(ctx.exception))
 
+    def test_year_grid_display_caps_currency_decimals(self):
+        from pgc.admin_ingresos_year import get_ingresos_year_context
+
+        MonthlyExchangeRate.objects.create(
+            year=self.year, month=2, usd_to_gtq=Decimal("7.8500001")
+        )
+        MonthlyMetricResult.objects.create(
+            plan=self.plan,
+            une=self.unes[0],
+            metric=self.metric,
+            year=self.year,
+            month=2,
+            measured_value=Decimal("123.456789"),
+            source_currency=MonthlyMetricResult.CURRENCY_GTQ,
+            source_value=Decimal("970.123456"),
+            conversion_status=MonthlyMetricResult.CONVERSION_CONVERTED,
+        )
+        ctx = get_ingresos_year_context(self.year, capture_currency="GTQ")
+        row = next(r for r in ctx["month_rows"] if r["month"] == 2)
+        self.assertEqual(row["fx_value"], "7.85")
+        cell = row["cells"][0]
+        self.assertEqual(cell["value"], "970.123")
+        self.assertEqual(cell["measured_usd_display"], "123.457")
+
     def test_year_grid_usd_without_fx(self):
         from pgc.admin_ingresos_year import save_ingresos_year
 
@@ -491,3 +515,100 @@ class ImportPgcObjetivosTests(TestCase):
             month=self.month,
         )
         self.assertEqual(cli.measured_value, Decimal("1"))
+
+
+class ObjetivosScoringTests(TestCase):
+    def test_factoraje_ago_ingresos_gtq_proportion(self):
+        from decimal import Decimal
+        from pgc.objetivos_scoring import ingresos_points_objetivos
+
+        class T:
+            points_if_achieved = 70
+            presupuesto_gtq = Decimal("770000")
+            target_value = Decimal("770")
+
+        class R:
+            source_currency = "GTQ"
+            source_value = Decimal("460285")
+            measured_value = Decimal("60.29")
+
+        pts, achieved, _note = ingresos_points_objetivos(T(), R(), une_code="FACTORING")
+        self.assertAlmostEqual(float(pts), 41.84, places=1)
+        self.assertFalse(achieved)
+
+
+class ImportPgcMetasTests(TestCase):
+    def setUp(self):
+        self.year = 2026
+        self.plan = PGCPlan.objects.create(year=self.year, name="Plan metas")
+        self.metric_cli, _ = MetricDefinition.objects.get_or_create(
+            code=MetricDefinition.CODE_CLIENTES_NUEVOS,
+            defaults={"name": "Clientes", "is_scored": True},
+        )
+        self.metric_ing, _ = MetricDefinition.objects.get_or_create(
+            code=MetricDefinition.CODE_INGRESOS,
+            defaults={"name": "Ingresos", "is_scored": True},
+        )
+        for code, name in (
+            (MetricDefinition.CODE_VENTA_CRUZADA, "Venta cruzada"),
+            (MetricDefinition.CODE_RESPUESTA_REQS, "Respuesta reqs"),
+        ):
+            MetricDefinition.objects.get_or_create(
+                code=code, defaults={"name": name, "is_scored": True}
+            )
+        for code, name, order in (
+            ("FACTORING", "Factoraje", 1),
+            ("LEASING", "Leasing", 2),
+            ("INSURANCE", "Insurance", 3),
+            ("INVESTMENT", "Inversiones", 4),
+        ):
+            une = UNE.objects.create(code=code, name=name, name_es=name, sort_order=order)
+            for month in range(1, 13):
+                for metric in (self.metric_cli, self.metric_ing):
+                    MonthlyTarget.objects.create(
+                        plan=self.plan,
+                        une=une,
+                        metric=metric,
+                        year=self.year,
+                        month=month,
+                        target_value=Decimal("999"),
+                        points_if_achieved=10,
+                    )
+
+    def test_import_metas_august_2026(self):
+        root = Path(settings.BASE_DIR).parent
+        path = root / "data" / "now" / "PGC-metas-2026.tsv"
+        if not path.is_file():
+            self.skipTest("Sin TSV oficial de metas")
+
+        call_command("import_pgc_metas", path=str(path), year=self.year)
+
+        factoring = UNE.objects.get(code="FACTORING")
+        aug_ing = MonthlyTarget.objects.get(
+            plan=self.plan,
+            une=factoring,
+            metric=self.metric_ing,
+            year=self.year,
+            month=8,
+        )
+        self.assertEqual(aug_ing.target_value, Decimal("770"))
+
+        insurance = UNE.objects.get(code="INSURANCE")
+        aug_cli = MonthlyTarget.objects.get(
+            plan=self.plan,
+            une=insurance,
+            metric=self.metric_cli,
+            year=self.year,
+            month=8,
+        )
+        self.assertEqual(aug_cli.target_value, Decimal("3"))
+
+        investment = UNE.objects.get(code="INVESTMENT")
+        jan_ing = MonthlyTarget.objects.get(
+            plan=self.plan,
+            une=investment,
+            metric=self.metric_ing,
+            year=self.year,
+            month=1,
+        )
+        self.assertEqual(jan_ing.target_value, Decimal("0.200"))

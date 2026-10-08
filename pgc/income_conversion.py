@@ -28,10 +28,22 @@ def gtq_to_usd(gtq: Decimal, usd_to_gtq: Decimal) -> Decimal:
     return (gtq / usd_to_gtq).quantize(USD_STORE_PLACES, rounding=ROUND_HALF_UP)
 
 
-def format_usd_3(value: Decimal | None) -> str:
+def format_currency_display(
+    value: Decimal | None, *, max_decimal_places: int = 3
+) -> str:
+    """Muestra montos con hasta `max_decimal_places` decimales (sin ceros de relleno)."""
     if value is None:
         return ""
-    return str(value.quantize(USD_DISPLAY_PLACES, rounding=ROUND_HALF_UP))
+    q = Decimal(10) ** -max_decimal_places
+    normalized = Decimal(str(value)).quantize(q, rounding=ROUND_HALF_UP)
+    text = format(normalized, "f")
+    if "." in text:
+        text = text.rstrip("0").rstrip(".")
+    return text
+
+
+def format_usd_3(value: Decimal | None) -> str:
+    return format_currency_display(value, max_decimal_places=3)
 
 
 def evaluate_result_achievement(

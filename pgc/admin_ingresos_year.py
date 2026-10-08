@@ -11,7 +11,13 @@ from django.db import transaction
 from core.models import MetricDefinition, UNE
 from pgc.admin_manual import log_manual_edit, save_fx
 from pgc.admin_utils import parse_decimal_or_none
-from pgc.income_conversion import format_usd_3, get_fx_rate, gtq_to_usd, apply_result_achievement
+from pgc.income_conversion import (
+    apply_result_achievement,
+    format_currency_display,
+    format_usd_3,
+    get_fx_rate,
+    gtq_to_usd,
+)
 from pgc.models import (
     AdminManualEditLog,
     MonthlyExchangeRate,
@@ -96,7 +102,11 @@ def get_ingresos_year_context(year: int, capture_currency: str = "GTQ") -> dict:
             cells.append({
                 "une": une,
                 "obj": obj,
-                "value": input_value,
+                "value": (
+                    format_currency_display(input_value)
+                    if input_value is not None
+                    else None
+                ),
                 "measured_usd": measured_usd,
                 "measured_usd_display": format_usd_3(measured_usd) if measured_usd is not None else None,
                 "source_currency": source_curr,
@@ -109,7 +119,9 @@ def get_ingresos_year_context(year: int, capture_currency: str = "GTQ") -> dict:
         month_rows.append({
             "month": month,
             "label": label,
-            "fx_value": fx_value,
+            "fx_value": (
+                format_currency_display(fx_value) if fx_value is not None else None
+            ),
             "has_fx": has_fx,
             "cells": cells,
         })
