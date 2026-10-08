@@ -56,21 +56,22 @@
           display: inline-flex;
           align-items: center;
           gap: 0.35rem;
-          padding: 0.4rem 0.85rem;
-          border-radius: var(--wcg-radius);
-          background: #ffffff;
-          border: 1px solid #b7c9d8;
+          padding: 0.45rem 0.85rem 0.45rem 0;
+          margin-right: 0.65rem;
+          border: none;
+          border-right: 1px solid var(--wcg-line);
+          border-radius: 0;
+          background: none !important;
           color: var(--wcg-accent-ink) !important;
           font-weight: 600;
           font-size: 0.82rem;
           text-decoration: none;
-          margin-right: 1rem;
           white-space: nowrap;
         }
         .wcg-home-link:hover {
-          background: #ffffff;
-          border-color: #b7c9d8;
           color: var(--wcg-ink) !important;
+          text-decoration: underline;
+          text-underline-offset: 3px;
         }
         .wcg-nav-primary {
           display: flex;
@@ -273,16 +274,6 @@
           user-select: none;
           pointer-events: none;
         }
-        /* Menú principal: siempre claro */
-        .wcg-home-link {
-          background: #ffffff !important;
-          border-color: #b7c9d8 !important;
-          color: var(--wcg-accent-ink) !important;
-        }
-        .wcg-home-link:hover {
-          background: #ffffff !important;
-          color: var(--wcg-ink) !important;
-        }
         footer.wcg-footer {
           border-top: 1px solid var(--wcg-line);
           background: rgba(255,255,255,0.65);
@@ -308,30 +299,30 @@
             {% if user.is_authenticated %}
             <ul class="navbar-nav wcg-nav-primary me-auto mb-2 mb-lg-0 mt-2 mt-lg-0">
               <li class="nav-item d-md-none">
-                <a class="nav-link fw-semibold" href="{% url 'portal:home' %}">← Menú principal</a>
+                <a class="nav-link wcg-home-link-mobile" href="{% url 'portal:home' %}">← Menú principal</a>
               </li>
               <li class="nav-item">
-                <a class="nav-link{% if '/pgc/' in request.path or '/tablero/' in request.path %} active{% endif %}" href="{% url 'pgc:dashboard' %}"><span class="wcg-mod-ico" aria-hidden="true">📊</span> PGC</a>
+                <a class="nav-link{% if wcg_nav.module == 'pgc' %} active{% endif %}" href="{% url 'pgc:dashboard' %}"><span class="wcg-mod-ico" aria-hidden="true">📊</span> PGC</a>
               </li>
               <li class="nav-item">
-                <a class="nav-link{% if '/pgo/' in request.path %} active{% endif %}" href="{% url 'pgo:dashboard' %}"><span class="wcg-mod-ico" aria-hidden="true">⚙️</span> PGO</a>
+                <a class="nav-link{% if wcg_nav.module == 'pgo' %} active{% endif %}" href="{% url 'pgo:dashboard' %}"><span class="wcg-mod-ico" aria-hidden="true">⚙️</span> PGO</a>
               </li>
               <li class="nav-item">
-                <a class="nav-link{% if '/crm/' in request.path %} active{% endif %}" href="{% url 'crm:entidad_list' %}"><span class="wcg-mod-ico" aria-hidden="true">👥</span> CRM</a>
+                <a class="nav-link{% if wcg_nav.module == 'crm' %} active{% endif %}" href="{% url 'crm:entidad_list' %}"><span class="wcg-mod-ico" aria-hidden="true">👥</span> CRM</a>
               </li>
               {% if can_access_risk_gerencia %}
               <li class="nav-item">
-                <a class="nav-link{% if '/risk/' in request.path %} active{% endif %}" href="{% url 'risk:comando_balon' %}"><span class="wcg-mod-ico" aria-hidden="true">⚽</span> Balón de Riesgo</a>
+                <a class="nav-link{% if wcg_nav.module == 'risk' %} active{% endif %}" href="{% url 'risk:comando_balon' %}"><span class="wcg-mod-ico" aria-hidden="true">⚽</span> Balón de Riesgo</a>
               </li>
               <li class="nav-item">
-                <a class="nav-link{% if '/gerencia/' in request.path %} active{% endif %}" href="{% url 'gerencia:home' %}"><span class="wcg-mod-ico" aria-hidden="true">🧭</span> Centro Gerencial</a>
+                <a class="nav-link{% if wcg_nav.module == 'gerencia' %} active{% endif %}" href="{% url 'gerencia:home' %}"><span class="wcg-mod-ico" aria-hidden="true">🧭</span> Centro Gerencial</a>
               </li>
               {% endif %}
             </ul>
             <ul class="navbar-nav wcg-nav-secondary align-items-lg-center gap-lg-1">
               {% if can_access_ops %}
               <li class="nav-item">
-                <a class="nav-link{% if in_ops_hub %} active{% endif %}" href="{% url 'pgc:admin_hub' %}">Centro de operaciones</a>
+                <a class="nav-link{% if wcg_nav.module == 'ops' %} active{% endif %}" href="{% url 'pgc:admin_hub' %}">Centro de operaciones</a>
               </li>
               {% endif %}
               <li class="nav-item">

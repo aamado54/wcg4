@@ -119,6 +119,7 @@ TEMPLATES = [
                 'django.contrib.messages.context_processors.messages',
                 'core.access.wcg_access',
                 'core.ops_hub.ops_hub_context',
+                'core.wcg_nav.wcg_nav_context',
             ],
         },
     },

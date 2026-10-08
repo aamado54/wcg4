@@ -49,36 +49,59 @@
         .top-nav {
             display: flex;
             flex-wrap: wrap;
-            gap: 10px;
+            align-items: center;
+            gap: 2px 4px;
         }
 
         .top-nav a {
             color: #3a4a5c;
             text-decoration: none;
-            padding: 8px 12px;
-            border-radius: 10px;
-            background: #dce8f2;
-            border: 1px solid #c5d4e2;
             font-weight: 500;
         }
 
-        .top-nav a:hover {
-            background: #cfdce8;
-            border-color: #b7c9d8;
-        }
-
-        /* Destacado: volver al menú principal WCG (siempre claro) */
+        /* Enlace de retorno: texto, no botón */
         .top-nav a.nav-menu-principal {
-            background: #ffffff;
+            padding: 8px 12px 8px 0;
+            margin-right: 10px;
+            border-right: 1px solid #c5d4e2;
+            border-radius: 0;
+            background: none;
+            border-top: none;
+            border-bottom: none;
+            border-left: none;
             color: #3d5a73;
-            font-weight: 700;
-            border: 1px solid #b7c9d8;
-            box-shadow: 0 1px 2px rgba(42, 52, 65, 0.04);
+            font-weight: 600;
         }
 
         .top-nav a.nav-menu-principal:hover {
-            background: #ffffff;
             color: #2a3441;
+            text-decoration: underline;
+            text-underline-offset: 3px;
+        }
+
+        .top-nav a.nav-item {
+            padding: 8px 12px;
+            border-radius: 10px;
+            border: 1px solid transparent;
+            background: transparent;
+        }
+
+        .top-nav a.nav-item:hover {
+            background: rgba(255, 255, 255, 0.65);
+            border-color: #d9e2ec;
+        }
+
+        .top-nav a.nav-item.active {
+            background: #ffffff;
+            border-color: #c5d4e2;
+            color: #0f3d56;
+            font-weight: 600;
+            box-shadow: 0 1px 2px rgba(42, 52, 65, 0.06);
+        }
+
+        .top-nav a.nav-item-external {
+            padding: 8px 12px;
+            opacity: 0.9;
         }
 
         .header-right {
@@ -310,14 +333,14 @@
                 {% endif %}
 
                 {% if user.is_authenticated %}
-                <nav class="top-nav">
-                    <a href="{% url 'portal:home' %}" class="nav-menu-principal">Menú principal</a>
-                    <a href="{% url 'pgc:dashboard' %}">Tablero</a>
-                    <a href="{% url 'pgc:ingresos' %}">Ingresos vs meta</a>
-                    <a href="{% url 'pgc:clientes_nuevos' %}">Clientes</a>
-                    <a href="{% url 'pgc:venta_cruzada' %}">Venta cruzada</a>
-                    <a href="{% url 'pgc:respuesta_reqs' %}">Respuesta reqs</a>
-                  <a href="{% static 'docs/WCG-PGC.pdf' %}" target="_blank" rel="noopener noreferrer">Ayuda</a>
+                <nav class="top-nav" aria-label="Navegación PGC">
+                    <a href="{% url 'portal:home' %}" class="nav-menu-principal">← Menú principal</a>
+                    <a href="{% url 'pgc:dashboard' %}" class="nav-item{% if wcg_nav.pgc_section == 'tablero' %} active{% endif %}">Tablero</a>
+                    <a href="{% url 'pgc:ingresos' %}" class="nav-item{% if wcg_nav.pgc_section == 'ingresos' %} active{% endif %}">Ingresos vs meta</a>
+                    <a href="{% url 'pgc:clientes_nuevos' %}" class="nav-item{% if wcg_nav.pgc_section == 'clientes' %} active{% endif %}">Clientes</a>
+                    <a href="{% url 'pgc:venta_cruzada' %}" class="nav-item{% if wcg_nav.pgc_section == 'venta_cruzada' %} active{% endif %}">Venta cruzada</a>
+                    <a href="{% url 'pgc:respuesta_reqs' %}" class="nav-item{% if wcg_nav.pgc_section == 'respuesta_reqs' %} active{% endif %}">Respuesta reqs</a>
+                    <a href="{% static 'docs/WCG-PGC.pdf' %}" class="nav-item-external" target="_blank" rel="noopener noreferrer">Ayuda</a>
                 </nav>
                 {% endif %}
             </div>
