@@ -2,6 +2,7 @@ from django.contrib.auth.models import User
 from django.test import RequestFactory, TestCase
 
 from core.ops_hub import build_ops_hub, hub_landing_groups
+from pgc.admin_recalc import get_auto_recalc_enabled
 
 
 class OpsHubNavTests(TestCase):
@@ -32,3 +33,6 @@ class OpsHubNavTests(TestCase):
         titles = [g["title"] for g in groups]
         self.assertEqual(titles[0], "PGC · Cierre mensual")
         self.assertIn("Importación de datos", titles)
+
+    def test_auto_recalc_enabled_by_default(self):
+        self.assertTrue(get_auto_recalc_enabled())

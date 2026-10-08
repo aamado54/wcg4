@@ -43,9 +43,10 @@ _auto_recalc_running = False
 
 
 def get_auto_recalc_enabled() -> bool:
+    """Siempre activo: el recálculo pendiente se ejecuta sin intervención manual."""
     setting = SystemSetting.objects.filter(key=PGC_AUTO_RECALC_KEY).first()
     if setting is None:
-        return False
+        return True
     if setting.value_bool is not None:
         return bool(setting.value_bool)
     text = (setting.value_text or "").strip().lower()
@@ -67,12 +68,10 @@ def set_auto_recalc_enabled(enabled: bool, *, user=None) -> bool:
 
 def maybe_auto_recalc(*, user=None, source: str = "") -> dict[str, Any] | None:
     """
-    Si auto-recalc está activo y hay pendientes, ejecuta la cadena inteligente.
+    Si hay pendientes, ejecuta la cadena inteligente (siempre activo).
 
     Usa on_commit para no correr dentro de transacciones abiertas de import/save.
     """
-    if not get_auto_recalc_enabled():
-        return None
 
     def _run() -> dict[str, Any] | None:
         global _auto_recalc_running

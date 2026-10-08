@@ -173,27 +173,17 @@ def _admin_period_context(year: int, month: int) -> dict:
 
 
 def _flash_auto_recalc(request, result) -> None:
+    """Solo avisa si el recálculo automático no pudo dejar todo al día."""
     if not result:
         return
-    if result.get("scheduled"):
-        messages.info(
-            request,
-            "Auto-recalcular: pendiente de ejecutar al cerrar la transacción.",
-        )
-        return
-    if not result.get("ran"):
-        return
-    n = result.get("periods_processed") or 0
-    messages.success(
-        request,
-        f"Auto-recalcular: {n} período(s) procesado(s).",
-    )
     after = result.get("status_after") or {}
+    if result.get("scheduled"):
+        return
     if after.get("is_pending"):
         messages.warning(
             request,
-            f"Auto-recalcular: aún quedan {after.get('pending_count')} período(s) "
-            "(p.ej. falta TC para convertir STALE).",
+            f"Quedan {after.get('pending_count')} período(s) sin score al día "
+            "(p. ej. falta tipo de cambio para ingresos STALE). Revise TC en edición manual.",
         )
 
 
@@ -208,24 +198,10 @@ def _trigger_auto_recalc(request, *, source: str = "") -> None:
 @login_required
 @user_passes_test(can_access_ops)
 def admin_auto_recalc_toggle(request):
-    """Activa/desactiva recálculo automático ante pendientes."""
+    """Legado: el recálculo es siempre automático; redirige al tablero mensual."""
     period = parse_admin_period(request)
     next_url = (request.POST.get("next") or "").strip()
-
-    if request.method != "POST":
-        return redirect_admin_monthly(period=period)
-
-    enabled = request.POST.get("auto_recalc") in ("1", "on", "true", "yes")
-    set_auto_recalc_enabled(enabled, user=request.user)
-    if enabled:
-        messages.success(
-            request,
-            "Auto-recalcular activado: al importar o guardar datos se calcularán los pendientes.",
-        )
-        _trigger_auto_recalc(request, source="toggle_on")
-    else:
-        messages.info(request, "Auto-recalcular desactivado. Use el botón amarillo cuando haya pendientes.")
-
+    _trigger_auto_recalc(request, source="legacy_toggle")
     if next_url.startswith("/"):
         return redirect(next_url)
     return redirect_admin_monthly(period=period)
@@ -234,7 +210,7 @@ def admin_auto_recalc_toggle(request):
 @login_required
 @user_passes_test(can_access_ops)
 def admin_smart_recalc(request):
-    """Botón único: recalcula en orden todo lo pendiente (todos los períodos)."""
+    """Legado: dispara recálculo pendiente y vuelve (la UI ya no muestra el botón)."""
     period = parse_admin_period(request)
     next_url = (request.POST.get("next") or "").strip()
 
@@ -243,29 +219,13 @@ def admin_smart_recalc(request):
 
     try:
         result = run_smart_recalc_all(user=request.user, force_all=False)
-        if not result["ran"]:
-            messages.info(request, result["messages"][0] if result["messages"] else "Nada pendiente.")
-        else:
-            messages.success(
+        after = result.get("status_after") or {}
+        if after.get("is_pending"):
+            messages.warning(
                 request,
-                f"Recálculo inteligente: {result['periods_processed']} período(s) procesado(s).",
+                f"Aún quedan {after.get('pending_count')} período(s) sin score al día "
+                "(p. ej. falta tipo de cambio para ingresos STALE).",
             )
-            for msg in result["messages"][:40]:
-                messages.success(request, msg)
-            if len(result["messages"]) > 40:
-                messages.info(
-                    request,
-                    f"… y {len(result['messages']) - 40} mensaje(s) más.",
-                )
-            after = result["status_after"]
-            if after["is_pending"]:
-                messages.warning(
-                    request,
-                    f"Aún quedan {after['pending_count']} período(s) con pendientes "
-                    "(p.ej. falta tipo de cambio para convertir STALE).",
-                )
-            else:
-                messages.success(request, "Estado global: al día (verde).")
     except Exception as exc:
         messages.error(request, f"Error en recálculo inteligente: {exc}")
 
