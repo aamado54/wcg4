@@ -9,6 +9,7 @@ from decimal import Decimal
 from django.db import transaction
 
 from core.models import MetricDefinition, UNE
+from imports.models import BankLoanMonthSnapshot, InvestmentGrowthRow
 from pgc.admin_manual import log_manual_edit, save_fx
 from pgc.admin_utils import parse_decimal_or_none
 from pgc.income_conversion import (
@@ -17,6 +18,14 @@ from pgc.income_conversion import (
     format_usd_3,
     get_fx_rate,
     gtq_to_usd,
+)
+from pgc.investment_ingresos import (
+    MILES_DIVISOR,
+    _ap_pg_total_usd,
+    _previous_period,
+    get_investment_une,
+    investment_gross_usd,
+    investment_net_growth_usd,
 )
 from pgc.models import (
     AdminManualEditLog,
@@ -49,6 +58,117 @@ def _ingresos_metric() -> MetricDefinition | None:
     return MetricDefinition.objects.filter(code=MetricDefinition.CODE_INGRESOS).first()
 
 
+def _display_money_usd_gtq(
+    usd: Decimal | None,
+    *,
+    fx: Decimal | None,
+    currency: str,
+) -> tuple[str | None, str | None]:
+    """Par (principal, subtexto USD) según moneda de captura elegida en la UI."""
+    if usd is None:
+        return None, None
+    usd_label = format_currency_display(usd)
+    if currency == MonthlyMetricResult.CURRENCY_GTQ:
+        if fx and fx > 0:
+            gtq = usd * fx
+            return format_currency_display(gtq), f"USD: {usd_label}"
+        return None, f"USD: {usd_label} (sin TC)"
+    return usd_label, None
+
+
+def _build_investment_audit(
+    year: int,
+    month: int,
+    *,
+    fx: Decimal | None,
+    currency: str,
+    result_obj: MonthlyMetricResult | None,
+) -> dict:
+    gross = investment_gross_usd(year, month)
+    prev_y, prev_m = _previous_period(year, month)
+    prev_gross = investment_gross_usd(prev_y, prev_m)
+
+    inv_usd = _ap_pg_total_usd(gross)
+    loans_usd = gross.get("banks_usd") if gross.get("has_data") else None
+    cap_usd = gross.get("total_usd")
+
+    prev_cap_usd = (
+        prev_gross.get("total_usd") if prev_gross.get("has_data") else None
+    )
+    growth_usd = investment_net_growth_usd(year, month)
+    growth_miles = (
+        growth_usd / MILES_DIVISOR if growth_usd is not None else None
+    )
+
+    stored_miles = (
+        getattr(result_obj, "measured_value", None) if result_obj else None
+    )
+    stored_growth_usd = (
+        stored_miles * MILES_DIVISOR if stored_miles is not None else None
+    )
+
+    delta_from_levels = None
+    if cap_usd is not None and prev_cap_usd is not None:
+        delta_from_levels = cap_usd - prev_cap_usd
+
+    growth_matches_levels = (
+        growth_usd is not None
+        and delta_from_levels is not None
+        and growth_usd == delta_from_levels
+    )
+    stored_matches_growth = False
+    if growth_miles is not None and stored_miles is not None:
+        stored_matches_growth = (
+            growth_miles.quantize(Decimal("0.001"))
+            == stored_miles.quantize(Decimal("0.001"))
+        )
+
+    inv_disp, inv_sub = _display_money_usd_gtq(inv_usd, fx=fx, currency=currency)
+    loans_disp, loans_sub = _display_money_usd_gtq(loans_usd, fx=fx, currency=currency)
+    growth_disp, growth_sub = _display_money_usd_gtq(growth_usd, fx=fx, currency=currency)
+
+    return {
+        "has_ap_pg": bool(
+            gross.get("has_data")
+            and InvestmentGrowthRow.objects.filter(year=year, month=month).exists()
+        ),
+        "has_bank": BankLoanMonthSnapshot.objects.filter(year=year, month=month).exists(),
+        "inversiones_display": inv_disp,
+        "inversiones_sub": inv_sub,
+        "prestamos_display": loans_disp,
+        "prestamos_sub": loans_sub,
+        "growth_display": growth_disp,
+        "growth_sub": (
+            growth_sub
+            or (
+                f"PGC (miles USD): {format_currency_display(growth_miles)}"
+                if growth_miles is not None
+                else None
+            )
+        ),
+        "growth_miles": growth_miles,
+        "stored_miles": stored_miles,
+        "growth_usd": growth_usd,
+        "captaciones_usd": cap_usd,
+        "prev_captaciones_usd": prev_cap_usd,
+        "growth_matches_levels": growth_matches_levels,
+        "stored_matches_growth": stored_matches_growth,
+        "partial_bank_month": (
+            gross.get("has_data")
+            and prev_gross.get("has_data")
+            and BankLoanMonthSnapshot.objects.filter(year=year, month=month).exists()
+            != BankLoanMonthSnapshot.objects.filter(year=prev_y, month=prev_m).exists()
+        ),
+        "note": (
+            "Δ con solo AP+PG (un mes tiene bancos y el otro no)."
+            if growth_usd is not None
+            and delta_from_levels is not None
+            and growth_usd != delta_from_levels
+            else ""
+        ),
+    }
+
+
 def _normalize_currency(raw: str | None) -> str:
     curr = (raw or "GTQ").strip().upper()
     if curr in ("Q", "GTQ"):
@@ -63,6 +183,7 @@ def get_ingresos_year_context(year: int, capture_currency: str = "GTQ") -> dict:
     plan = PGCPlan.objects.filter(year=year).first()
     unes = _unes()
     metric = _ingresos_metric()
+    investment_une = get_investment_une()
 
     fx_by_month = {
         r.month: r
@@ -99,9 +220,13 @@ def get_ingresos_year_context(year: int, capture_currency: str = "GTQ") -> dict:
             else:
                 input_value = measured_usd
 
-            cells.append({
+            is_investment = (
+                investment_une is not None and une.id == investment_une.id
+            )
+            cell = {
                 "une": une,
                 "obj": obj,
+                "is_investment": is_investment,
                 "value": (
                     format_currency_display(input_value)
                     if input_value is not None
@@ -114,7 +239,16 @@ def get_ingresos_year_context(year: int, capture_currency: str = "GTQ") -> dict:
                 "input_disabled": (
                     currency == MonthlyMetricResult.CURRENCY_GTQ and not has_fx
                 ),
-            })
+            }
+            if is_investment:
+                cell["investment_audit"] = _build_investment_audit(
+                    year,
+                    month,
+                    fx=fx_value,
+                    currency=currency,
+                    result_obj=obj,
+                )
+            cells.append(cell)
 
         month_rows.append({
             "month": month,
@@ -130,6 +264,7 @@ def get_ingresos_year_context(year: int, capture_currency: str = "GTQ") -> dict:
         "year": year,
         "plan": plan,
         "unes": unes,
+        "investment_une": investment_une,
         "month_rows": month_rows,
         "capture_currency": currency,
         "missing_fx_months": missing_fx_for_gtq,

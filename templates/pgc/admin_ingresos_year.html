@@ -23,9 +23,11 @@
     <div class="adm-panel">
         <h3 style="margin-top:0;">Ingresos por UNE · enero a diciembre</h3>
         <p class="subtitle">
-            Columnas = las 4 UNEs. Filas = 12 meses fijos.
-            Elija moneda de captura (<strong>Q</strong> o <strong>$</strong>); lo guardado canónico es siempre <strong>USD</strong>.
-            La 5.ª columna es el tipo de cambio del mes (1 USD = X GTQ), editable.
+            Columnas = las 4 UNEs (Inversiones desglosada en saldos + incremento). Filas = 12 meses fijos.
+            Para Factoraje, Leasing e Insurance: captura manual en <strong>Q</strong> o <strong>$</strong> (canónico USD).
+            <strong>Inversiones:</strong> saldos AP+PG y préstamos desde importaciones; la columna
+            <strong>Δ captaciones</strong> es el incremento mensual que usa el PGC (en miles USD en score).
+            La columna TC es tipo de cambio del mes (1 USD = X GTQ), editable.
         </p>
 
         <form method="get" class="adm-currency-bar" style="margin-bottom:14px;">
@@ -73,12 +75,27 @@
                         <tr>
                             <th>Mes</th>
                             {% for une in unes %}
+                            {% if investment_une and une.id == investment_une.id %}
+                            <th>
+                                Inversiones (AP+PG)<br>
+                                <span class="adm-currency-tag">saldo dolarizado</span>
+                            </th>
+                            <th>
+                                Préstamos<br>
+                                <span class="adm-currency-tag">saldo bancos</span>
+                            </th>
+                            <th>
+                                Δ captaciones<br>
+                                <span class="adm-currency-tag">incremento → PGC (miles USD)</span>
+                            </th>
+                            {% else %}
                             <th>
                                 {{ une.name_es }}<br>
                                 <span class="adm-currency-tag">
                                     {% if capture_currency == "GTQ" %}captura Q → USD{% else %}captura $ (USD){% endif %}
                                 </span>
                             </th>
+                            {% endif %}
                             {% endfor %}
                             <th>
                                 TC<br>
@@ -94,6 +111,35 @@
                                 <span class="muted"> {{ year }}-{{ row.month|stringformat:"02d" }}</span>
                             </td>
                             {% for cell in row.cells %}
+                            {% if cell.is_investment and cell.investment_audit %}
+                            {% with a=cell.investment_audit %}
+                            <td class="adm-ingresos-cell adm-invest-audit">
+                                {% if a.inversiones_display %}
+                                <strong>{{ a.inversiones_display }}</strong>
+                                {% if a.inversiones_sub %}<div class="muted adm-invest-sub">{{ a.inversiones_sub }}</div>{% endif %}
+                                {% elif a.has_ap_pg %}<span class="muted">—</span>{% else %}<span class="muted">sin AP/PG</span>{% endif %}
+                            </td>
+                            <td class="adm-ingresos-cell adm-invest-audit">
+                                {% if a.prestamos_display %}
+                                <strong>{{ a.prestamos_display }}</strong>
+                                {% if a.prestamos_sub %}<div class="muted adm-invest-sub">{{ a.prestamos_sub }}</div>{% endif %}
+                                {% elif a.has_bank %}<span class="muted">—</span>{% else %}<span class="muted">sin bancos</span>{% endif %}
+                            </td>
+                            <td class="adm-ingresos-cell adm-invest-audit">
+                                {% if a.growth_display %}
+                                <strong>{{ a.growth_display }}</strong>
+                                {% if a.growth_sub %}<div class="muted adm-invest-sub">{{ a.growth_sub }}</div>{% endif %}
+                                {% else %}<span class="muted">sin Δ (sin mes previo)</span>{% endif %}
+                                {% if a.stored_miles is not None and not a.stored_matches_growth %}
+                                <div class="adm-invest-warn">PGC guardado: {{ a.stored_miles }} miles ≠ recalculado</div>
+                                {% endif %}
+                                {% if a.note %}<div class="muted adm-invest-sub">{{ a.note }}</div>{% endif %}
+                                {% if a.growth_usd is not None and not a.growth_matches_levels %}
+                                <div class="adm-invest-warn">Δ ≠ captacionesₜ − captacionesₜ₋₁</div>
+                                {% endif %}
+                            </td>
+                            {% endwith %}
+                            {% else %}
                             <td class="adm-ingresos-cell">
                                 <input type="text"
                                        inputmode="decimal"
@@ -110,6 +156,7 @@
                                 </div>
                                 {% endif %}
                             </td>
+                            {% endif %}
                             {% endfor %}
                             <td>
                                 <input type="text"

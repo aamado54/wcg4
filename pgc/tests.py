@@ -231,6 +231,39 @@ class IngresosYearGridTests(TestCase):
             )
         self.assertIn("Falta tipo de cambio", str(ctx.exception))
 
+    def test_investment_audit_breakdown(self):
+        from imports.models import InvestmentGrowthRow
+        from pgc.admin_ingresos_year import get_ingresos_year_context
+
+        inv_une = self.unes[3]
+        MonthlyExchangeRate.objects.create(
+            year=self.year, month=2, usd_to_gtq=Decimal("8")
+        )
+        MonthlyExchangeRate.objects.create(
+            year=self.year, month=1, usd_to_gtq=Decimal("8")
+        )
+        InvestmentGrowthRow.objects.create(
+            year=self.year,
+            month=1,
+            instrument="AP",
+            operation_code="A1",
+            amount_usd=Decimal("1000000"),
+        )
+        InvestmentGrowthRow.objects.create(
+            year=self.year,
+            month=2,
+            instrument="AP",
+            operation_code="A1",
+            amount_usd=Decimal("1100000"),
+        )
+        ctx = get_ingresos_year_context(self.year, capture_currency="USD")
+        row = next(r for r in ctx["month_rows"] if r["month"] == 2)
+        inv_cell = next(c for c in row["cells"] if c["is_investment"])
+        audit = inv_cell["investment_audit"]
+        self.assertEqual(audit["inversiones_display"], "1100000")
+        self.assertEqual(audit["growth_usd"], Decimal("100000"))
+        self.assertTrue(audit["growth_matches_levels"])
+
     def test_year_grid_display_caps_currency_decimals(self):
         from pgc.admin_ingresos_year import get_ingresos_year_context
 
