@@ -1,17 +1,18 @@
 {% extends "base_wcg.html" %}
-{% block title %}Duplicados — Importación — WCG{% endblock %}
+{% block title %}Revisar duplicados — Centro de operaciones{% endblock %}
 {% block content %}
+{% include "ops/_hub_nav_wcg.html" %}
 <div class="page-toolbar">
   <div>
-    <p class="text-muted small mb-1 text-uppercase" style="letter-spacing:0.04em;font-weight:600;">Administración · Limpieza</p>
-    <h1 class="h3 mb-1">Revisión de posibles duplicados</h1>
+    <p class="ops-page-kicker">Centro de operaciones · Importación de datos</p>
+    <h1 class="ops-page-title">Revisión de posibles duplicados</h1>
     <p class="text-muted mb-0" style="max-width:44rem;">
       Busca duplicados en CRM, Balón de Riesgo, PGC y lotes de importación.
       En CRM se conserva el registro con <strong>más información</strong> y se
       <strong>fusionan</strong> contactos/productos/interacciones/tareas antes de borrar el resto.
     </p>
   </div>
-  <a class="wcg-home-link" href="{% url 'imports:import_hub' %}">← Importación General</a>
+  <a class="wcg-home-link" href="{% url 'imports:import_hub' %}">← Importación general</a>
 </div>
 
 <form method="get" class="row g-2 mb-3">

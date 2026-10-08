@@ -1,18 +1,18 @@
 {% extends "base.html" %}
 {% load l10n %}
 
-{% block title %}Edición manual — {{ label }}{% endblock %}
+{% block title %}Edición manual — Centro de operaciones{% endblock %}
 
 {% block content %}
 {% include "pgc/admin/_styles.html" %}
 
 <div class="adm">
-    {% include "pgc/admin/_nav.html" with adm_nav_active="manual" %}
+    {% include "pgc/admin/_ops_sections.html" %}
 
     <div class="adm-header">
         <div class="adm-header-top">
             <div>
-                <p class="muted" style="margin:0;">Edición manual del período</p>
+                {% include "pgc/admin/_page_header.html" with ops_section="PGC · Cierre mensual" ops_page_title="Edición manual" ops_page_lead="Tipos de cambio, metas, resultados, alias UNE, importaciones y requerimientos." %}
                 <div class="adm-period-label">{{ label }}</div>
                 {% if not plan %}<p class="muted" style="color:#b45309;">No hay plan PGC para este año.</p>{% endif %}
             </div>

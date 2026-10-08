@@ -1,17 +1,17 @@
 {% extends "base.html" %}
 
-{% block title %}Bitácora — {{ period_label }}{% endblock %}
+{% block title %}Bitácora del período — Centro de operaciones{% endblock %}
 
 {% block content %}
 {% include "pgc/admin/_styles.html" %}
 
 <div class="adm">
-    {% include "pgc/admin/_nav.html" with adm_nav_active="log" %}
+    {% include "pgc/admin/_ops_sections.html" %}
 
     <div class="adm-header">
         <div class="adm-header-top">
             <div>
-                <h2 style="margin:0; color:#0f3d56;">Bitácora del período</h2>
+                {% include "pgc/admin/_page_header.html" with ops_section="PGC · Cierre mensual" ops_page_title="Bitácora del período" %}
                 <div class="adm-period-label" style="font-size:1.4rem;">{{ period_label }}</div>
                 <span class="adm-period-status {{ snapshot.period_status }}">{{ snapshot.period_status_label }}</span>
             </div>

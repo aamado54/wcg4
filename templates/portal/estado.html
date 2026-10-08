@@ -1,13 +1,14 @@
 {% extends "base_wcg.html" %}
-{% block title %}Estado del sistema — WCG{% endblock %}
+{% block title %}Estado del sistema — Centro de operaciones{% endblock %}
 {% block content %}
+{% include "ops/_hub_nav_wcg.html" %}
 <div class="page-toolbar">
   <div>
-    <p class="text-muted small mb-1 text-uppercase" style="letter-spacing:0.04em;font-weight:600;">Información</p>
-    <h1 class="h3 mb-1">Estado del sistema</h1>
-    <p class="text-muted mb-0">Resumen operativo e importaciones recientes. Las cargas de datos se hacen en Administración.</p>
+    <p class="ops-page-kicker">Centro de operaciones · Sistema</p>
+    <h1 class="ops-page-title">Estado del sistema</h1>
+    <p class="text-muted mb-0">Resumen operativo e importaciones recientes. Las cargas de datos se hacen en Importación general.</p>
   </div>
-  <a class="wcg-home-link" href="{% url 'portal:home' %}">← Menú principal</a>
+  <a class="wcg-home-link" href="{% url 'pgc:admin_hub' %}">← Inicio operaciones</a>
 </div>
 
 <div class="row g-3 mb-4">

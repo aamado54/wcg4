@@ -1,18 +1,18 @@
 {% extends "base.html" %}
 {% load l10n %}
 
-{% block title %}Clientes nuevos — UNE {{ label }}{% endblock %}
+{% block title %}Clientes nuevos (UNE) — Centro de operaciones{% endblock %}
 
 {% block content %}
 {% include "pgc/admin/_styles.html" %}
 
 <div class="adm">
-    {% include "pgc/admin/_nav.html" with adm_nav_active="clients_une" %}
+    {% include "pgc/admin/_ops_sections.html" %}
 
     <div class="adm-header">
         <div class="adm-header-top">
             <div>
-                <p class="muted" style="margin:0;">Reasignar UNE · solo este campo</p>
+                {% include "pgc/admin/_page_header.html" with ops_section="PGC · Cierre mensual" ops_page_title="Clientes nuevos — asignación UNE" ops_page_lead="Solo cambia la UNE por fila (Factoraje, Leasing, Insurance, Inversiones)." %}
                 <div class="adm-period-label">{{ label }}</div>
                 <p class="muted" style="margin:0;">{{ row_count }} registro(s). Opciones: 1 Factoraje · 2 Leasing · 3 Insurance · 4 Inversiones.</p>
             </div>

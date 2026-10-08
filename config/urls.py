@@ -8,6 +8,10 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("accounts/", include("django.contrib.auth.urls")),
     path("importaciones/", include("imports.urls")),
+    path(
+        "admin-hub/importaciones/",
+        RedirectView.as_view(pattern_name="imports:import_hub", permanent=False),
+    ),
 
     # PGC1 WCG modules (rutas productivas actuales)
     path("crm/", include("crm.urls")),

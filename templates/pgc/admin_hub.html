@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% load l10n %}
+
+{% block title %}Centro de operaciones — Inicio{% endblock %}
+
+{% block content %}
+{% include "pgc/admin/_styles.html" %}
+
+<div class="adm">
+    {% include "pgc/admin/_ops_sections.html" %}
+
+    <div class="adm-header">
+        {% include "pgc/admin/_page_header.html" with ops_page_title="Inicio" ops_page_lead="Un solo lugar para el cierre mensual PGC, importaciones, ajustes de gerencia y herramientas del sistema. Siga el orden de cada bloque en el día a día operativo." %}
+    </div>
+
+    <div class="adm-hub-grid">
+        {% for group in hub_groups %}
+        <section class="adm-hub-card">
+            <h2 class="adm-hub-card-title">{{ group.title }}</h2>
+            <p class="adm-hub-card-lead">{{ group.lead }}</p>
+            <ol class="adm-hub-links">
+                {% for link in group.links %}
+                <li>
+                    <a href="{{ link.url }}"
+                       {% if link.external %}target="_blank" rel="noopener"{% endif %}>{{ link.label }}</a>
+                </li>
+                {% endfor %}
+            </ol>
+        </section>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

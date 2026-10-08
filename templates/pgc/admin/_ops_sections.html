@@ -1,0 +1,36 @@
+{# Requiere ops_hub en contexto (context processor core.ops_hub). #}
+{% if ops_hub %}
+<nav class="adm-ops-sections" aria-label="Secciones del centro de operaciones">
+    {% for sec in ops_hub.sections %}
+    <a href="{{ sec.url }}"
+       class="adm-ops-section {% if sec.active %}active{% endif %}">{{ sec.label }}</a>
+    {% endfor %}
+</nav>
+{% if ops_hub.subsections %}
+<nav class="adm-ops-subsections" aria-label="Pantallas de la sección">
+    {% for item in ops_hub.subsections %}
+    <a href="{{ item.url }}"
+       class="{% if item.active %}active{% endif %}"
+       {% if item.external %}target="_blank" rel="noopener"{% endif %}>{{ item.label }}</a>
+    {% endfor %}
+    {% if ops_hub.active_section == 'pgc' %}
+    <div class="adm-nav-recalc">
+        {% include "pgc/admin/_recalc_button.html" %}
+    </div>
+    {% endif %}
+</nav>
+{% endif %}
+{% if recalc_status and recalc_status.is_pending and recalc_status.pending_periods %}
+<details class="adm-recalc-details">
+    <summary>Ver {{ recalc_status.pending_count }} período(s) pendiente(s)</summary>
+    <ul>
+        {% for p in recalc_status.pending_periods %}
+        <li>
+            <strong>{{ p.label }}</strong>
+            — {{ p.reasons|join:"; " }}
+        </li>
+        {% endfor %}
+    </ul>
+</details>
+{% endif %}
+{% endif %}

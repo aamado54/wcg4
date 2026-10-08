@@ -117,6 +117,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'core.access.wcg_access',
+                'core.ops_hub.ops_hub_context',
             ],
         },
     },
@@ -189,6 +190,20 @@ WCG_EVALUACION_PLANTILLAS_DIR = Path(
     os.environ.get(
         "WCG_EVALUACION_PLANTILLAS_DIR",
         str(BASE_DIR.parent / "data" / "now" / "plantillas" / "ejemplos"),
+    )
+)
+# Plantillas subidas vía UI (persisten en MEDIA_ROOT / volumen Railway).
+WCG_EVALUACION_UPLOAD_DIR = Path(
+    os.environ.get(
+        "WCG_EVALUACION_UPLOAD_DIR",
+        str(MEDIA_ROOT / "evaluacion" / "plantillas"),
+    )
+)
+
+WCG_STRESS_REPORTES_DIR = Path(
+    os.environ.get(
+        "WCG_STRESS_REPORTES_DIR",
+        str(BASE_DIR.parent / "data" / "now" / "reportes"),
     )
 )
 

@@ -31,26 +31,11 @@
       </ul>
       <ul class="navbar-nav wcg-nav-secondary align-items-lg-center">
         {% if user.is_authenticated %}
-        <li class="nav-item dropdown">
-          <a class="nav-link dropdown-toggle{% if '/importaciones/' in request.path or '/panel/estado' in request.path %} active{% endif %}" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-            Administración
-          </a>
-          <ul class="dropdown-menu dropdown-menu-end">
-            <li><h6 class="dropdown-header">Configuración del sistema</h6></li>
-            <li>
-              <a class="dropdown-item" href="{% url 'imports:import_hub' %}">Importación General</a>
-            </li>
-            <li>
-              <a class="dropdown-item" href="{% url 'imports:duplicates_review' %}">Revisar duplicados (CRM / Balón)</a>
-            </li>
-            <li><a class="dropdown-item" href="{% url 'portal:estado' %}">Estado del sistema</a></li>
-            <li><a class="dropdown-item" href="{% url 'portal:ayuda' %}">Guía de uso</a></li>
-            {% if user.is_superuser %}
-            <li><hr class="dropdown-divider"></li>
-            <li><a class="dropdown-item" href="/admin/" target="_blank" rel="noopener">Admin Django</a></li>
-            {% endif %}
-          </ul>
+        {% if can_access_ops %}
+        <li class="nav-item">
+          <a class="nav-link{% if in_ops_hub %} active{% endif %}" href="{% url 'pgc:admin_hub' %}">Centro de operaciones</a>
         </li>
+        {% endif %}
         <li class="nav-item">
           <span class="nav-link disabled" style="opacity:0.7;">{{ user.get_username }}</span>
         </li>

@@ -1,0 +1,56 @@
+{# Barra del centro de operaciones para plantillas base_wcg (importaciones, sistema). #}
+{% if ops_hub %}
+<style>
+  .ops-hub-bar {
+    margin: 0 0 1.25rem;
+    padding: 0.75rem 1rem;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+  }
+  .ops-hub-sections, .ops-hub-subsections {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    align-items: center;
+  }
+  .ops-hub-subsections { margin-top: 0.55rem; padding-top: 0.55rem; border-top: 1px solid #edf2f7; }
+  .ops-hub-sections a, .ops-hub-subsections a {
+    display: inline-block;
+    padding: 0.35rem 0.7rem;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    text-decoration: none;
+    color: #0f3d56;
+    border: 1px solid #d9e2ec;
+    background: #fff;
+  }
+  .ops-hub-sections a.active { background: #0f3d56; color: #fff; border-color: #0f3d56; }
+  .ops-hub-subsections a.active { background: #0f766e; color: #fff; border-color: #0f766e; }
+  .ops-page-kicker {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #64748b;
+    margin: 0 0 0.25rem;
+  }
+  .ops-page-title { font-size: 1.55rem; font-weight: 700; letter-spacing: -0.02em; margin: 0 0 0.35rem; color: #0f3d56; }
+</style>
+<nav class="ops-hub-bar" aria-label="Centro de operaciones">
+  <div class="ops-hub-sections">
+    {% for sec in ops_hub.sections %}
+    <a href="{{ sec.url }}" class="{% if sec.active %}active{% endif %}">{{ sec.label }}</a>
+    {% endfor %}
+  </div>
+  {% if ops_hub.subsections %}
+  <div class="ops-hub-subsections">
+    {% for item in ops_hub.subsections %}
+    <a href="{{ item.url }}" class="{% if item.active %}active{% endif %}"
+       {% if item.external %}target="_blank" rel="noopener"{% endif %}>{{ item.label }}</a>
+    {% endfor %}
+  </div>
+  {% endif %}
+</nav>
+{% endif %}

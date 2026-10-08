@@ -300,7 +300,14 @@
     <header>
         <div class="container header-row">
             <div class="header-left">
+                {% if in_ops_hub %}
+                <div>
+                    <h1 class="brand-title" style="font-size:1.15rem;">Centro de operaciones</h1>
+                    <p class="muted" style="margin:2px 0 0;font-size:0.78rem;">WCG · PGC y módulos</p>
+                </div>
+                {% else %}
                 <h1 class="brand-title">PGC - Working Capital Group</h1>
+                {% endif %}
 
                 {% if user.is_authenticated %}
                 <nav class="top-nav">
@@ -332,9 +339,8 @@
                         </form>
 
                         {% if can_access_ops %}
-                            <div class="menu-label">Administración</div>
-                            <a href="{% url 'imports:import_hub' %}">Importación General</a>
-                            <a href="{% url 'pgc:admin_monthly' %}">Admin PGC (período)</a>
+                            <div class="menu-label">Operaciones</div>
+                            <a href="{% url 'pgc:admin_hub' %}">Centro de operaciones</a>
                         {% endif %}
                     </div>
                 </div>

@@ -45,6 +45,116 @@
     .adm-period-status.ready { background: #d1fae5; color: #065f46; }
     .adm-period-status.closed { background: #e2e8f0; color: #334155; }
 
+    .adm-ops-sections,
+    .adm-ops-subsections {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+        margin-bottom: 10px;
+    }
+
+    .adm-ops-subsections {
+        margin-bottom: 18px;
+        padding-bottom: 4px;
+        border-bottom: 1px solid var(--adm-border);
+    }
+
+    .adm-ops-section,
+    .adm-ops-subsections a {
+        padding: 8px 14px;
+        border-radius: 8px;
+        text-decoration: none;
+        font-size: 0.88rem;
+        font-weight: 600;
+        color: var(--adm-primary);
+        border: 1px solid var(--adm-border);
+        background: white;
+    }
+
+    .adm-ops-section.active {
+        background: var(--adm-primary);
+        color: white;
+        border-color: var(--adm-primary);
+    }
+
+    .adm-ops-subsections a.active {
+        background: var(--adm-accent);
+        color: white;
+        border-color: var(--adm-accent);
+    }
+
+    .adm-ops-subsections .adm-nav-recalc {
+        margin-left: auto;
+    }
+
+    .adm-page-head { margin-bottom: 4px; }
+
+    .adm-ops-kicker {
+        margin: 0 0 6px;
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--adm-muted);
+    }
+
+    .adm-page-title {
+        margin: 0 0 8px;
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: var(--adm-primary);
+        letter-spacing: -0.02em;
+    }
+
+    .adm-page-lead {
+        margin: 0 0 10px;
+        color: var(--adm-muted);
+        max-width: 52rem;
+        line-height: 1.45;
+    }
+
+    .adm-page-meta .adm-period-label {
+        font-size: 1.35rem;
+        margin: 4px 0 6px;
+    }
+
+    .adm-hub-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 16px;
+    }
+
+    .adm-hub-card {
+        background: var(--adm-card);
+        border: 1px solid var(--adm-border);
+        border-radius: 12px;
+        padding: 20px 22px;
+    }
+
+    .adm-hub-card-title {
+        margin: 0 0 8px;
+        font-size: 1.1rem;
+        color: var(--adm-primary);
+    }
+
+    .adm-hub-card-lead {
+        margin: 0 0 14px;
+        font-size: 0.9rem;
+        color: var(--adm-muted);
+        line-height: 1.45;
+    }
+
+    .adm-hub-links {
+        margin: 0;
+        padding-left: 1.2rem;
+        font-size: 0.92rem;
+    }
+
+    .adm-hub-links li { margin-bottom: 6px; }
+    .adm-hub-links a { font-weight: 600; color: var(--adm-accent); text-decoration: none; }
+    .adm-hub-links a:hover { text-decoration: underline; }
+
     .adm-nav {
         display: flex;
         flex-wrap: wrap;

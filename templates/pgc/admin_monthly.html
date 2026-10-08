@@ -1,20 +1,22 @@
 {% extends "base.html" %}
 {% load l10n %}
 
-{% block title %}Administración mensual{% endblock %}
+{% block title %}Tablero mensual — Centro de operaciones{% endblock %}
 
 {% block content %}
 {% include "pgc/admin/_styles.html" %}
 
 <div class="adm">
-    {% include "pgc/admin/_nav.html" with adm_nav_active="monthly" show_django_admin=True %}
+    {% include "pgc/admin/_ops_sections.html" %}
 
     <div class="adm-header">
         <div class="adm-header-top">
             <div>
-                <p class="muted" style="margin:0;">Panel de operaciones</p>
-                <div class="adm-period-label">{{ snapshot.label }}</div>
-                <span class="adm-period-status {{ snapshot.period_status }}">{{ snapshot.period_status_label }}</span>
+                {% include "pgc/admin/_page_header.html" with ops_section="PGC · Cierre mensual" ops_page_title="Tablero mensual" ops_page_lead="Ruta operativa del mes: cargas, metas, ingresos, clientes y cierre." %}
+                <div class="adm-page-meta">
+                    <div class="adm-period-label">{{ snapshot.label }}</div>
+                    <span class="adm-period-status {{ snapshot.period_status }}">{{ snapshot.period_status_label }}</span>
+                </div>
             </div>
             <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:end;">
                 {% include "pgc/admin/_period_select.html" %}

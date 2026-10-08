@@ -1,18 +1,18 @@
 {% extends "base.html" %}
 {% load l10n %}
 
-{% block title %}Ingresos anuales {{ year }}{% endblock %}
+{% block title %}Ingresos (año) — Centro de operaciones{% endblock %}
 
 {% block content %}
 {% include "pgc/admin/_styles.html" %}
 
 <div class="adm">
-    {% include "pgc/admin/_nav.html" with adm_nav_active="ingresos_year" %}
+    {% include "pgc/admin/_ops_sections.html" %}
 
     <div class="adm-header">
         <div class="adm-header-top">
             <div>
-                <p class="muted" style="margin:0;">Captura de ingresos reales · año completo</p>
+                {% include "pgc/admin/_page_header.html" with ops_section="PGC · Cierre mensual" ops_page_title="Captura de ingresos (año completo)" ops_page_lead="Matriz enero–diciembre por UNE; complementa el tablero mensual." %}
                 <div class="adm-period-label">{{ year }}</div>
                 {% if not plan %}<p class="muted" style="color:#b45309;">No hay plan PGC para este año.</p>{% endif %}
             </div>

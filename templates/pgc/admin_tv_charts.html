@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Charts TV{% endblock %}
+{% block title %}Gráficas para TV — Centro de operaciones{% endblock %}
 
 {% block content %}
 {% include "pgc/admin/_styles.html" %}
@@ -70,13 +70,12 @@
 </style>
 
 <div class="adm">
-  {% include "pgc/admin/_nav.html" with adm_nav_active="tv_charts" show_django_admin=True %}
+  {% include "pgc/admin/_ops_sections.html" %}
 
   <div class="adm-header">
     <div class="adm-header-top">
       <div>
-        <p class="muted" style="margin:0;">Televisor · charts vivos</p>
-        <div class="adm-period-label">TV charts</div>
+        {% include "pgc/admin/_page_header.html" with ops_section="PGC · Cierre mensual" ops_page_title="Gráficas para TV" ops_page_lead="URLs públicas, exportación PNG/SVG y respaldo en base de datos." %}
       </div>
     </div>
   </div>

@@ -1,0 +1,7 @@
+{# ops_section, ops_page_title; opcional: ops_page_lead, ops_page_meta (HTML safe fragment) #}
+<div class="adm-page-head">
+    <p class="adm-ops-kicker">Centro de operaciones{% if ops_section %} · {{ ops_section }}{% endif %}</p>
+    <h1 class="adm-page-title">{{ ops_page_title }}</h1>
+    {% if ops_page_lead %}<p class="adm-page-lead">{{ ops_page_lead }}</p>{% endif %}
+    {% if ops_page_meta %}<div class="adm-page-meta">{{ ops_page_meta }}</div>{% endif %}
+</div>

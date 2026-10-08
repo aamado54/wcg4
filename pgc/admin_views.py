@@ -277,9 +277,13 @@ def admin_smart_recalc(request):
 @login_required
 @user_passes_test(can_access_ops)
 def admin_hub(request):
-    """Punto de entrada legado: redirige al tablero mensual."""
+    """Inicio del centro de operaciones (índice unificado)."""
+    from core.ops_hub import hub_landing_groups
+
     period = parse_admin_period(request)
-    return redirect(f"{reverse('pgc:admin_monthly')}?{period.querystring()}")
+    ctx = admin_period_context(period)
+    ctx["hub_groups"] = hub_landing_groups(request)
+    return render(request, "pgc/admin_hub.html", ctx)
 
 
 @login_required

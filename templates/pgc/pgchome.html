@@ -17,7 +17,7 @@
     <div class="d-flex flex-wrap gap-2 mt-2">
         <a class="btn btn-primary" href="{% url 'pgc:dashboard' %}">Ir al tablero PGC</a>
         {% if can_access_ops %}
-        <a class="btn btn-outline-secondary" href="{% url 'pgc:admin_monthly' %}">Administración mensual</a>
+        <a class="btn btn-outline-secondary" href="{% url 'pgc:admin_hub' %}">Centro de operaciones</a>
         {% endif %}
     </div>
 </div>

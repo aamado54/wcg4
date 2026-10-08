@@ -329,37 +329,11 @@
               {% endif %}
             </ul>
             <ul class="navbar-nav wcg-nav-secondary align-items-lg-center gap-lg-1">
-              <li class="nav-item dropdown">
-                <a class="nav-link dropdown-toggle{% if '/importaciones/' in request.path or '/panel/estado' in request.path %} active{% endif %}" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                  Administración
-                </a>
-                <ul class="dropdown-menu dropdown-menu-end">
-                  <li><h6 class="dropdown-header">Configuración del sistema</h6></li>
-                  <li>
-                    <a class="dropdown-item{% if '/importaciones/' in request.path %} active{% endif %}" href="{% url 'imports:import_hub' %}">
-                      Importación General
-                    </a>
-                  </li>
-                  <li>
-                    <a class="dropdown-item{% if '/importaciones/duplicados' in request.path %} active{% endif %}" href="{% url 'imports:duplicates_review' %}">
-                      Revisar duplicados (CRM / Balón)
-                    </a>
-                  </li>
-                  <li><a class="dropdown-item" href="{% url 'portal:estado' %}">Estado del sistema</a></li>
-                  <li><a class="dropdown-item" href="{% url 'portal:ayuda' %}">Guía de uso</a></li>
-                  {% if can_access_ops %}
-                  <li><hr class="dropdown-divider"></li>
-                  <li><a class="dropdown-item" href="{% url 'pgc:admin_monthly' %}">Admin PGC (período)</a></li>
-                  {% endif %}
-                  {% if can_access_risk_gerencia %}
-                  <li><h6 class="dropdown-header">Centro Gerencial</h6></li>
-                  <li><a class="dropdown-item{% if '/gerencia/ajustes' in request.path %} active{% endif %}" href="{% url 'gerencia:config' %}">Ajustes (vista estricta)</a></li>
-                  {% endif %}
-                  {% if user.is_superuser %}
-                  <li><a class="dropdown-item" href="/admin/" target="_blank" rel="noopener">Admin Django</a></li>
-                  {% endif %}
-                </ul>
+              {% if can_access_ops %}
+              <li class="nav-item">
+                <a class="nav-link{% if in_ops_hub %} active{% endif %}" href="{% url 'pgc:admin_hub' %}">Centro de operaciones</a>
               </li>
+              {% endif %}
               <li class="nav-item">
                 <span class="nav-link disabled" style="opacity:0.7;">{{ user.get_username }}</span>
               </li>
