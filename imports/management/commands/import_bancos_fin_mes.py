@@ -1,21 +1,31 @@
+from decimal import Decimal
 from pathlib import Path
 
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
-from imports.investment_growth_parse import parse_bancos_fin_mes_xlsx
+from imports.investment_growth_parse import (
+    parse_bancos_fin_mes_xlsx,
+    parse_capital_bancos_csv,
+)
 from imports.models import BankLoanMonthSnapshot, FileUpload
+from pgc.models import MonthlyExchangeRate
 
 
 class Command(BaseCommand):
     help = (
-        "Importa Bancos_Fin_de_mes.xlsx (préstamos bancarios al cierre). "
-        "Detecta rangos USD/GTQ desde la fórmula de la columna Quetzalizado."
+        "Importa préstamos bancarios al cierre: Bancos_Fin_de_mes.xlsx o Capital_Bancos_*.csv."
     )
 
     def add_arguments(self, parser):
         parser.add_argument("--path", type=str, required=True)
         parser.add_argument("--file-upload-id", type=int, default=None)
+        parser.add_argument(
+            "--fx",
+            type=str,
+            default=None,
+            help="Tipo de cambio USD→GTQ (solo CSV si no hay MonthlyExchangeRate).",
+        )
 
     @transaction.atomic
     def handle(self, *args, **options):
@@ -23,7 +33,23 @@ class Command(BaseCommand):
         if not path.exists():
             raise CommandError(f"Archivo no encontrado: {path}")
 
-        snapshots = parse_bancos_fin_mes_xlsx(path)
+        override_fx = None
+        if options.get("fx"):
+            override_fx = Decimal(str(options["fx"]).replace(",", ""))
+
+        def fx_for_period(year: int, month: int) -> Decimal | None:
+            if override_fx:
+                return override_fx
+            row = MonthlyExchangeRate.objects.filter(year=year, month=month).first()
+            return row.usd_to_gtq if row else None
+
+        suffix = path.suffix.lower()
+        if suffix == ".csv":
+            snapshots = parse_capital_bancos_csv(path, fx_for_period=fx_for_period)
+        elif suffix in (".xlsx", ".xls"):
+            snapshots = parse_bancos_fin_mes_xlsx(path)
+        else:
+            raise CommandError(f"Formato no soportado: {suffix}")
         if not snapshots:
             raise CommandError("No se leyeron períodos válidos del archivo de bancos.")
 

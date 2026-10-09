@@ -41,3 +41,9 @@ La UI marca advertencias si el valor guardado en PGC no coincide con el recálcu
 - `InvestmentGrowthRow` — import `investment_growth`  
 - `BankLoanMonthSnapshot` — import `bank_loans`  
 - Recálculo: `recalc_investment_ingresos_from_new_clients`
+
+### Formatos de archivo (2026)
+
+**Inversiones_crecimiento_*.csv** — encabezados actuales: `Ciclo`, `Empresa`, `NumeroInversion`, `Instrumento`, `Inicio`, `Vencimiento`, `Moneda`, `Monto`, `TC`, `Quetzalizado` (sin columna `Dolarizado`; el USD se calcula). Sigue aceptándose el layout antiguo con `Cierre` / `monto_inversion` / `TipoCambio`.
+
+**Capital_Bancos_YYYY_MM.csv** — `Ciclo`, `Banco`, `Cuenta`, `Moneda`, `Capital` (una fila por cuenta; el import agrega por banco y usa `MonthlyExchangeRate` para totales GTQ/USD). Alternativa histórica: `Bancos_Fin_de_mes.xlsx`.

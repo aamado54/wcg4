@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import csv
 import re
+from collections import defaultdict
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
@@ -323,6 +325,109 @@ def parse_bancos_fin_mes_xlsx(path: Path) -> list[BankMonthSnapshotData]:
                 usd_column_indices=usd_cols,
                 gtq_column_indices=gtq_cols,
                 fx_column_index=fx_col,
+            )
+        )
+
+    return snapshots
+
+
+def _capital_bancos_header_map(header: list[str]) -> dict[str, int]:
+    mapping: dict[str, int] = {}
+    for idx, col in enumerate(header):
+        key = _norm_col_name(str(col))
+        if key in ("cierre", "ciclo"):
+            mapping["period"] = idx
+        elif key == "banco":
+            mapping["bank"] = idx
+        elif key in ("cuenta", "nocuenta"):
+            mapping["account"] = idx
+        elif key == "moneda":
+            mapping["currency"] = idx
+        elif key == "capital":
+            mapping["capital"] = idx
+    return mapping
+
+
+def parse_capital_bancos_csv(
+    path: Path,
+    fx_for_period: Callable[[int, int], Decimal | None] | None = None,
+) -> list[BankMonthSnapshotData]:
+    """
+    Capital_Bancos_YYYY_MM.csv — saldos por cuenta; agrega por banco y dolariza al cierre.
+    """
+    rows_by_period: dict[tuple[int, int], list[tuple[str, str, Decimal]]] = defaultdict(list)
+
+    with path.open("r", encoding="utf-8-sig", newline="") as handle:
+        first_line = handle.readline()
+        if not first_line.strip():
+            return []
+        delimiter = _detect_csv_delimiter(first_line)
+        handle.seek(0)
+        reader = csv.reader(handle, delimiter=delimiter)
+        header = next(reader, None)
+        if not header:
+            return []
+
+        col_map = _capital_bancos_header_map(header)
+        if "period" not in col_map or "bank" not in col_map or "capital" not in col_map:
+            raise ValueError(
+                "Capital_Bancos: se requieren columnas Ciclo, Banco y Capital "
+                f"(encabezados: {header})"
+            )
+
+        def cell(raw: list[str], key: str) -> str:
+            idx = col_map.get(key)
+            if idx is None or idx >= len(raw):
+                return ""
+            return raw[idx]
+
+        for raw in reader:
+            if not raw or not any(str(c).strip() for c in raw):
+                continue
+            period = _parse_period(cell(raw, "period"))
+            if not period:
+                continue
+            bank = (cell(raw, "bank") or "").strip()
+            if not bank:
+                continue
+            currency = (cell(raw, "currency") or "USD").strip().upper()
+            capital = _parse_decimal(cell(raw, "capital")) or Decimal("0")
+            rows_by_period[period].append((bank, currency, capital))
+
+    snapshots: list[BankMonthSnapshotData] = []
+    for (year, month), entries in sorted(rows_by_period.items()):
+        fx = fx_for_period(year, month) if fx_for_period else None
+        if not fx or fx == 0:
+            raise ValueError(
+                f"Capital_Bancos {year}-{month:02d}: falta tipo de cambio USD→GTQ "
+                "(MonthlyExchangeRate o --fx)."
+            )
+
+        bank_amounts: dict[str, Decimal] = defaultdict(lambda: Decimal("0"))
+        usd_sum = Decimal("0")
+        gtq_sum = Decimal("0")
+        for bank, currency, capital in entries:
+            if capital == 0:
+                continue
+            bank_amounts[bank] += capital
+            if currency == "USD":
+                usd_sum += capital
+            elif currency == "GTQ":
+                gtq_sum += capital
+            else:
+                usd_sum += capital
+
+        total_gtq = usd_sum * fx + gtq_sum
+        total_usd = total_gtq / fx
+
+        snapshots.append(
+            BankMonthSnapshotData(
+                year=year,
+                month=month,
+                exchange_rate=fx,
+                total_gtq=total_gtq,
+                total_usd=total_usd,
+                bank_amounts=dict(bank_amounts),
             )
         )
 

@@ -36,6 +36,15 @@ class DetectionNameTests(SimpleTestCase):
         r = detect_from_name("Bancos_Fin_de_mes.xlsx")
         self.assertEqual(r.tipo, TYPE_BANK_LOANS)
 
+    def test_capital_bancos_by_name(self):
+        r = detect_from_name("Capital_Bancos_2026_09.csv")
+        self.assertEqual(r.tipo, TYPE_BANK_LOANS)
+
+    def test_archivos_pgo_by_name(self):
+        r = detect_from_name("ArchivosPGO_2026-09-.csv")
+        self.assertIsNotNone(r)
+        self.assertEqual(r.tipo, "pgo_catalogo")
+
 
 class DetectionStructureTests(SimpleTestCase):
     def test_pgo_columns(self):
@@ -82,6 +91,39 @@ class DetectionFileTests(SimpleTestCase):
         )
         result = detect_file(f)
         self.assertEqual(result.tipo, TYPE_INVESTMENT_GROWTH)
+        self.assertTrue(result.can_auto_import)
+
+    def test_csv_inversiones_ciclo_format_detect(self):
+        header = (
+            "Ciclo,Empresa,NumeroInversion,Instrumento,Inicio,Vencimiento,"
+            "Moneda,Monto,TC,Quetzalizado\n"
+        )
+        row = (
+            "2026/09,INVESTMENT - WC LEASING,PG02250802,PG,2025-08-13,2028-08-11,"
+            "GTQ,200000,7.63856,200000\n"
+        )
+        f = SimpleUploadedFile(
+            "Inversiones_crecimiento_2026_09.csv",
+            (header + row).encode("utf-8"),
+            content_type="text/csv",
+        )
+        result = detect_file(f)
+        self.assertEqual(result.tipo, TYPE_INVESTMENT_GROWTH)
+        self.assertTrue(result.can_auto_import)
+
+    def test_csv_capital_bancos_detect(self):
+        content = (
+            "Ciclo,Banco,Cuenta,Moneda,Capital\n"
+            "2026/09,PROMERICA,282104140381,USD,464641.31\n"
+            "2026/09,FINANCIERA RURAL,7991000516,GTQ,16000000\n"
+        )
+        f = SimpleUploadedFile(
+            "Capital_Bancos_2026_09.csv",
+            content.encode("utf-8"),
+            content_type="text/csv",
+        )
+        result = detect_file(f)
+        self.assertEqual(result.tipo, TYPE_BANK_LOANS)
         self.assertTrue(result.can_auto_import)
 
 

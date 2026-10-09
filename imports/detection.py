@@ -124,12 +124,16 @@ def detect_passives_investment(uploaded_file) -> DetectionResult | None:
         headers = _split_header_line(raw)
         inv_markers = {
             "cierre",
+            "ciclo",
             "instrumento",
             "numero_inversion",
+            "numeroinversion",
             "monto_inversion",
+            "monto",
             "dolarizado",
             "quetzalizado",
             "tipocambio",
+            "tc",
         }
         hits = sum(1 for h in headers if h in inv_markers)
         name_hit = (
@@ -147,6 +151,24 @@ def detect_passives_investment(uploaded_file) -> DetectionResult | None:
                 reasons=[
                     f"estructura: encabezados AP/PG ({hits} columnas clave)",
                     *(["nombre: Inversiones_crecimiento"] if name_hit else []),
+                ],
+                layer="pasivas",
+            )
+
+        bank_csv_markers = {"ciclo", "banco", "cuenta", "moneda", "capital"}
+        bank_hits = sum(1 for h in headers if h in bank_csv_markers)
+        bank_name_hit = "capitalbancos" in compact or (
+            "capital" in compact and "bancos" in compact
+        )
+        if bank_hits >= 4 or (bank_hits >= 3 and bank_name_hit):
+            conf = 0.93 if bank_name_hit else 0.87
+            return DetectionResult(
+                tipo=TYPE_BANK_LOANS,
+                confidence=conf,
+                label=TYPE_LABELS[TYPE_BANK_LOANS],
+                reasons=[
+                    f"estructura: Capital_Bancos ({bank_hits} columnas clave)",
+                    *(["nombre: Capital_Bancos"] if bank_name_hit else []),
                 ],
                 layer="pasivas",
             )
@@ -203,6 +225,12 @@ def detect_from_name(filename: str) -> DetectionResult | None:
             TYPE_BANK_LOANS,
             "bancos" in compact and "fin" in compact and "mes" in compact,
             "nombre: Bancos_Fin_de_mes",
+        ),
+        (
+            TYPE_BANK_LOANS,
+            "capitalbancos" in compact
+            or ("capital" in compact and "bancos" in compact and "fin" not in compact),
+            "nombre: Capital_Bancos",
         ),
         (TYPE_NEW_CLIENTS, "clientesnuevos" in compact or "clientes_nuevos" in name, "nombre: ClientesNuevos"),
         (TYPE_CROSS_SALE, "ventacruzada" in compact, "nombre: VentaCruzada"),

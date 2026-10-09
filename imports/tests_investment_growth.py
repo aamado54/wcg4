@@ -5,6 +5,7 @@ from django.test import TestCase
 
 from imports.investment_growth_parse import (
     parse_bancos_fin_mes_xlsx,
+    parse_capital_bancos_csv,
     parse_inversiones_crecimiento_csv,
 )
 from imports.models import BankLoanMonthSnapshot, InvestmentGrowthRow
@@ -16,6 +17,7 @@ from pgc.investment_ingresos import (
 
 
 DATA_DIR = Path(__file__).resolve().parents[2] / "data"
+NOW_DATA = Path("/home/caa/wc/wcg4/data/now")
 
 
 class InvestmentGrowthParseTests(TestCase):
@@ -50,6 +52,35 @@ class InvestmentGrowthParseTests(TestCase):
         self.assertTrue(any(s.year == 2026 and s.month == 7 for s in snaps))
         july = next(s for s in snaps if s.year == 2026 and s.month == 7)
         self.assertGreater(july.total_usd, Decimal("1000000"))
+
+    def test_parse_inversiones_ciclo_monto_format(self):
+        path = NOW_DATA / "Inversiones_crecimiento_2026_09.csv"
+        if not path.exists():
+            path = DATA_DIR / "Inversiones_crecimiento_2026_09.csv"
+        if not path.exists():
+            self.skipTest("Inversiones_crecimiento_2026_09 no disponible")
+        rows = parse_inversiones_crecimiento_csv(path)
+        self.assertTrue(rows)
+        self.assertEqual({(r.year, r.month) for r in rows}, {(2026, 9)})
+        sample = rows[0]
+        self.assertGreater(sample.amount_usd, Decimal("0"))
+
+    def test_parse_capital_bancos_csv_sep_2026(self):
+        path = NOW_DATA / "Capital_Bancos_2026_09.csv"
+        if not path.exists():
+            self.skipTest("Capital_Bancos_2026_09 no disponible")
+        fx = Decimal("7.63856")
+
+        snaps = parse_capital_bancos_csv(path, fx_for_period=lambda y, m: fx)
+        self.assertEqual(len(snaps), 1)
+        snap = snaps[0]
+        self.assertEqual(snap.year, 2026)
+        self.assertEqual(snap.month, 9)
+        self.assertEqual(snap.exchange_rate, fx)
+        self.assertEqual(snap.total_gtq.quantize(Decimal("0.01")), Decimal("61996609.40"))
+        self.assertEqual(snap.total_usd.quantize(Decimal("0.01")), Decimal("8116269.22"))
+        self.assertIn("PROMERICA", snap.bank_amounts)
+        self.assertIn("CHN", snap.bank_amounts)
 
 
 class InvestmentGrowthCalcTests(TestCase):

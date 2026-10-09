@@ -16,6 +16,7 @@ Clave natural: `codigo`
 
 from __future__ import annotations
 
+import hashlib
 from datetime import datetime
 
 import pandas as pd
@@ -208,6 +209,28 @@ def import_archivos_catalogo(user, uploaded_file) -> DataImportBatch:
     """
     from core.wcg_models import DataImportBatch as Batch
 
+    raw = uploaded_file.read()
+    uploaded_file.seek(0)
+    content_hash = hashlib.sha256(raw).hexdigest()
+    hash_tag = f"content_sha256={content_hash}"
+
+    prior = (
+        Batch.objects.filter(
+            modulo=Batch.MODULO_PGO,
+            tipo_importacion="archivos_catalogo",
+            log_texto__contains=hash_tag,
+        )
+        .order_by("-created_at")
+        .first()
+    )
+    if prior:
+        prior.log_texto = (
+            f"{prior.log_texto}\n"
+            f"Reimportación omitida ({uploaded_file.name}): mismo contenido que lote #{prior.pk}."
+        )[:8000]
+        prior.save(update_fields=["log_texto"])
+        return prior
+
     df = normalize_columns(read_dataframe(uploaded_file))
     batch = Batch.objects.create(
         modulo=Batch.MODULO_PGO,
@@ -216,6 +239,9 @@ def import_archivos_catalogo(user, uploaded_file) -> DataImportBatch:
         uploaded_by=user,
         filas_leidas=len(df),
         status=Batch.STATUS_OK,
-        log_texto=f"Catálogo leído ({len(df)} filas). Sin carga a tickets.",
+        log_texto=(
+            f"{hash_tag}\n"
+            f"Catálogo leído ({len(df)} filas). Sin carga a tickets."
+        ),
     )
     return batch
