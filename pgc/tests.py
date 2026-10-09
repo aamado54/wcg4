@@ -265,6 +265,12 @@ class IngresosYearGridTests(TestCase):
         self.assertEqual(audit["growth_miles"], Decimal("100"))
         self.assertTrue(audit["growth_matches_levels"])
 
+        ctx_gtq = get_ingresos_year_context(self.year, capture_currency="GTQ")
+        row_gtq = next(r for r in ctx_gtq["month_rows"] if r["month"] == 2)
+        inv_gtq = next(c for c in row_gtq["cells"] if c["is_investment"])
+        audit_gtq = inv_gtq["investment_audit"]
+        self.assertEqual(audit_gtq["growth_sub"], "Q ref (miles): 800")
+
     def test_year_grid_display_caps_currency_decimals(self):
         from pgc.admin_ingresos_year import get_ingresos_year_context
 

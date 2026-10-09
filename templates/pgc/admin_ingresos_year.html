@@ -120,19 +120,19 @@
                             {% with a=cell.investment_audit %}
                             <td class="adm-ingresos-cell adm-invest-audit">
                                 {% if a.inversiones_display %}
-                                <strong>{{ a.inversiones_display }}</strong>
+                                {{ a.inversiones_display }}
                                 {% if a.inversiones_sub %}<div class="muted adm-invest-sub">{{ a.inversiones_sub }}</div>{% endif %}
                                 {% elif a.has_ap_pg %}<span class="muted">—</span>{% else %}<span class="muted">sin AP/PG</span>{% endif %}
                             </td>
                             <td class="adm-ingresos-cell adm-invest-audit">
                                 {% if a.prestamos_display %}
-                                <strong>{{ a.prestamos_display }}</strong>
+                                {{ a.prestamos_display }}
                                 {% if a.prestamos_sub %}<div class="muted adm-invest-sub">{{ a.prestamos_sub }}</div>{% endif %}
                                 {% elif a.has_bank %}<span class="muted">—</span>{% else %}<span class="muted">sin bancos</span>{% endif %}
                             </td>
                             <td class="adm-ingresos-cell adm-invest-audit">
                                 {% if a.growth_display %}
-                                <strong>{{ a.growth_display }}</strong>
+                                {{ a.growth_display }}
                                 {% if a.growth_sub %}<div class="muted adm-invest-sub">{{ a.growth_sub }}</div>{% endif %}
                                 {% else %}<span class="muted">sin Δ (sin mes previo)</span>{% endif %}
                                 {% if a.stored_miles is not None and not a.stored_matches_growth %}

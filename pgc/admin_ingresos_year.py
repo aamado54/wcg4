@@ -74,8 +74,10 @@ def _display_pgc_miles(
     miles_label = format_currency_display(miles_usd)
     if currency == MonthlyMetricResult.CURRENCY_GTQ:
         if fx and fx > 0 and usd_full_for_gtq is not None:
-            gtq_ref = usd_full_for_gtq * fx
-            return miles_label, f"Q ref: {format_currency_display(gtq_ref)}"
+            gtq_miles = usd_full_for_gtq * fx / MILES_DIVISOR
+            return miles_label, (
+                f"Q ref (miles): {format_currency_display(gtq_miles)}"
+            )
         return miles_label, None
     return miles_label, None
 
