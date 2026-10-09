@@ -45,12 +45,73 @@ def _parse_date(raw: str | None) -> date | None:
     if not raw:
         return None
     text = str(raw).strip()
+    if "T" in text:
+        text = text.split("T", 1)[0]
     for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%Y/%m/%d"):
         try:
             return datetime.strptime(text, fmt).date()
         except ValueError:
             continue
     return None
+
+
+def _norm_col_name(name: str) -> str:
+    return re.sub(r"[\s_]+", "", (name or "").strip().lower())
+
+
+def _detect_csv_delimiter(first_line: str) -> str:
+    if first_line.count(";") >= first_line.count(","):
+        return ";"
+    return ","
+
+
+def _header_index_map(header: list[str]) -> dict[str, int]:
+    mapping: dict[str, int] = {}
+    for idx, col in enumerate(header):
+        key = _norm_col_name(str(col))
+        if key in ("cierre", "ciclo"):
+            mapping["period"] = idx
+        elif key == "instrumento":
+            mapping["instrument"] = idx
+        elif key == "empresa":
+            mapping["company"] = idx
+        elif key in ("numeroinversion", "numero_inversion"):
+            mapping["operation_code"] = idx
+        elif key in ("moneda", "monedainversion", "moneda_inversion"):
+            mapping["currency"] = idx
+        elif key in ("monto", "montoinversion", "monto_inversion"):
+            mapping["amount_original"] = idx
+        elif key == "inicio":
+            mapping["start_date"] = idx
+        elif key == "vencimiento":
+            mapping["maturity_date"] = idx
+        elif key in ("tipocambio", "tc"):
+            mapping["exchange_rate"] = idx
+        elif key == "quetzalizado":
+            mapping["amount_gtq"] = idx
+        elif key == "dolarizado":
+            mapping["amount_usd"] = idx
+    return mapping
+
+
+def _usd_from_row(
+    currency: str,
+    amount_original: Decimal,
+    amount_gtq: Decimal,
+    exchange_rate: Decimal | None,
+    amount_usd: Decimal | None,
+) -> Decimal:
+    if amount_usd and amount_usd != 0:
+        return amount_usd
+    cur = (currency or "").strip().upper()
+    if cur == "USD":
+        return amount_original
+    if exchange_rate and exchange_rate != 0:
+        if amount_gtq:
+            return amount_gtq / exchange_rate
+        if amount_original:
+            return amount_original / exchange_rate
+    return Decimal("0")
 
 
 @dataclass
@@ -86,29 +147,49 @@ class BankMonthSnapshotData:
 def parse_inversiones_crecimiento_csv(path: Path) -> list[InvestmentGrowthRowData]:
     rows: list[InvestmentGrowthRowData] = []
     with path.open("r", encoding="utf-8-sig", newline="") as handle:
-        reader = csv.reader(handle, delimiter=";")
+        first_line = handle.readline()
+        if not first_line.strip():
+            return rows
+        delimiter = _detect_csv_delimiter(first_line)
+        handle.seek(0)
+        reader = csv.reader(handle, delimiter=delimiter)
         header = next(reader, None)
         if not header:
             return rows
 
+        col_map = _header_index_map(header)
+        use_named = "instrument" in col_map and "period" in col_map
+
+        def cell(raw: list[str], key: str, fallback: int) -> str:
+            if use_named and key in col_map:
+                idx = col_map[key]
+                return raw[idx] if idx < len(raw) else ""
+            return raw[fallback] if fallback < len(raw) else ""
+
         for line_no, raw in enumerate(reader, start=2):
             if not raw or not any(str(c).strip() for c in raw):
                 continue
-            if len(raw) < 11:
+            min_cols = 10 if use_named else 11
+            if len(raw) < min_cols:
                 continue
 
-            period = _parse_period(raw[0])
+            period = _parse_period(cell(raw, "period", 0))
             if not period:
                 continue
             year, month = period
 
-            instrument = (raw[1] or "").strip().upper()
+            instrument = (cell(raw, "instrument", 1) or "").strip().upper()
             if instrument not in ("AP", "PG"):
                 continue
 
-            amount_original = _parse_decimal(raw[5]) or Decimal("0")
-            amount_gtq = _parse_decimal(raw[9]) or Decimal("0")
-            amount_usd = _parse_decimal(raw[10]) or Decimal("0")
+            currency_code = (cell(raw, "currency", 4) or "").strip().upper()
+            amount_original = _parse_decimal(cell(raw, "amount_original", 5)) or Decimal("0")
+            amount_gtq = _parse_decimal(cell(raw, "amount_gtq", 9)) or Decimal("0")
+            exchange_rate = _parse_decimal(cell(raw, "exchange_rate", 8))
+            amount_usd = _parse_decimal(cell(raw, "amount_usd", 10))
+            amount_usd = _usd_from_row(
+                currency_code, amount_original, amount_gtq, exchange_rate, amount_usd
+            )
             if amount_gtq == 0 and amount_usd == 0:
                 continue
 
@@ -117,13 +198,13 @@ def parse_inversiones_crecimiento_csv(path: Path) -> list[InvestmentGrowthRowDat
                     year=year,
                     month=month,
                     instrument=instrument,
-                    company=(raw[2] or "").strip(),
-                    operation_code=(raw[3] or "").strip(),
-                    currency_code=(raw[4] or "").strip().upper(),
+                    company=(cell(raw, "company", 2) or "").strip(),
+                    operation_code=(cell(raw, "operation_code", 3) or "").strip(),
+                    currency_code=currency_code,
                     amount_original=amount_original,
-                    start_date=_parse_date(raw[6]),
-                    maturity_date=_parse_date(raw[7]),
-                    exchange_rate=_parse_decimal(raw[8]),
+                    start_date=_parse_date(cell(raw, "start_date", 6)),
+                    maturity_date=_parse_date(cell(raw, "maturity_date", 7)),
+                    exchange_rate=exchange_rate,
                     amount_gtq=amount_gtq,
                     amount_usd=amount_usd,
                     source_row_number=line_no,
