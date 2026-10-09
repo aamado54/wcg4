@@ -1,3 +1,4 @@
+from datetime import date
 from decimal import Decimal
 from pathlib import Path
 
@@ -477,6 +478,76 @@ class RequirementsReportTests(TestCase):
         result.refresh_from_db()
         self.assertTrue(result.is_achieved)
         self.assertEqual(result.points_awarded, Decimal("5"))
+
+
+class RequirementsYearMatrixTests(TestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.user = User.objects.create_superuser(
+            username="reqs_year",
+            email="r@example.com",
+            password="pass",
+        )
+        self.plan = PGCPlan.objects.create(year=2026, name="Plan reqs año")
+        self.une = UNE.objects.create(
+            code=UNE.CODE_FACTORING,
+            name="Factoring",
+            name_es="Factoraje",
+            sort_order=1,
+        )
+        self.metric, _ = MetricDefinition.objects.get_or_create(
+            code=MetricDefinition.CODE_RESPUESTA_REQS,
+            defaults={"name": "Reqs", "is_scored": True},
+        )
+        for month in (1, 2, 3):
+            MonthlyTarget.objects.create(
+                plan=self.plan,
+                une=self.une,
+                metric=self.metric,
+                year=2026,
+                month=month,
+                target_value=Decimal("1"),
+                points_if_achieved=Decimal("4"),
+            )
+
+    def test_through_month_for_current_year(self):
+        from pgc.admin_requirements_year import through_month_for_year
+
+        self.assertEqual(through_month_for_year(2025, now=date(2026, 3, 15)), 12)
+        self.assertEqual(through_month_for_year(2026, now=date(2026, 3, 15)), 3)
+        self.assertEqual(through_month_for_year(2027, now=date(2026, 3, 15)), 0)
+
+    def test_year_context_has_twelve_month_columns(self):
+        from pgc.admin_requirements_year import get_requirements_year_context
+
+        ctx = get_requirements_year_context(2026, now=date(2026, 8, 1))
+        self.assertEqual(len(ctx["requirements_month_headers"]), 12)
+        self.assertEqual(ctx["requirements_month_headers"][0]["label"], "Ene")
+        self.assertEqual(len(ctx["requirements_matrix"][0]["cells"]), 12)
+
+    def test_save_requirements_year_writes_compliance_and_points(self):
+        from django.http import QueryDict
+
+        from pgc.admin_requirements_year import save_requirements_year
+
+        post = QueryDict(mutable=True)
+        post["req_status_{}_{}".format(self.une.id, 1)] = "1"
+        post["req_status_{}_{}".format(self.une.id, 2)] = "1"
+        changes = save_requirements_year(self.user, 2026, post, reason="Cierre histórico")
+        self.assertGreater(changes, 0)
+        mrc = ManualRequirementsCompliance.objects.get(
+            plan=self.plan, une=self.une, year=2026, month=1
+        )
+        self.assertTrue(mrc.is_compliant)
+        result = MonthlyMetricResult.objects.get(
+            plan=self.plan,
+            une=self.une,
+            metric=self.metric,
+            year=2026,
+            month=1,
+        )
+        self.assertTrue(result.is_achieved)
+        self.assertEqual(result.points_awarded, Decimal("4"))
 
 
 class ImportPgcObjetivosTests(TestCase):

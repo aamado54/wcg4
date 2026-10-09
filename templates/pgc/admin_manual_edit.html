@@ -219,6 +219,9 @@
                 {% elif tab == "requirements" %}
                 <h3>Respuesta a requerimientos · {{ label }}</h3>
                 <p class="subtitle">
+                    <a href="{% url 'pgc:admin_requirements_year' %}?year={{ year|unlocalize }}&month_from=1&month_to=12&month={{ month|unlocalize }}">
+                        Abrir matriz anual (ene–dic)</a>
+                    — recomendada para marcar varios meses a la vez.
                     Una celda por UNE y mes del rango. <strong>Cumple</strong> = puntos de la meta;
                     <strong>No cumple</strong> = 0 puntos (indique nota). Vacío = no modificar ese mes.
                     Al guardar se actualizan resultado, Cumple y score del tablero.

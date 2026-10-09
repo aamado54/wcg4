@@ -53,6 +53,10 @@ from .admin_new_clients_browse import (
     save_une_reassignments,
 )
 from .admin_ingresos_year import get_ingresos_year_context, save_ingresos_year
+from .admin_requirements_year import (
+    get_requirements_year_context,
+    save_requirements_year,
+)
 from .admin_recalc import (
     maybe_auto_recalc,
     run_smart_recalc_all,
@@ -63,6 +67,7 @@ from .admin_utils import (
     parse_admin_period,
     parse_period,
     redirect_admin_ingresos_year,
+    redirect_admin_requirements_year,
     redirect_admin_manual,
     redirect_admin_monthly,
     redirect_admin_new_clients_browse,
@@ -554,6 +559,49 @@ def admin_ingresos_year(request):
         "single_month_ops": False,
     }
     return render(request, "pgc/admin_ingresos_year.html", context)
+
+
+@login_required
+@user_passes_test(can_access_ops)
+def admin_requirements_year(request):
+    """Matriz anual: 12 meses × UNEs (cumplimiento respuesta a requerimientos)."""
+    period = parse_admin_period(request)
+    year = period.year
+
+    if request.method == "POST":
+        action = (request.POST.get("action") or "").strip()
+        reason = (request.POST.get("reason") or "").strip()
+
+        if action == "save_requirements_year":
+            try:
+                changes = save_requirements_year(request.user, year, request.POST, reason)
+                if changes:
+                    messages.success(request, f"Se guardaron {changes} cambio(s) de requerimientos.")
+                    try:
+                        for m in range(1, 13):
+                            for msg in recalculate_period(year, m):
+                                messages.success(request, msg)
+                    except Exception as exc:
+                        messages.warning(
+                            request,
+                            f"Requerimientos guardados, pero falló el score: {exc}",
+                        )
+                    _trigger_auto_recalc(request, source="save_requirements_year")
+                else:
+                    messages.info(request, "No hubo cambios que guardar.")
+            except ValueError as exc:
+                messages.error(request, str(exc))
+            except Exception as exc:
+                messages.error(request, f"Error al guardar: {exc}")
+            return redirect_admin_requirements_year(period=period)
+
+    context = {
+        **admin_period_context(period),
+        **get_requirements_year_context(year),
+        "supports_month_range": False,
+        "single_month_ops": False,
+    }
+    return render(request, "pgc/admin_requirements_year.html", context)
 
 
 @login_required

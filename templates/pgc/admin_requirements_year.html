@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% load l10n %}
+
+{% block title %}Requerimientos (año) — Centro de operaciones{% endblock %}
+
+{% block content %}
+{% include "pgc/admin/_styles.html" %}
+
+<div class="adm">
+    {% include "pgc/admin/_ops_sections.html" %}
+
+    <div class="adm-header">
+        <div class="adm-header-top">
+            <div>
+                {% include "pgc/admin/_page_header.html" with ops_section="PGC · Cierre mensual" ops_page_title="Respuesta a requerimientos (año completo)" ops_page_lead="Matriz enero–diciembre por UNE; alinea puntos del tablero PGC." %}
+                <div class="adm-period-label">{{ year }}</div>
+                {% if not plan %}<p class="muted" style="color:#b45309;">No hay plan PGC para este año.</p>{% endif %}
+            </div>
+            {% include "pgc/admin/_period_select.html" %}
+        </div>
+    </div>
+
+    <div class="adm-panel">
+        <h3 style="margin-top:0;">Cumplimiento por UNE · enero a diciembre</h3>
+        <p class="subtitle">
+            Columnas = meses del año. <strong>Cumple</strong> otorga los puntos de la meta;
+            <strong>No cumple</strong> = 0 (indique nota). Vacío = no modificar ese mes al guardar.
+        </p>
+
+        <form method="post" id="adm-req-year-form" data-through-month="{{ through_month|unlocalize }}">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="save_requirements_year">
+            <input type="hidden" name="year" value="{{ year|unlocalize }}">
+            <input type="hidden" name="month" value="{{ month }}">
+            <input type="hidden" name="month_from" value="1">
+            <input type="hidden" name="month_to" value="12">
+
+            <div class="adm-req-toolbar">
+                <button type="button" class="adm-btn" id="adm-req-yes-through">
+                    Marcar Cumple hasta {{ through_month_label }} (mes actual)
+                </button>
+                <button type="button" class="adm-btn" id="adm-req-all-yes">Marcar todo el año: Cumple</button>
+                <button type="button" class="adm-btn adm-btn-ghost" id="adm-req-all-clear">Vaciar celdas (no tocar)</button>
+            </div>
+
+            <div class="adm-scroll">
+                <table class="adm-edit-grid adm-req-matrix">
+                    <thead>
+                        <tr>
+                            <th>UNE</th>
+                            {% for h in requirements_month_headers %}
+                            <th class="{% if through_month and h.month > through_month %}muted{% endif %}">
+                                {{ h.label }}<br><span class="muted">{{ h.code }}</span>
+                            </th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in requirements_matrix %}
+                        <tr>
+                            <td style="text-align:left; font-weight:600;">{{ row.une.name_es }}</td>
+                            {% for cell in row.cells %}
+                            <td class="adm-req-cell">
+                                <select name="req_status_{{ row.une.id }}_{{ cell.month }}"
+                                        class="adm-req-status"
+                                        data-month="{{ cell.month }}"
+                                        title="Puntos actuales: {% if cell.points is not None %}{{ cell.points }}{% else %}—{% endif %}">
+                                    <option value="" {% if cell.status == "" %}selected{% endif %}>—</option>
+                                    <option value="1" {% if cell.status == "1" %}selected{% endif %}>Cumple</option>
+                                    <option value="0" {% if cell.status == "0" %}selected{% endif %}>No cumple</option>
+                                </select>
+                                <input type="text"
+                                       name="req_note_{{ row.une.id }}_{{ cell.month }}"
+                                       class="adm-req-note"
+                                       placeholder="Nota si no cumple"
+                                       value="{{ cell.note }}">
+                                {% if cell.points is not None %}
+                                <div class="muted adm-req-pts">pts: {{ cell.points }}</div>
+                                {% endif %}
+                            </td>
+                            {% endfor %}
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="13">No hay UNEs activas.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            {% include "pgc/admin/_save_footer.html" with reason_required=False %}
+        </form>
+        <script>
+        (function () {
+          var form = document.getElementById("adm-req-year-form");
+          if (!form) return;
+          var through = parseInt(form.getAttribute("data-through-month") || "12", 10);
+          function setStatus(val, maxMonth) {
+            form.querySelectorAll("select.adm-req-status").forEach(function (el) {
+              var m = parseInt(el.getAttribute("data-month") || "0", 10);
+              if (!maxMonth || m <= maxMonth) el.value = val;
+            });
+          }
+          var throughBtn = document.getElementById("adm-req-yes-through");
+          var yesBtn = document.getElementById("adm-req-all-yes");
+          var clearBtn = document.getElementById("adm-req-all-clear");
+          if (throughBtn && through > 0) {
+            throughBtn.addEventListener("click", function () { setStatus("1", through); });
+          } else if (throughBtn) {
+            throughBtn.disabled = true;
+          }
+          if (yesBtn) yesBtn.addEventListener("click", function () { setStatus("1", null); });
+          if (clearBtn) clearBtn.addEventListener("click", function () { setStatus("", null); });
+        })();
+        </script>
+    </div>
+</div>
+{% endblock %}

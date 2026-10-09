@@ -94,6 +94,89 @@ def _unes() -> list[UNE]:
     return list(UNE.objects.filter(is_active=True).order_by("sort_order", "code"))
 
 
+REQUIREMENTS_MONTH_LABELS_SHORT = {
+    1: "Ene",
+    2: "Feb",
+    3: "Mar",
+    4: "Abr",
+    5: "May",
+    6: "Jun",
+    7: "Jul",
+    8: "Ago",
+    9: "Sep",
+    10: "Oct",
+    11: "Nov",
+    12: "Dic",
+}
+
+
+def build_requirements_matrix(
+    plan: PGCPlan | None,
+    year: int,
+    month_from: int,
+    month_to: int,
+    unes: list[UNE] | None = None,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[int]]:
+    """
+    Matriz horizontal UNE × meses: cumplimiento de respuesta a requerimientos.
+
+    Returns (month_headers, matrix_rows, months_list).
+    """
+    unes = unes if unes is not None else _unes()
+    months = list(range(month_from, month_to + 1))
+    month_labels = REQUIREMENTS_MONTH_LABELS_SHORT
+    month_headers = [
+        {"month": m, "label": month_labels.get(m, str(m)), "code": f"{year}-{m:02d}"}
+        for m in months
+    ]
+    req_range_map: dict[tuple[int, int], ManualRequirementsCompliance] = {}
+    if plan:
+        for r in ManualRequirementsCompliance.objects.filter(
+            plan=plan, year=year, month__gte=month_from, month__lte=month_to
+        ):
+            req_range_map[(r.une_id, r.month)] = r
+    req_result_map: dict[tuple[int, int], MonthlyMetricResult] = {}
+    req_metric = MetricDefinition.objects.filter(
+        code=MetricDefinition.CODE_RESPUESTA_REQS
+    ).first()
+    if plan and req_metric:
+        for r in MonthlyMetricResult.objects.filter(
+            plan=plan,
+            metric=req_metric,
+            year=year,
+            month__gte=month_from,
+            month__lte=month_to,
+        ):
+            req_result_map[(r.une_id, r.month)] = r
+    matrix_rows = []
+    for une in unes:
+        cells = []
+        for m in months:
+            obj = req_range_map.get((une.id, m))
+            result = req_result_map.get((une.id, m))
+            if obj is not None:
+                status = "1" if obj.is_compliant else "0"
+            elif result is not None and result.is_achieved:
+                status = "1"
+            elif result is not None and result.measured_value is not None:
+                status = "1" if result.measured_value >= Decimal("1") else "0"
+            else:
+                status = ""
+            cells.append(
+                {
+                    "month": m,
+                    "label": month_labels.get(m, str(m)),
+                    "obj": obj,
+                    "result": result,
+                    "status": status,
+                    "note": (obj.incident_note if obj else "") or "",
+                    "points": getattr(result, "points_awarded", None),
+                }
+            )
+        matrix_rows.append({"une": une, "cells": cells})
+    return month_headers, matrix_rows, months
+
+
 def get_pending_alias_values(year: int, month: int, month_from: int | None = None) -> list[str]:
     known = {a.raw_value.strip().upper() for a in UNEAlias.objects.filter(is_active=True)}
     pending: set[str] = set()
@@ -213,71 +296,10 @@ def get_manual_edit_context(year: int, month: int, tab: str, month_from: int | N
     for une in unes:
         requirements.append({"une": une, "obj": req_map.get(une.id)})
 
-    # Matriz multi-mes: UNE × meses del rango seleccionado.
-    requirements_months = list(range(mf, month + 1))
-    month_labels = {
-        1: "Ene",
-        2: "Feb",
-        3: "Mar",
-        4: "Abr",
-        5: "May",
-        6: "Jun",
-        7: "Jul",
-        8: "Ago",
-        9: "Sep",
-        10: "Oct",
-        11: "Nov",
-        12: "Dic",
-    }
-    requirements_month_headers = [
-        {"month": m, "label": month_labels.get(m, str(m)), "code": f"{year}-{m:02d}"}
-        for m in requirements_months
-    ]
-    req_range_map: dict[tuple[int, int], ManualRequirementsCompliance] = {}
-    if plan:
-        for r in ManualRequirementsCompliance.objects.filter(
-            plan=plan, year=year, month__gte=mf, month__lte=month
-        ):
-            req_range_map[(r.une_id, r.month)] = r
-    req_result_map: dict[tuple[int, int], MonthlyMetricResult] = {}
-    req_metric = MetricDefinition.objects.filter(
-        code=MetricDefinition.CODE_RESPUESTA_REQS
-    ).first()
-    if plan and req_metric:
-        for r in MonthlyMetricResult.objects.filter(
-            plan=plan,
-            metric=req_metric,
-            year=year,
-            month__gte=mf,
-            month__lte=month,
-        ):
-            req_result_map[(r.une_id, r.month)] = r
-    requirements_matrix = []
-    for une in unes:
-        cells = []
-        for m in requirements_months:
-            obj = req_range_map.get((une.id, m))
-            result = req_result_map.get((une.id, m))
-            if obj is not None:
-                status = "1" if obj.is_compliant else "0"
-            elif result is not None and result.is_achieved:
-                status = "1"
-            elif result is not None and result.measured_value is not None:
-                status = "1" if result.measured_value >= Decimal("1") else "0"
-            else:
-                status = ""  # sin registrar
-            cells.append(
-                {
-                    "month": m,
-                    "label": month_labels.get(m, str(m)),
-                    "obj": obj,
-                    "result": result,
-                    "status": status,
-                    "note": (obj.incident_note if obj else "") or "",
-                    "points": getattr(result, "points_awarded", None),
-                }
-            )
-        requirements_matrix.append({"une": une, "cells": cells})
+    requirements_month_headers, requirements_matrix, requirements_months = (
+        build_requirements_matrix(plan, year, mf, month, unes=unes)
+    )
+    month_labels = REQUIREMENTS_MONTH_LABELS_SHORT
 
     aliases = list(UNEAlias.objects.select_related("une").filter(is_active=True).order_by("raw_value")[:200])
     pending_aliases = get_pending_alias_values(year, month, month_from=mf)

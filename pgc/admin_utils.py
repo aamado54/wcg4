@@ -240,6 +240,16 @@ def redirect_admin_ingresos_year(
     return redirect(f"{reverse('pgc:admin_ingresos_year')}?{qs}")
 
 
+def redirect_admin_requirements_year(
+    year: int | AdminPeriod | None = None,
+    month: int | None = None,
+    *,
+    period: AdminPeriod | None = None,
+) -> redirect:
+    p = _as_period(year, month, period)
+    return redirect(f"{reverse('pgc:admin_requirements_year')}?{p.querystring()}")
+
+
 def _as_period(
     year: int | AdminPeriod | None,
     month: int | None,

@@ -32,6 +32,11 @@ urlpatterns = [
         admin_views.admin_ingresos_year,
         name="admin_ingresos_year",
     ),
+    path(
+        "admin-hub/mensual/requerimientos/",
+        admin_views.admin_requirements_year,
+        name="admin_requirements_year",
+    ),
     path("admin-hub/mensual/bitacora/", admin_views.admin_monthly_log, name="admin_monthly_log"),
     path(
         "admin-hub/mensual/clientes-nuevos/",

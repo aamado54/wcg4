@@ -59,9 +59,11 @@
                    class="adm-btn adm-btn-primary">Editar metas del período</a>
 
                 {% elif selected_block == "manual_requirements" %}
-                <p class="muted">Registre cumplimiento de respuesta a requerimientos por UNE.</p>
+                <p class="muted">Registre cumplimiento de respuesta a requerimientos por UNE y mes.</p>
+                <a href="{% url 'pgc:admin_requirements_year' %}?year={{ year|unlocalize }}&month_from={{ month_from|unlocalize }}&month_to={{ month_to|unlocalize }}&month={{ month|unlocalize }}"
+                   class="adm-btn adm-btn-primary">Matriz anual de requerimientos</a>
                 <a href="{% url 'pgc:admin_manual_edit' %}?year={{ year|unlocalize }}&month_from={{ month_from|unlocalize }}&month_to={{ month_to|unlocalize }}&month={{ month|unlocalize }}&tab=requirements"
-                   class="adm-btn adm-btn-primary">Editar requerimientos (matriz del rango)</a>
+                   class="adm-btn adm-btn-secondary">Edición manual (rango)</a>
 
                 {% elif selected_block == "review" %}
                 <p class="muted">Revise el tablero después de cargar y recalcular.</p>
