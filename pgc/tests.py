@@ -653,6 +653,18 @@ class ObjetivosScoringTests(TestCase):
         self.assertAlmostEqual(float(pts), 41.84, places=1)
         self.assertFalse(achieved)
 
+    def test_insurance_sep_clientes_presupuesto_12(self):
+        from pgc.objetivos_scoring import proportional_points
+
+        pts, achieved, _note = proportional_points(
+            15,
+            Decimal("3"),
+            Decimal("12"),
+            note_prefix="Objetivos proporción",
+        )
+        self.assertAlmostEqual(float(pts), 3.75, places=2)
+        self.assertFalse(achieved)
+
 
 class ImportPgcMetasTests(TestCase):
     def setUp(self):

@@ -152,7 +152,7 @@ class Command(BaseCommand):
             "INSURANCE": {
                 "INGRESOS": {
                     "annual": Decimal("119.0"),
-                    "points": 70,
+                    "points": 75,
                     "months": [
                         Decimal("6.746"),
                         Decimal("5.765"),
@@ -187,7 +187,7 @@ class Command(BaseCommand):
             "INVESTMENT": {
                 "INGRESOS": {
                     "annual": Decimal("16.2"),
-                    "points": 75,
+                    "points": 70,
                     "months": [
                         Decimal("0.200"),
                         Decimal("0.200"),
@@ -215,8 +215,8 @@ class Command(BaseCommand):
                 },
                 "RESPUESTA_REQS": {
                     "annual": None,
-                    "points": 0,
-                    "months": [0] * 12,
+                    "points": 5,
+                    "months": [1] * 12,
                 },
             },
         }

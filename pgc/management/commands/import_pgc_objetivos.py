@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
 import openpyxl
@@ -11,8 +11,14 @@ from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
 from core.models import MetricDefinition, UNE
-from pgc.income_conversion import apply_result_achievement, gtq_to_usd
-from pgc.models import MonthlyExchangeRate, MonthlyMetricResult, MonthlyTarget, PGCPlan
+from pgc.income_conversion import apply_result_achievement
+from pgc.models import (
+    ManualRequirementsCompliance,
+    MonthlyExchangeRate,
+    MonthlyMetricResult,
+    MonthlyTarget,
+    PGCPlan,
+)
 
 UEN_TO_UNE = {
     "WC": "FACTORING",
@@ -21,12 +27,41 @@ UEN_TO_UNE = {
     "WCINV": "INVESTMENT",
 }
 
+# Índices 0-based en fila hoja Objetivos (ver encabezados Sep26).
+COL_PRES_CLI = 1
+COL_PRES_COM = 3
+COL_EXEC_CLI = 6
+COL_EXEC_COM = 8
+COL_PRES_VC = 12
+COL_EXEC_VC = 13
+COL_PTS_ING = 14
+COL_PTS_CLI = 15
+COL_PTS_VC = 16
+COL_PTS_REQ = 17
+COL_PTS_EXEC_REQ = 21
+
 
 def _gtq_comisiones_to_usd_miles(gtq: Decimal, fx: Decimal) -> Decimal:
     """Comisiones en GTQ completos → miles USD (convención PGC tablero)."""
     if not gtq or not fx:
         return Decimal("0")
     return (gtq / Decimal("1000")) / fx
+
+
+def _cell_decimal(val) -> Decimal | None:
+    if val is None:
+        return None
+    try:
+        return Decimal(str(val))
+    except (InvalidOperation, ValueError):
+        return None
+
+
+def _points_int(val) -> int | None:
+    d = _cell_decimal(val)
+    if d is None:
+        return None
+    return int(d.quantize(Decimal("1")))
 
 
 def _read_objetivos_rows(path: Path, year: int, month: int) -> list[dict]:
@@ -40,32 +75,59 @@ def _read_objetivos_rows(path: Path, year: int, month: int) -> list[dict]:
     for row in ws.iter_rows(min_row=2, values_only=True):
         if not row or len(row) < 10:
             continue
-        dt, _pres_cli, _pres_cli_ac, _pres_com, _pres_com_ac, uen, exec_cli, _exec_cli_ac, exec_com, _exec_com_ac = row[:10]
+        dt = row[0]
         if not isinstance(dt, datetime):
             continue
         if dt.year != year or dt.month != month:
             continue
-        uen_code = str(uen or "").strip().upper()
+        uen_code = str(row[5] or "").strip().upper()
         if uen_code not in UEN_TO_UNE:
             continue
         rows.append(
             {
                 "uen": uen_code,
-                "pres_cli": row[1] if len(row) > 1 else None,
-                "pres_com_gtq": row[3] if len(row) > 3 else None,
-                "pres_cli": row[1] if len(row) > 1 else None,
-                "exec_cli": exec_cli,
-                "exec_com_gtq": exec_com,
+                "pres_cli": row[COL_PRES_CLI] if len(row) > COL_PRES_CLI else None,
+                "pres_com_gtq": row[COL_PRES_COM] if len(row) > COL_PRES_COM else None,
+                "exec_cli": row[COL_EXEC_CLI] if len(row) > COL_EXEC_CLI else None,
+                "exec_com_gtq": row[COL_EXEC_COM] if len(row) > COL_EXEC_COM else None,
+                "pres_vc": row[COL_PRES_VC] if len(row) > COL_PRES_VC else None,
+                "exec_vc": row[COL_EXEC_VC] if len(row) > COL_EXEC_VC else None,
+                "pts_ing": row[COL_PTS_ING] if len(row) > COL_PTS_ING else None,
+                "pts_cli": row[COL_PTS_CLI] if len(row) > COL_PTS_CLI else None,
+                "pts_vc": row[COL_PTS_VC] if len(row) > COL_PTS_VC else None,
+                "pts_req": row[COL_PTS_REQ] if len(row) > COL_PTS_REQ else None,
+                "pts_exec_req": row[COL_PTS_EXEC_REQ] if len(row) > COL_PTS_EXEC_REQ else None,
             }
         )
     wb.close()
     return rows
 
 
+def _sync_monthly_target_points(
+    tgt: MonthlyTarget | None, points_raw, *, skip_zero: bool = False
+) -> None:
+    if not tgt:
+        return
+    if points_raw is not None and str(points_raw).strip().upper() in (
+        "NO APLICA",
+        "NOAPLICA",
+        "N/A",
+    ):
+        return
+    pts = _points_int(points_raw)
+    if pts is None:
+        return
+    if skip_zero and pts <= 0:
+        return
+    if tgt.points_if_achieved != pts:
+        tgt.points_if_achieved = pts
+        tgt.save(update_fields=["points_if_achieved", "updated_at"])
+
+
 class Command(BaseCommand):
     help = (
-        "Carga ejecución mensual PGC (CLIENTES_NUEVOS e INGRESOS) desde la hoja "
-        "Objetivos del Excel de validación / presupuesto."
+        "Carga ejecución y metas Tablero (proporción) desde la hoja Objetivos: "
+        "clientes/comisiones GTQ, presupuestos VC, P_ing…P_req y cumplimiento reqs."
     )
 
     def add_arguments(self, parser):
@@ -104,13 +166,14 @@ class Command(BaseCommand):
 
         metric_cli = MetricDefinition.objects.get(code=MetricDefinition.CODE_CLIENTES_NUEVOS)
         metric_ing = MetricDefinition.objects.get(code=MetricDefinition.CODE_INGRESOS)
+        metric_vc = MetricDefinition.objects.get(code=MetricDefinition.CODE_VENTA_CRUZADA)
+        metric_req = MetricDefinition.objects.get(code=MetricDefinition.CODE_RESPUESTA_REQS)
 
         records = _read_objetivos_rows(path, year, month)
         if not records:
             raise CommandError(f"Sin filas Objetivos para {year}-{month:02d}")
 
-        sync_targets = options.get("sync_targets")
-        if sync_targets:
+        if options.get("sync_targets"):
             raise CommandError(
                 "La opción --sync-targets está deshabilitada. "
                 "Use import_pgc_metas con el TSV oficial (PGC-metas-2026.tsv)."
@@ -119,10 +182,37 @@ class Command(BaseCommand):
         for rec in records:
             une = UNE.objects.get(code=UEN_TO_UNE[rec["uen"]])
 
+            tgt_cli = MonthlyTarget.objects.filter(
+                plan=plan, une=une, metric=metric_cli, year=year, month=month
+            ).first()
+            tgt_ing = MonthlyTarget.objects.filter(
+                plan=plan, une=une, metric=metric_ing, year=year, month=month
+            ).first()
+            tgt_vc = MonthlyTarget.objects.filter(
+                plan=plan, une=une, metric=metric_vc, year=year, month=month
+            ).first()
+            tgt_req = MonthlyTarget.objects.filter(
+                plan=plan, une=une, metric=metric_req, year=year, month=month
+            ).first()
+
+            _sync_monthly_target_points(tgt_ing, rec["pts_ing"])
+            _sync_monthly_target_points(tgt_cli, rec["pts_cli"])
+            _sync_monthly_target_points(tgt_vc, rec["pts_vc"])
+            _sync_monthly_target_points(tgt_req, rec["pts_req"], skip_zero=True)
+
+            pres_cli = _cell_decimal(rec["pres_cli"])
+            if pres_cli is not None and tgt_cli:
+                if tgt_cli.target_value != pres_cli:
+                    tgt_cli.target_value = pres_cli
+                    tgt_cli.save(update_fields=["target_value", "updated_at"])
+
+            pres_vc = _cell_decimal(rec["pres_vc"])
+            if pres_vc is not None and tgt_vc:
+                if pres_vc > 0 and tgt_vc.target_value != pres_vc:
+                    tgt_vc.target_value = pres_vc
+                    tgt_vc.save(update_fields=["target_value", "updated_at"])
+
             if rec["exec_cli"] is not None:
-                tgt_cli = MonthlyTarget.objects.filter(
-                    plan=plan, une=une, metric=metric_cli, year=year, month=month
-                ).first()
                 if not tgt_cli:
                     raise CommandError(
                         f"Sin meta CLIENTES_NUEVOS {une.code} {year}-{month:02d}"
@@ -145,9 +235,6 @@ class Command(BaseCommand):
                 mmr_cli.save()
 
             if rec["exec_com_gtq"] is not None:
-                tgt_ing = MonthlyTarget.objects.filter(
-                    plan=plan, une=une, metric=metric_ing, year=year, month=month
-                ).first()
                 if not tgt_ing:
                     raise CommandError(
                         f"Sin meta INGRESOS {une.code} {year}-{month:02d}"
@@ -176,18 +263,53 @@ class Command(BaseCommand):
                 apply_result_achievement(mmr_ing, tgt_ing)
                 mmr_ing.save()
 
-            if rec.get("pres_com_gtq") is not None:
-                tgt_ing = MonthlyTarget.objects.filter(
-                    plan=plan, une=une, metric=metric_ing, year=year, month=month
-                ).first()
-                if tgt_ing:
-                    tgt_ing.presupuesto_gtq = Decimal(str(rec["pres_com_gtq"]))
-                    tgt_ing.save(update_fields=["presupuesto_gtq", "updated_at"])
+            if rec.get("pres_com_gtq") is not None and tgt_ing:
+                tgt_ing.presupuesto_gtq = Decimal(str(rec["pres_com_gtq"]))
+                tgt_ing.save(update_fields=["presupuesto_gtq", "updated_at"])
+
+            exec_vc = _cell_decimal(rec["exec_vc"])
+            if exec_vc is not None and tgt_vc:
+                mmr_vc, _ = MonthlyMetricResult.objects.get_or_create(
+                    plan=plan,
+                    une=une,
+                    metric=metric_vc,
+                    year=year,
+                    month=month,
+                    defaults={"target_value": tgt_vc.target_value},
+                )
+                mmr_vc.target_value = tgt_vc.target_value
+                mmr_vc.measured_value = exec_vc
+                mmr_vc.calculation_note = (
+                    f"Importado desde {path.name} Objetivos (referidos VC ejecución)."
+                )
+                apply_result_achievement(mmr_vc, tgt_vc)
+                mmr_vc.save()
+
+            pts_req_exec = _cell_decimal(rec["pts_exec_req"])
+            if tgt_req and pts_req_exec is not None and une.code != UNE.CODE_INSURANCE:
+                if pts_req_exec > 0 and int(tgt_req.points_if_achieved or 0) <= 0:
+                    tgt_req.points_if_achieved = int(pts_req_exec)
+                    tgt_req.save(update_fields=["points_if_achieved", "updated_at"])
+                compliant = pts_req_exec > 0
+                ManualRequirementsCompliance.objects.update_or_create(
+                    plan=plan,
+                    une=une,
+                    year=year,
+                    month=month,
+                    defaults={
+                        "is_compliant": compliant,
+                        "incident_note": (
+                            ""
+                            if compliant
+                            else "Sincronizado desde Excel Objetivos: no cumple reqs."
+                        ),
+                    },
+                )
 
             self.stdout.write(
                 self.style.SUCCESS(
                     f"{rec['uen']} → clientes={rec['exec_cli']} "
-                    f"comisiones_gtq={rec['exec_com_gtq']}"
+                    f"comisiones_gtq={rec['exec_com_gtq']} vc={rec['exec_vc']}"
                 )
             )
 
