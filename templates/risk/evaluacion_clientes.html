@@ -91,6 +91,55 @@
     <a href="{% url 'risk:comando_balon' %}" class="btn btn-sm btn-outline-secondary">← Comando Balón</a>
   </div>
 
+  <div class="ev-panel mt-3 mb-3">
+    <div class="ev-panel-h">
+      <span>Plantillas por cliente</span>
+      <span class="ev-note">Fuente: {{ source_label }}</span>
+    </div>
+    <div class="p-3">
+      <form method="post" enctype="multipart/form-data" class="row g-2 align-items-end">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="upload">
+        <div class="col-md-7">
+          <label class="form-label small mb-1" for="id_plantillas">Subir plantillas .xlsx</label>
+          <input type="file" name="plantillas" id="id_plantillas" class="form-control form-control-sm"
+                 accept=".xlsx" multiple>
+          <div class="ev-note mt-1">Una plantilla por empresa. Se consolidan y guardan en el servidor.</div>
+        </div>
+        <div class="col-auto">
+          <button type="submit" class="btn btn-sm btn-primary">Subir y consolidar</button>
+        </div>
+      </form>
+
+      {% if plantillas %}
+      <div class="mt-3">
+        <div class="ev-note mb-2">Plantillas activas ({{ plantillas|length }})</div>
+        <ul class="list-unstyled ev-movers mb-0">
+          {% for p in plantillas %}
+          <li class="d-flex justify-content-between align-items-center gap-2">
+            <span class="text-truncate">{{ p.original_filename }}</span>
+            <form method="post" class="m-0">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="delete">
+              <input type="hidden" name="plantilla_id" value="{{ p.id }}">
+              <button type="submit" class="btn btn-sm btn-outline-danger">Quitar</button>
+            </form>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+
+      <div class="mt-2 ev-note">
+        Fuente de lectura:
+        <a href="?source=auto{% if request.GET.cliente %}&cliente={{ request.GET.cliente|urlencode }}{% endif %}">Auto</a> ·
+        <a href="?source=upload{% if request.GET.cliente %}&cliente={{ request.GET.cliente|urlencode }}{% endif %}">Subidas</a> ·
+        <a href="?source=db{% if request.GET.cliente %}&cliente={{ request.GET.cliente|urlencode }}{% endif %}">BD</a> ·
+        <a href="?source=consolidado{% if request.GET.cliente %}&cliente={{ request.GET.cliente|urlencode }}{% endif %}">Consolidado</a>
+      </div>
+    </div>
+  </div>
+
   {% if portfolio.status == 'error' %}
   <div class="ev-panel mt-3">
     <div class="ev-empty">

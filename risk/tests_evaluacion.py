@@ -1,14 +1,20 @@
 """Tests de la extensión evaluación financiera (aislada del Comando Balón)."""
 
+from io import BytesIO
 from pathlib import Path
 
 from django.conf import settings
-from django.test import SimpleTestCase, TestCase
+from django.contrib.auth import get_user_model
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import SimpleTestCase, TestCase, override_settings
 from django.urls import reverse
 
 from risk.evaluacion import build_portfolio_view, load_evaluacion
+from risk.evaluacion.persist import dataset_from_dict, dataset_to_dict, save_import_run
 from risk.evaluacion.portfolio import classify_z
 from risk.evaluacion.reader import AltmanModel
+from risk.evaluacion.storage import save_uploaded_plantilla
+from risk.models import EvaluacionImportRun, EvaluacionPlantilla
 
 
 class EvaluacionReaderTests(SimpleTestCase):
@@ -72,12 +78,57 @@ class EvaluacionViewTests(TestCase):
         from django.contrib.auth import get_user_model
 
         User = get_user_model()
-        user = User.objects.create_user("ev_test", password="x")
+        user = User.objects.create_user("caa", password="x")
         self.client.force_login(user)
         resp = self.client.get(reverse("risk:comando_balon"))
         self.assertEqual(resp.status_code, 200)
-        self.assertContains(resp, "Evaluación financiera")
+        self.assertContains(resp, "Clientes")
         resp2 = self.client.get(reverse("risk:evaluacion_clientes"))
         self.assertEqual(resp2.status_code, 200)
-        self.assertContains(resp2, "Ranking por Z")
-        self.assertContains(resp2, "Concentración")
+        self.assertContains(resp2, "Plantillas por cliente")
+        self.assertContains(resp2, "Evaluación financiera")
+
+
+class EvaluacionPersistTests(SimpleTestCase):
+    def test_dataset_roundtrip(self):
+        ds = load_evaluacion()
+        self.assertEqual(ds.status, "ok")
+        restored = dataset_from_dict(dataset_to_dict(ds))
+        self.assertEqual(len(restored.companies), len(ds.companies))
+        self.assertEqual(restored.companies[0].code, ds.companies[0].code)
+
+
+class EvaluacionUploadTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user("caa", password="x")
+        self.client.force_login(self.user)
+        self.upload_dir = settings.MEDIA_ROOT / "test_eval_upload"
+        self.upload_dir.mkdir(parents=True, exist_ok=True)
+
+    @override_settings(
+        WCG_EVALUACION_UPLOAD_DIR=str(settings.MEDIA_ROOT / "test_eval_upload")
+    )
+    def test_upload_plantilla_from_example(self):
+        root = Path(settings.BASE_DIR).parent
+        examples = root / "data" / "now" / "plantillas" / "ejemplos"
+        if not examples.is_dir():
+            self.skipTest("Sin directorio de plantillas ejemplo")
+        sample = next(examples.glob("*.xlsx"), None)
+        if not sample:
+            self.skipTest("Sin plantillas ejemplo")
+
+        content = sample.read_bytes()
+        uploaded = SimpleUploadedFile(
+            sample.name,
+            content,
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        plantilla = save_uploaded_plantilla(uploaded, user=self.user)
+        self.assertTrue(plantilla.stored_file.name)
+        self.assertEqual(EvaluacionPlantilla.objects.filter(is_active=True).count(), 1)
+
+    def test_save_import_run(self):
+        ds = load_evaluacion()
+        run = save_import_run(ds, user=self.user, plantillas_count=2)
+        self.assertEqual(run.companies_count, len(ds.companies))
+        self.assertTrue(EvaluacionImportRun.objects.filter(pk=run.pk).exists())

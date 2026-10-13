@@ -1,15 +1,20 @@
 import json
 
+from django.contrib import messages
 from django.http import HttpResponse
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from django.views.decorators.http import require_POST
 from django.views.generic import DetailView, ListView
 
 from core.access import RiskGerenciaRequiredMixin, risk_gerencia_required
 from core.wcg_models import Entidad
 
 from .evaluacion import build_portfolio_view, load_evaluacion
-from .models import ProgramacionPago, RiskOperationSnapshot
+from .evaluacion.service import refresh_evaluacion_from_uploads, resolve_evaluacion_dataset
+from .evaluacion.storage import save_uploaded_plantilla
+from .forms import EvaluacionPlantillaUploadForm
+from .models import EvaluacionPlantilla, ProgramacionPago, RiskOperationSnapshot
 from .selectors import latest_snapshots_queryset, snapshot_summary
 
 
@@ -118,32 +123,18 @@ class OperacionDetailView(RiskGerenciaRequiredMixin, DetailView):
 
 @risk_gerencia_required
 def evaluacion_clientes(request):
-    """Extensión aislada: evaluación financiera / Z Altman desde plantilla Excel.
+    """Extensión aislada: evaluación financiera / Z Altman desde plantilla Excel."""
+    if request.method == "POST":
+        action = (request.POST.get("action") or "upload").strip()
+        if action == "delete":
+            return _evaluacion_delete_plantilla(request)
+        return _evaluacion_handle_upload(request)
 
-    Continuidad (importación formal): no reescribir esta vista — conectar upload con
-    ``load_evaluacion(uploaded_file=…)`` → ``build_portfolio_view(dataset)``.
-    """
     cliente = (request.GET.get("cliente") or "").strip() or None
     source_mode = (request.GET.get("source") or "auto").strip().lower()
+    resolved_source = source_mode
     try:
-        if source_mode == "plantillas":
-            from django.conf import settings
-
-            plantillas_dir = getattr(settings, "WCG_EVALUACION_PLANTILLAS_DIR", None)
-            dataset = load_evaluacion(templates_dir=plantillas_dir)
-        elif source_mode == "consolidado":
-            dataset = load_evaluacion()
-        else:
-            from risk.evaluacion.reader import default_plantillas_dir, default_xlsx_path
-
-            xlsx = default_xlsx_path()
-            plantillas = default_plantillas_dir()
-            if plantillas and any(plantillas.glob("*.xlsx")):
-                dataset = load_evaluacion(templates_dir=plantillas)
-            elif xlsx.is_file():
-                dataset = load_evaluacion(path=xlsx)
-            else:
-                dataset = load_evaluacion()
+        dataset, resolved_source = resolve_evaluacion_dataset(source_mode)
         portfolio = build_portfolio_view(dataset, cliente=cliente)
     except Exception:
         # Última red de seguridad: nunca tumbar wcg4 por esta extensión.
@@ -186,6 +177,17 @@ def evaluacion_clientes(request):
     if cliente and portfolio.ranking:
         selected = portfolio.ranking[0]
 
+    plantillas = list(
+        EvaluacionPlantilla.objects.filter(is_active=True).order_by("-created_at")[:30]
+    )
+    source_labels = {
+        "auto": "Automático",
+        "upload": "Plantillas subidas",
+        "plantillas": "Directorio de ejemplos",
+        "consolidado": "Excel consolidado",
+        "db": "Última importación en BD",
+    }
+
     return render(
         request,
         "risk/evaluacion_clientes.html",
@@ -194,6 +196,10 @@ def evaluacion_clientes(request):
             "selected": selected,
             "chart_z_json": json.dumps(portfolio.chart_z_evolution),
             "chart_mix_json": json.dumps(portfolio.chart_zone_mix),
+            "upload_form": EvaluacionPlantillaUploadForm(),
+            "plantillas": plantillas,
+            "source_mode": source_mode,
+            "source_label": source_labels.get(resolved_source, resolved_source),
             "breadcrumbs": [
                 {"label": "Panel principal", "url": "/panel/"},
                 {"label": "Balón de Riesgo", "url": "/risk/"},
@@ -201,6 +207,62 @@ def evaluacion_clientes(request):
             ],
         },
     )
+
+
+@require_POST
+@risk_gerencia_required
+def _evaluacion_handle_upload(request):
+    files = request.FILES.getlist("plantillas")
+    if not files:
+        messages.error(request, "Seleccione al menos un archivo .xlsx.")
+        return redirect("risk:evaluacion_clientes")
+
+    saved = 0
+    errors: list[str] = []
+    for uploaded in files:
+        name = (uploaded.name or "").lower()
+        if not name.endswith(".xlsx"):
+            errors.append(f"Formato no permitido: {uploaded.name}")
+            continue
+        try:
+            save_uploaded_plantilla(uploaded, user=request.user)
+            saved += 1
+        except ValueError as exc:
+            errors.append(str(exc))
+
+    if saved:
+        dataset = refresh_evaluacion_from_uploads(user=request.user)
+        if dataset and dataset.companies:
+            messages.success(
+                request,
+                f"Se guardaron {saved} plantilla(s). "
+                f"Consolidado: {len(dataset.companies)} empresa(s).",
+            )
+        else:
+            messages.warning(
+                request,
+                f"Se guardaron {saved} plantilla(s), pero la consolidación no produjo empresas.",
+            )
+    for err in errors[:5]:
+        messages.error(request, err)
+
+    return redirect("risk:evaluacion_clientes")
+
+
+@require_POST
+@risk_gerencia_required
+def _evaluacion_delete_plantilla(request):
+    plantilla_id = request.POST.get("plantilla_id")
+    plantilla = get_object_or_404(EvaluacionPlantilla, pk=plantilla_id, is_active=True)
+    plantilla.is_active = False
+    plantilla.save(update_fields=["is_active", "updated_at"])
+    try:
+        plantilla.stored_file.delete(save=False)
+    except Exception:
+        pass
+    refresh_evaluacion_from_uploads(user=request.user)
+    messages.success(request, f"Plantilla eliminada: {plantilla.original_filename}")
+    return redirect("risk:evaluacion_clientes")
 
 
 @risk_gerencia_required

@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import models
 
 from core.models import TimeStampedModel
@@ -125,3 +126,53 @@ class RiskOperationSnapshot(TimeStampedModel):
 
     def __str__(self):
         return f"{self.referencia_operacion} — {self.fecha_snapshot}"
+
+
+class EvaluacionPlantilla(TimeStampedModel):
+    """Plantilla Excel individual subida desde /risk/evaluacion/."""
+
+    original_filename = models.CharField(max_length=255)
+    stored_file = models.FileField(upload_to="evaluacion/plantillas/")
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="evaluacion_plantillas",
+    )
+    file_size = models.PositiveIntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "Plantilla de evaluación"
+        verbose_name_plural = "Plantillas de evaluación"
+
+    def __str__(self):
+        return self.original_filename
+
+
+class EvaluacionImportRun(TimeStampedModel):
+    """Snapshot consolidado tras importar plantillas (dataset serializado)."""
+
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="evaluacion_import_runs",
+    )
+    source_label = models.CharField(max_length=500, blank=True)
+    companies_count = models.PositiveIntegerField(default=0)
+    plantillas_count = models.PositiveIntegerField(default=0)
+    status = models.CharField(max_length=20, default="ok")
+    dataset_json = models.JSONField(default=dict, blank=True)
+    alerts = models.JSONField(default=list, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "Importación evaluación"
+        verbose_name_plural = "Importaciones evaluación"
+
+    def __str__(self):
+        return f"{self.created_at:%Y-%m-%d %H:%M} — {self.companies_count} empresas"

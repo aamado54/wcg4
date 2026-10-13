@@ -3,6 +3,8 @@ from django.contrib import admin
 from .models import (
     ContactoCobranza,
     EstadoFinanciero,
+    EvaluacionImportRun,
+    EvaluacionPlantilla,
     PagoRealizado,
     ProgramacionPago,
     RiskOperationSnapshot,
@@ -39,6 +41,22 @@ class ContactoCobranzaAdmin(admin.ModelAdmin):
     list_filter = ("activo",)
     search_fields = ("nombre", "entidad__codigo", "entidad__nombre")
     ordering = ("entidad__nombre",)
+
+
+@admin.register(EvaluacionPlantilla)
+class EvaluacionPlantillaAdmin(admin.ModelAdmin):
+    list_display = ("original_filename", "uploaded_by", "file_size", "is_active", "created_at")
+    list_filter = ("is_active",)
+    search_fields = ("original_filename",)
+    ordering = ("-created_at",)
+
+
+@admin.register(EvaluacionImportRun)
+class EvaluacionImportRunAdmin(admin.ModelAdmin):
+    list_display = ("created_at", "companies_count", "plantillas_count", "status", "uploaded_by")
+    list_filter = ("status",)
+    ordering = ("-created_at",)
+    readonly_fields = ("dataset_json", "alerts")
 
 
 @admin.register(RiskOperationSnapshot)

@@ -1,6 +1,18 @@
 from django import forms
 
 
+class MultipleFileInput(forms.FileInput):
+    allow_multiple_selected = True
+
+
+class EvaluacionPlantillaUploadForm(forms.Form):
+    plantillas = forms.FileField(
+        label="Plantillas Excel (.xlsx)",
+        widget=MultipleFileInput(attrs={"accept": ".xlsx", "multiple": True}),
+        help_text="Una plantilla por cliente. Puede seleccionar varios archivos.",
+    )
+
+
 class ImportFileForm(forms.Form):
     archivo = forms.FileField(label="Archivo CSV o XLSX")
     tipo = forms.ChoiceField(
