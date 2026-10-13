@@ -12,6 +12,7 @@ from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
 from core.models import MetricDefinition, UNE
+from pgc.excel_import_guard import assert_pgc_objetivos_import_allowed
 from pgc.income_conversion import apply_result_achievement
 from pgc.models import (
     ManualRequirementsCompliance,
@@ -166,9 +167,20 @@ class Command(BaseCommand):
                 "(comando import_pgc_metas). El Excel Objetivos es solo para ejecución."
             ),
         )
+        parser.add_argument(
+            "--force-legacy-excel",
+            action="store_true",
+            help=(
+                "Permite este import sin ALLOW_PGC_EXCEL_IMPORT=1 (solo dev/migración; "
+                "muestra advertencia)."
+            ),
+        )
 
     @transaction.atomic
     def handle(self, *args, **options):
+        assert_pgc_objetivos_import_allowed(
+            self, force_legacy_excel=options.get("force_legacy_excel", False)
+        )
         path = Path(options["path"]).expanduser()
         year = options["year"]
         month = options["month"]

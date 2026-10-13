@@ -10,6 +10,8 @@ from pathlib import Path
 from django.core.management import call_command
 from django.core.management.base import BaseCommand, CommandError
 
+from pgc.excel_import_guard import assert_pgc_objetivos_import_allowed
+
 MONTHS = {
     "Jan": 1,
     "Feb": 2,
@@ -76,8 +78,16 @@ class Command(BaseCommand):
             default="",
             help="Opcional: escribe xlsx temporal (no usado si vacío).",
         )
+        parser.add_argument(
+            "--force-legacy-excel",
+            action="store_true",
+            help="Permite import TSV/xlsx Objetivos sin ALLOW_PGC_EXCEL_IMPORT=1.",
+        )
 
     def handle(self, *args, **options):
+        assert_pgc_objetivos_import_allowed(
+            self, force_legacy_excel=options.get("force_legacy_excel", False)
+        )
         path = Path(options["path"]).expanduser()
         if not path.is_file():
             raise CommandError(f"No existe: {path}")
@@ -111,6 +121,7 @@ class Command(BaseCommand):
                     path=str(path),
                     year=year,
                     month=month,
+                    force_legacy_excel=options.get("force_legacy_excel", False),
                 )
             return
 

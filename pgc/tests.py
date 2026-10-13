@@ -1,11 +1,14 @@
+import os
 import tempfile
 from datetime import date, datetime, timedelta
+from unittest.mock import patch
 from decimal import Decimal
 from pathlib import Path
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
+from django.core.management.base import CommandError
 from django.test import TestCase
 
 from core.models import MetricDefinition, UNE
@@ -612,6 +615,7 @@ class ImportPgcObjetivosTests(TestCase):
             path=str(path),
             year=self.year,
             month=self.month,
+            force_legacy_excel=True,
         )
 
         factoring = UNE.objects.get(code="FACTORING")
@@ -674,6 +678,7 @@ class ImportPgcObjetivosTests(TestCase):
             path=str(path),
             year=self.year,
             month=self.month,
+            force_legacy_excel=True,
         )
 
         factoring = UNE.objects.get(code="FACTORING")
@@ -720,6 +725,7 @@ class ImportPgcObjetivosTests(TestCase):
             month=self.month,
             sync_vc=True,
             sync_reqs=True,
+            force_legacy_excel=True,
         )
 
         factoring = UNE.objects.get(code="FACTORING")
@@ -871,7 +877,7 @@ class OpsFlagsTests(TestCase):
     def _warn_codes(self, flags):
         return {f["code"] for f in flags if f["level"] == "warn"}
 
-    def test_objetivos_sync_when_missing_import_and_presupuesto(self):
+    def test_ingresos_presupuesto_gtq_when_missing(self):
         from pgc.ops_flags import collect_ops_flags
 
         MonthlyTarget.objects.create(
@@ -884,9 +890,34 @@ class OpsFlagsTests(TestCase):
             points_if_achieved=10,
         )
         flags = collect_ops_flags(self.year, self.month, plan=self.plan)
-        self.assertIn("objetivos_sync", self._warn_codes(flags))
+        self.assertIn("ingresos_presupuesto_gtq", self._warn_codes(flags))
 
-    def test_no_objetivos_sync_when_import_and_presupuesto_ok(self):
+    def test_legacy_objetivos_import_flag(self):
+        from pgc.ops_flags import collect_ops_flags
+
+        MonthlyTarget.objects.create(
+            plan=self.plan,
+            une=self.une,
+            metric=self.metric_ing,
+            year=self.year,
+            month=self.month,
+            target_value=Decimal("100"),
+            points_if_achieved=10,
+            presupuesto_gtq=Decimal("1"),
+        )
+        MonthlyMetricResult.objects.create(
+            plan=self.plan,
+            une=self.une,
+            metric=self.metric_ing,
+            year=self.year,
+            month=self.month,
+            measured_value=Decimal("10"),
+            calculation_note="Importado desde legacy.xlsx Objetivos (comisiones).",
+        )
+        flags = collect_ops_flags(self.year, self.month, plan=self.plan)
+        self.assertIn("legacy_objetivos_import", self._warn_codes(flags))
+
+    def test_no_presupuesto_flag_when_import_and_presupuesto_ok(self):
         from django.utils import timezone
 
         from pgc.ops_flags import collect_ops_flags
@@ -928,7 +959,8 @@ class OpsFlagsTests(TestCase):
         ).update(updated_at=now)
 
         flags = collect_ops_flags(self.year, self.month, plan=self.plan)
-        self.assertNotIn("objetivos_sync", self._warn_codes(flags))
+        self.assertNotIn("ingresos_presupuesto_gtq", self._warn_codes(flags))
+        self.assertIn("legacy_objetivos_import", self._warn_codes(flags))
         self.assertNotIn("modo2_stale_objetivos", self._warn_codes(flags))
 
     def test_modo2_stale_after_objetivos_import(self):
@@ -992,3 +1024,133 @@ class OpsFlagsTests(TestCase):
         )
         flags = collect_ops_flags(self.year, self.month, plan=self.plan)
         self.assertIn("vc_without_operational_import", self._warn_codes(flags))
+
+
+class ObjetivosImportPolicyTests(TestCase):
+    def setUp(self):
+        self.year = 2026
+        self.month = 8
+        self.plan = PGCPlan.objects.create(year=self.year, name="Plan block")
+        MonthlyExchangeRate.objects.create(
+            year=self.year, month=self.month, usd_to_gtq=Decimal("7.8")
+        )
+
+    def _min_xlsx(self, path: Path) -> None:
+        import openpyxl
+
+        from pgc.management.commands.import_pgc_objetivos import COL_PTS_EXEC_REQ
+
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Objetivos"
+        row = [None] * (COL_PTS_EXEC_REQ + 2)
+        row[0] = datetime(self.year, self.month, 1)
+        row[5] = "WC"
+        ws.append(["header"])
+        ws.append(row)
+        wb.save(path)
+
+    def _seed_factoring_targets(self) -> None:
+        UNE.objects.get_or_create(
+            code=UNE.CODE_FACTORING,
+            defaults={"name": "F", "name_es": "F", "sort_order": 1},
+        )
+        for code, name in (
+            (MetricDefinition.CODE_CLIENTES_NUEVOS, "C"),
+            (MetricDefinition.CODE_INGRESOS, "I"),
+            (MetricDefinition.CODE_VENTA_CRUZADA, "V"),
+            (MetricDefinition.CODE_RESPUESTA_REQS, "R"),
+        ):
+            MetricDefinition.objects.get_or_create(
+                code=code,
+                defaults={"name": name, "is_scored": True},
+            )
+        une = UNE.objects.get(code=UNE.CODE_FACTORING)
+        for metric in MetricDefinition.objects.filter(
+            code__in=(
+                MetricDefinition.CODE_CLIENTES_NUEVOS,
+                MetricDefinition.CODE_INGRESOS,
+                MetricDefinition.CODE_VENTA_CRUZADA,
+                MetricDefinition.CODE_RESPUESTA_REQS,
+            )
+        ):
+            MonthlyTarget.objects.get_or_create(
+                plan=self.plan,
+                une=une,
+                metric=metric,
+                year=self.year,
+                month=self.month,
+                defaults={
+                    "target_value": Decimal("1"),
+                    "points_if_achieved": 1,
+                },
+            )
+
+    def test_import_blocked_without_override(self):
+        with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp:
+            path = Path(tmp.name)
+        self.addCleanup(path.unlink, missing_ok=True)
+        self._min_xlsx(path)
+        with self.assertRaises(CommandError) as ctx:
+            call_command(
+                "import_pgc_objetivos",
+                path=str(path),
+                year=self.year,
+                month=self.month,
+            )
+        self.assertIn("deshabilitado", str(ctx.exception).lower())
+
+    def _empty_objetivos_row(self) -> dict:
+        return {
+            "uen": "WC",
+            "pres_cli": None,
+            "pres_com_gtq": None,
+            "exec_cli": None,
+            "exec_com_gtq": None,
+            "pres_vc": None,
+            "exec_vc": None,
+            "pts_ing": None,
+            "pts_cli": None,
+            "pts_vc": None,
+            "pts_req": None,
+            "pts_exec_req": None,
+        }
+
+    @patch("pgc.management.commands.import_pgc_objetivos._read_objetivos_rows")
+    def test_import_allowed_with_force_legacy(self, read_mock):
+        read_mock.return_value = [self._empty_objetivos_row()]
+        with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp:
+            path = Path(tmp.name)
+        self.addCleanup(path.unlink, missing_ok=True)
+        path.write_bytes(b"x")
+        self._seed_factoring_targets()
+        call_command(
+            "import_pgc_objetivos",
+            path=str(path),
+            year=self.year,
+            month=self.month,
+            force_legacy_excel=True,
+        )
+
+    @patch("pgc.management.commands.import_pgc_objetivos._read_objetivos_rows")
+    def test_import_allowed_with_env(self, read_mock):
+        read_mock.return_value = [self._empty_objetivos_row()]
+        with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp:
+            path = Path(tmp.name)
+        self.addCleanup(path.unlink, missing_ok=True)
+        path.write_bytes(b"x")
+        self._seed_factoring_targets()
+        prev = os.environ.get("ALLOW_PGC_EXCEL_IMPORT")
+        os.environ["ALLOW_PGC_EXCEL_IMPORT"] = "1"
+        try:
+            call_command(
+                "import_pgc_objetivos",
+                path=str(path),
+                year=self.year,
+                month=self.month,
+            )
+        finally:
+            if prev is None:
+                os.environ.pop("ALLOW_PGC_EXCEL_IMPORT", None)
+            else:
+                os.environ["ALLOW_PGC_EXCEL_IMPORT"] = prev

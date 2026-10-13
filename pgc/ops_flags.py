@@ -26,6 +26,7 @@ OBJETIVOS_IMPORT_NOTE = Q(calculation_note__icontains="Importado desde") & Q(
 )
 
 DOCS_CIERRE_MENSUAL = "docs/pgc-cierre-mensual-operacion.md"
+DOCS_SIN_EXCEL = "docs/pgc-sin-excel-objetivos-validacion.md"
 VALIDATE_CLI = (
     "python tools/pgc/validate_ejecucion_excel.py <archivo.xlsx> --year AÑO"
 )
@@ -98,6 +99,15 @@ def has_objetivos_import(plan: PGCPlan, year: int, month: int) -> bool:
     return objetivos_import_updated_at(plan, year, month) is not None
 
 
+def legacy_objetivos_import_unes(plan: PGCPlan, year: int, month: int) -> list[str]:
+    rows = (
+        MonthlyMetricResult.objects.filter(plan=plan, year=year, month=month)
+        .filter(OBJETIVOS_IMPORT_NOTE)
+        .select_related("une")
+    )
+    return sorted({r.une.code for r in rows})
+
+
 def ingresos_targets_missing_presupuesto_gtq(
     plan: PGCPlan, year: int, month: int, metric_id: int
 ) -> list[str]:
@@ -140,29 +150,43 @@ def collect_ops_flags(
             missing_une = ingresos_targets_missing_presupuesto_gtq(
                 plan, year, month, metric_id
             )
-            imported = has_objetivos_import(plan, year, month)
-            if not imported or missing_une:
-                parts = []
-                if not imported:
-                    parts.append(
-                        "no hay resultados con nota «Importado desde … Objetivos»"
-                    )
-                if missing_une:
-                    parts.append(
-                        "falta presupuesto GTQ (presupuesto_gtq) en ingresos para: "
-                        + ", ".join(missing_une)
-                    )
+            if missing_une:
                 flags.append(
                     OpsFlag(
-                        code="objetivos_sync",
+                        code="ingresos_presupuesto_gtq",
                         level="warn",
-                        title="Mes sin sincronía completa con Objetivos",
-                        message=" ".join(parts).capitalize() + ".",
+                        title="Falta presupuesto GTQ en metas de ingresos",
+                        message=(
+                            "Falta presupuesto GTQ (presupuesto_gtq) en ingresos para: "
+                            + ", ".join(missing_une)
+                            + "."
+                        ),
                         fix=(
-                            "Ejecute `python manage.py import_pgc_objetivos <archivo.xlsx> "
-                            f"--year {year} --month {month:02d}` (o import_pgc_objetivos_tsv) "
-                            "y confirme presupuesto GTQ en metas de ingresos. "
-                            f"Luego recalcule el período. Guía: {DOCS_CIERRE_MENSUAL}."
+                            "Capture presupuesto en la matriz anual de ingresos o edición "
+                            "manual de metas; la ejecución viene de `import_ingresos`. "
+                            f"Guía: {DOCS_SIN_EXCEL} y {DOCS_CIERRE_MENSUAL}."
+                        ),
+                        year=year,
+                        month=month,
+                    )
+                )
+
+            legacy_unes = legacy_objetivos_import_unes(plan, year, month)
+            if legacy_unes:
+                flags.append(
+                    OpsFlag(
+                        code="legacy_objetivos_import",
+                        level="warn",
+                        title="Datos heredados desde Excel Objetivos",
+                        message=(
+                            "Hay MonthlyMetricResult con nota «Importado desde … Objetivos» "
+                            f"en: {', '.join(legacy_unes)}. No cargar Objetivos en producción."
+                        ),
+                        fix=(
+                            "Reemplace ejecución con `import_ingresos` (Factoraje/Leasing) "
+                            "y cargas mensuales; use "
+                            "`clear_operational_fiction_from_objetivos` si aplica VC/reqs. "
+                            f"Ver {DOCS_SIN_EXCEL}."
                         ),
                         year=year,
                         month=month,
@@ -183,8 +207,8 @@ def collect_ops_flags(
                         ),
                         fix=(
                             "En el tablero mensual use «Recalcular período» o el recálculo "
-                            "inteligente global. Valide con "
-                            f"`{VALIDATE_CLI}`. Ver {DOCS_CIERRE_MENSUAL}#validacion-excel."
+                            "inteligente global. "
+                            f"Ver {DOCS_CIERRE_MENSUAL}#recalculo."
                         ),
                         year=year,
                         month=month,
@@ -325,12 +349,12 @@ def collect_ops_flags_for_period(
             OpsFlag(
                 code="validate_hint",
                 level="info",
-                title="Validación contra Excel Objetivos (CLI)",
+                title="Validación contra libro Objetivos (CLI, sin importar)",
                 message=(
-                    "Antes del cierre puede cuadrar modo2 con la hoja Objetivos "
-                    "(columnas S–X) usando el validador en línea de comandos."
+                    "Puede cuadrar modo2 con la hoja Objetivos del libro de validación "
+                    "(columnas S–X) sin cargar datos a la base."
                 ),
-                fix=f"`{VALIDATE_CLI}`. Pasos: {DOCS_CIERRE_MENSUAL}#validacion-excel.",
+                fix=f"`{VALIDATE_CLI}`. Ver {DOCS_CIERRE_MENSUAL}#validacion-excel.",
             ).as_dict()
         )
 
