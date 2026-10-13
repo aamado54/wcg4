@@ -16,6 +16,11 @@ urlpatterns = [
         views.escenario_nov2026_precaucion,
         name="escenario_nov2026_precaucion",
     ),
+    path(
+        "escenarios/reportes/<slug>/pdf/",
+        views.escenario_reporte_pdf,
+        name="escenario_reporte_pdf",
+    ),
     path("comando/", views.comando, name="comando"),
     path("indices/", views.indices, name="indices"),
     path("whatif/", views.whatif, name="whatif"),

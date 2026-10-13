@@ -160,6 +160,19 @@ class GerenciaViewTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "Escenarios")
         self.assertContains(resp, "ge-nav-scenarios")
+        self.assertContains(resp, "Reportes asociados")
+        self.assertContains(resp, "Diesel posible escasez pronta")
+
+    def test_escenario_reporte_pdf(self):
+        from gerencia.models import GerenciaStressReport
+
+        rep = GerenciaStressReport.objects.get(slug="diesel-eua-guatemala-sep-2026")
+        if not rep.pdf_available():
+            self.skipTest("PDF de reporte no presente en WCG_STRESS_REPORTES_DIR")
+        url = reverse("gerencia:escenario_reporte_pdf", kwargs={"slug": rep.slug})
+        resp = self.client.get(url)
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.get("Content-Type", ""), "application/pdf")
 
     def test_escenario_nov2026_200(self):
         resp = self.client.get(reverse("gerencia:escenario_nov2026"))

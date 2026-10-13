@@ -65,3 +65,48 @@ class GerenciaScenario(models.Model):
 
     def __str__(self) -> str:
         return self.name
+
+
+class GerenciaStressReport(models.Model):
+    """Reporte documental ligado a escenarios de stress (PDF público; MD para análisis interno)."""
+
+    fecha = models.DateField(db_index=True)
+    tema = models.CharField(max_length=200)
+    slug = models.SlugField(max_length=120, unique=True)
+    title = models.CharField(
+        max_length=255,
+        help_text="Título del documento (nombre base del archivo).",
+    )
+    pdf_filename = models.CharField(max_length=255)
+    md_filename = models.CharField(max_length=255)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-fecha", "-pk"]
+        verbose_name = "Reporte stress test"
+        verbose_name_plural = "Reportes stress test"
+
+    def __str__(self) -> str:
+        return f"{self.fecha:%Y-%m-%d} · {self.tema}"
+
+    def pdf_path(self):
+        from .reportes import resolve_report_file
+
+        return resolve_report_file(self.pdf_filename)
+
+    def md_path(self):
+        from .reportes import resolve_report_file
+
+        return resolve_report_file(self.md_filename)
+
+    def pdf_available(self) -> bool:
+        try:
+            return self.pdf_path().is_file()
+        except ValueError:
+            return False
+
+    def md_available(self) -> bool:
+        try:
+            return self.md_path().is_file()
+        except ValueError:
+            return False

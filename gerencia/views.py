@@ -1,7 +1,7 @@
 import json
 
 from django.contrib import messages
-from django.http import Http404
+from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_http_methods
@@ -10,7 +10,7 @@ from core.access import risk_gerencia_required
 
 from . import calc as engine
 from .calc.money import fmt_money, latest_usd_gtq, unit_label
-from .models import GerenciaScenario, GerenciaSettings
+from .models import GerenciaScenario, GerenciaSettings, GerenciaStressReport
 
 
 def _bu(request) -> str:
@@ -202,6 +202,7 @@ def estructura(request):
 
 @risk_gerencia_required
 def escenarios(request):
+    reportes = GerenciaStressReport.objects.all()
     return render(
         request,
         "gerencia/escenarios.html",
@@ -209,7 +210,22 @@ def escenarios(request):
             request,
             "escenarios",
             breadcrumbs=_crumbs("Escenarios"),
+            reportes=reportes,
         ),
+    )
+
+
+@risk_gerencia_required
+def escenario_reporte_pdf(request, slug: str):
+    rep = get_object_or_404(GerenciaStressReport, slug=slug)
+    if not rep.pdf_available():
+        raise Http404("PDF no disponible")
+    path = rep.pdf_path()
+    return FileResponse(
+        path.open("rb"),
+        as_attachment=False,
+        filename=path.name,
+        content_type="application/pdf",
     )
 
 
