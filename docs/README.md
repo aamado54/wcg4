@@ -21,6 +21,7 @@ Manuales obsoletos eliminados de esta carpeta:
 | Documento-1 a Documento-5 | Especificaciones y memoria WCG One |
 | `pgc_vs_pgo_explicacion.md` | Diferencias PGC vs PGO |
 | `pgc-puntos-proporcion-objetivos.md` | Tablero 2.Proporción vs hoja Objetivos (fórmulas; excepción GTQ en puntos) |
+| `pgc-sin-excel-objetivos-validacion.md` | Política sin import Objetivos; mapa métrica → hub/comandos |
 | `pgc-cierre-mensual-operacion.md` | Checklist cierre mensual PGC, banderas ops_flags y validación CLI |
 | `deploy_railway_demo.md` | Despliegue Railway |
 | `reglas-pgo.md` | Reglas de cálculo PGO |

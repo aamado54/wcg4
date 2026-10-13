@@ -1,5 +1,7 @@
 # PGC sin Excel Objetivos (alias)
 
-Este documento se renombró para dejar claro que la prohibición es solo el **libro compartido de validación** (Cumplimiento Objetivos PGC, hoja Objetivos), no todos los Excel operativos.
+La prohibición aplica solo al **libro compartido de validación** (Cumplimiento Objetivos PGC, hoja Objetivos), no a ER ni CSV operativos.
 
-**Política canónica:** [pgc-sin-excel-objetivos-validacion.md](pgc-sin-excel-objetivos-validacion.md)
+**Política y mapa métrica → importadores:** [pgc-sin-excel-objetivos-validacion.md](pgc-sin-excel-objetivos-validacion.md)
+
+**Checklist de cierre:** [pgc-cierre-mensual-operacion.md](pgc-cierre-mensual-operacion.md)

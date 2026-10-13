@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from django.core.management.base import BaseCommand
 
 ENV_ALLOW_PGC_EXCEL_IMPORT = "ALLOW_PGC_EXCEL_IMPORT"
-DOC_POLICY = "docs/pgc-sin-excel.md"
+DOC_POLICY = "docs/pgc-sin-excel-objetivos-validacion.md"
 
 _LEGACY_WARNING = (
     "ADVERTENCIA: import legacy desde hoja Objetivos (libro compartido de validación). "

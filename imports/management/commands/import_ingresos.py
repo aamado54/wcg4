@@ -336,6 +336,22 @@ class Command(BaseCommand):
                 f"{year}-{month:02d}."
             )
 
+        if (
+            (target.presupuesto_gtq is None or target.presupuesto_gtq <= 0)
+            and target.target_value is not None
+            and target.target_value > 0
+        ):
+            target.presupuesto_gtq = Decimal(str(target.target_value)) * Decimal(
+                "1000"
+            )
+            target.save(update_fields=["presupuesto_gtq", "updated_at"])
+            self.stdout.write(
+                self.style.WARNING(
+                    f"presupuesto_gtq derivado de meta (miles×1000)="
+                    f"{target.presupuesto_gtq} para modo2."
+                )
+            )
+
         mmr, _ = MonthlyMetricResult.objects.get_or_create(
             plan=plan,
             une=une,
