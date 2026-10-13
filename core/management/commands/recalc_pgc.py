@@ -6,6 +6,7 @@ from django.db import transaction
 from core.models import MetricDefinition, UNE
 from pgc.objetivos_scoring import (
     INSURANCE_REQS_GRACE_NOTE,
+    clientes_points_objetivos,
     ingresos_points_objetivos,
     insurance_reqs_uses_grace_points,
     proportional_points,
@@ -281,11 +282,14 @@ class Command(BaseCommand):
 
         measured = metric_score.measured_value
         target_value = metric_score.target_value
-        pts, achieved, note = proportional_points(
-            target.points_if_achieved,
-            measured,
-            target_value,
-        )
+        if metric.code == MetricDefinition.CODE_CLIENTES_NUEVOS:
+            pts, achieved, note = clientes_points_objetivos(target, measured)
+        else:
+            pts, achieved, note = proportional_points(
+                target.points_if_achieved,
+                measured,
+                target_value,
+            )
         metric_score.points_awarded = pts
         metric_score.is_achieved = achieved
         metric_score.calculation_note = note

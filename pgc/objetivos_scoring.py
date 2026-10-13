@@ -56,6 +56,36 @@ def proportional_points(
     )
 
 
+def clientes_points_objetivos(
+    target,
+    measured,
+) -> tuple[Decimal, bool, str]:
+    """
+    Clientes nuevos: proporción habitual; si presupuesto ≤ 0 y ejecución 0, la hoja
+    otorga los puntos completos (único caso documentado: WCL ene-2026).
+    """
+    full = Decimal(str(target.points_if_achieved or 0))
+    target_value = getattr(target, "target_value", None)
+    try:
+        t = Decimal(str(target_value)) if target_value is not None else Decimal("0")
+        m = Decimal(str(measured)) if measured is not None else Decimal("0")
+    except Exception:
+        t = Decimal("0")
+        m = Decimal("0")
+    if full > 0 and t <= 0 and m <= 0:
+        return (
+            full.quantize(POINTS_QUANTIZE, rounding=ROUND_HALF_UP),
+            True,
+            "Objetivos clientes: presupuesto≤0 y ejecución 0 → puntos completos (hoja).",
+        )
+    return proportional_points(
+        full,
+        measured,
+        target_value,
+        note_prefix="Objetivos clientes",
+    )
+
+
 def ingresos_points_objetivos(
     target,
     source_result,

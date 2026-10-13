@@ -286,25 +286,43 @@ class Command(BaseCommand):
                 mmr_vc.save()
 
             pts_req_exec = _cell_decimal(rec["pts_exec_req"])
-            if tgt_req and pts_req_exec is not None and une.code != UNE.CODE_INSURANCE:
-                if pts_req_exec > 0 and int(tgt_req.points_if_achieved or 0) <= 0:
-                    tgt_req.points_if_achieved = int(pts_req_exec)
-                    tgt_req.save(update_fields=["points_if_achieved", "updated_at"])
-                compliant = pts_req_exec > 0
-                ManualRequirementsCompliance.objects.update_or_create(
-                    plan=plan,
-                    une=une,
-                    year=year,
-                    month=month,
-                    defaults={
-                        "is_compliant": compliant,
-                        "incident_note": (
-                            ""
-                            if compliant
-                            else "Sincronizado desde Excel Objetivos: no cumple reqs."
-                        ),
-                    },
-                )
+            if tgt_req and pts_req_exec is not None:
+                if une.code == UNE.CODE_INSURANCE:
+                    # Hoja: NO APLICA / 0 pts ejecución → no cumple (cuadra modo2 con Excel).
+                    compliant = pts_req_exec > 0
+                    ManualRequirementsCompliance.objects.update_or_create(
+                        plan=plan,
+                        une=une,
+                        year=year,
+                        month=month,
+                        defaults={
+                            "is_compliant": compliant,
+                            "incident_note": (
+                                ""
+                                if compliant
+                                else "Sincronizado desde Excel Objetivos (WCI reqs NO APLICA)."
+                            ),
+                        },
+                    )
+                else:
+                    if pts_req_exec > 0 and int(tgt_req.points_if_achieved or 0) <= 0:
+                        tgt_req.points_if_achieved = int(pts_req_exec)
+                        tgt_req.save(update_fields=["points_if_achieved", "updated_at"])
+                    compliant = pts_req_exec > 0
+                    ManualRequirementsCompliance.objects.update_or_create(
+                        plan=plan,
+                        une=une,
+                        year=year,
+                        month=month,
+                        defaults={
+                            "is_compliant": compliant,
+                            "incident_note": (
+                                ""
+                                if compliant
+                                else "Sincronizado desde Excel Objetivos: no cumple reqs."
+                            ),
+                        },
+                    )
 
             self.stdout.write(
                 self.style.SUCCESS(
