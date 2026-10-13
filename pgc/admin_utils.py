@@ -163,6 +163,7 @@ def apply_period_range(
 
 def admin_period_context(period: AdminPeriod) -> dict:
     from pgc.admin_recalc import get_global_recalc_status
+    from pgc.ops_flags import collect_ops_flags_for_period, DOCS_CIERRE_MENSUAL
 
     recalc_status = get_global_recalc_status()
     return {
@@ -179,6 +180,8 @@ def admin_period_context(period: AdminPeriod) -> dict:
         "year_choices": list(range(2024, 2031)),
         "recalc_status": recalc_status,
         "auto_recalc": recalc_status.get("auto_recalc", False),
+        "ops_flags": collect_ops_flags_for_period(period, recalc_status=recalc_status),
+        "ops_flags_docs_path": DOCS_CIERRE_MENSUAL,
     }
 
 

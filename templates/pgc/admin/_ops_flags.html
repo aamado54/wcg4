@@ -1,0 +1,11 @@
+{% if ops_flags %}
+<div class="adm-ops-flags" role="region" aria-label="Alertas operativas PGC">
+    {% for f in ops_flags %}
+    <div class="adm-banner adm-banner-{{ f.level }}">
+        <strong>{{ f.title }}</strong>{% if f.label %} <span class="muted">({{ f.label }})</span>{% endif %}
+        <p style="margin:6px 0 0;">{{ f.message }}</p>
+        <p style="margin:6px 0 0;"><strong>Cómo corregir:</strong> {{ f.fix }}</p>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}

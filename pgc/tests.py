@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 from pathlib import Path
 
@@ -16,6 +16,7 @@ from pgc.models import (
     MonthlyMetricResult,
     MonthlyMetricScore,
     MonthlyTarget,
+    PGCMode,
     PGCPlan,
 )
 
@@ -741,3 +742,126 @@ class ImportPgcMetasTests(TestCase):
             month=1,
         )
         self.assertEqual(jan_ing.target_value, Decimal("0.200"))
+
+
+class OpsFlagsTests(TestCase):
+    def setUp(self):
+        self.year = 2026
+        self.month = 6
+        self.plan = PGCPlan.objects.create(year=self.year, name="Plan flags")
+        self.une = UNE.objects.create(
+            code=UNE.CODE_FACTORING,
+            name="Factoring",
+            name_es="Factoraje",
+            sort_order=1,
+        )
+        self.metric_ing, _ = MetricDefinition.objects.get_or_create(
+            code=MetricDefinition.CODE_INGRESOS,
+            defaults={"name": "Ingresos", "is_scored": True},
+        )
+
+    def _warn_codes(self, flags):
+        return {f["code"] for f in flags if f["level"] == "warn"}
+
+    def test_objetivos_sync_when_missing_import_and_presupuesto(self):
+        from pgc.ops_flags import collect_ops_flags
+
+        MonthlyTarget.objects.create(
+            plan=self.plan,
+            une=self.une,
+            metric=self.metric_ing,
+            year=self.year,
+            month=self.month,
+            target_value=Decimal("100"),
+            points_if_achieved=10,
+        )
+        flags = collect_ops_flags(self.year, self.month, plan=self.plan)
+        self.assertIn("objetivos_sync", self._warn_codes(flags))
+
+    def test_no_objetivos_sync_when_import_and_presupuesto_ok(self):
+        from django.utils import timezone
+
+        from pgc.ops_flags import collect_ops_flags
+
+        MonthlyTarget.objects.create(
+            plan=self.plan,
+            une=self.une,
+            metric=self.metric_ing,
+            year=self.year,
+            month=self.month,
+            target_value=Decimal("100"),
+            points_if_achieved=10,
+            presupuesto_gtq=Decimal("50000"),
+        )
+        MonthlyMetricResult.objects.create(
+            plan=self.plan,
+            une=self.une,
+            metric=self.metric_ing,
+            year=self.year,
+            month=self.month,
+            measured_value=Decimal("10"),
+            calculation_note="Importado desde test.xlsx Objetivos (comisiones).",
+        )
+        MonthlyMetricScore.objects.create(
+            plan=self.plan,
+            une=self.une,
+            metric=self.metric_ing,
+            year=self.year,
+            month=self.month,
+            mode=PGCMode.MODO2,
+            points_awarded=Decimal("10"),
+        )
+        now = timezone.now()
+        MonthlyMetricResult.objects.filter(
+            plan=self.plan, year=self.year, month=self.month
+        ).update(updated_at=now)
+        MonthlyMetricScore.objects.filter(
+            plan=self.plan, year=self.year, month=self.month, mode=PGCMode.MODO2
+        ).update(updated_at=now)
+
+        flags = collect_ops_flags(self.year, self.month, plan=self.plan)
+        self.assertNotIn("objetivos_sync", self._warn_codes(flags))
+        self.assertNotIn("modo2_stale_objetivos", self._warn_codes(flags))
+
+    def test_modo2_stale_after_objetivos_import(self):
+        from django.utils import timezone
+
+        from pgc.ops_flags import collect_ops_flags
+
+        MonthlyTarget.objects.create(
+            plan=self.plan,
+            une=self.une,
+            metric=self.metric_ing,
+            year=self.year,
+            month=self.month,
+            target_value=Decimal("100"),
+            points_if_achieved=10,
+            presupuesto_gtq=Decimal("1"),
+        )
+        MonthlyMetricResult.objects.create(
+            plan=self.plan,
+            une=self.une,
+            metric=self.metric_ing,
+            year=self.year,
+            month=self.month,
+            measured_value=Decimal("10"),
+            calculation_note="Importado desde test.xlsx Objetivos.",
+        )
+        MonthlyMetricScore.objects.create(
+            plan=self.plan,
+            une=self.une,
+            metric=self.metric_ing,
+            year=self.year,
+            month=self.month,
+            mode=PGCMode.MODO2,
+        )
+        now = timezone.now()
+        MonthlyMetricResult.objects.filter(
+            plan=self.plan, year=self.year, month=self.month
+        ).update(updated_at=now)
+        MonthlyMetricScore.objects.filter(
+            plan=self.plan, year=self.year, month=self.month, mode=PGCMode.MODO2
+        ).update(updated_at=now - timedelta(hours=2))
+
+        flags = collect_ops_flags(self.year, self.month, plan=self.plan)
+        self.assertIn("modo2_stale_objetivos", self._warn_codes(flags))
