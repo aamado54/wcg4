@@ -114,7 +114,7 @@ def _read_objetivos(path: Path, year: int, month: int) -> list[dict]:
             "pres_cli": row[1] if len(row) > 1 else None,
             "exec_cli": row[6] if len(row) > 6 else None,
             "pres_com_gtq": row[3] if len(row) > 3 else None,
-            "exec_com_gtq": row[9] if len(row) > 9 else None,
+            "exec_com_gtq": row[8] if len(row) > 8 else None,
         }
         if len(row) > COL_CALIFICA_MES:
             rec["pts_ing"] = row[COL_PTS_ING]
