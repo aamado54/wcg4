@@ -218,7 +218,7 @@ def _dispatch_pgc_uploaded_file(
             )
 
         tmp.status = FileUpload.STATUS_PARSED_OK
-        tmp.save(update_fields=["status"])
+        tmp.save()
         FileImportLog.objects.create(
             file_upload=tmp,
             step_code="dispatch",

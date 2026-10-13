@@ -60,7 +60,7 @@ DEFAULT_PGC_MODE = "modo1"
 DASHBOARD_VIEW_LIST = "lista"
 DASHBOARD_VIEW_ANUAL = "anual"
 DASHBOARD_VIEW_OPTIONS = (DASHBOARD_VIEW_LIST, DASHBOARD_VIEW_ANUAL)
-DASHBOARD_DEFAULT_VIEW = DASHBOARD_VIEW_LIST
+DASHBOARD_DEFAULT_VIEW = DASHBOARD_VIEW_ANUAL
 
 DASHBOARD_ANUAL_UNE_ORDER = (
     UNE.CODE_FACTORING,
@@ -71,6 +71,7 @@ DASHBOARD_ANUAL_UNE_ORDER = (
 
 
 from pgc.income_conversion import evaluate_result_achievement
+from pgc.objetivos_scoring import INSURANCE_REQS_GRACE_NOTE
 from pgc.investment_ingresos import (
     build_fx_map,
     convert_row_amount_to_usd,
@@ -734,6 +735,7 @@ def pgc_dashboard(request):
         "view_anual": DASHBOARD_VIEW_ANUAL,
         "annual_year": annual_year,
         "annual_tables": annual_tables,
+        "insurance_reqs_grace_note": INSURANCE_REQS_GRACE_NOTE,
         "chart_payload_json": json.dumps(chart_payload, ensure_ascii=False),
         "chart_rows": [
             {
@@ -755,14 +757,23 @@ def pgc_dashboard(request):
 def _get_dashboard_view(request) -> str:
     raw = (
         request.GET.get("view")
+        or request.session.get("pgc_dashboard_view_v2")
         or request.session.get("pgc_dashboard_view")
         or DASHBOARD_DEFAULT_VIEW
     )
     view = str(raw).strip().lower()
     if view not in DASHBOARD_VIEW_OPTIONS:
         view = DASHBOARD_DEFAULT_VIEW
+    request.session["pgc_dashboard_view_v2"] = view
     request.session["pgc_dashboard_view"] = view
     return view
+
+
+def _sum_or_none_decimal(values) -> Decimal | None:
+    present = [v for v in values if v is not None]
+    if not present:
+        return None
+    return sum(present, Decimal("0"))
 
 
 def _build_dashboard_annual_tables(year: int, mode: str = DEFAULT_PGC_MODE) -> list:
@@ -897,6 +908,11 @@ def _build_dashboard_annual_tables(year: int, mode: str = DEFAULT_PGC_MODE) -> l
                 "p_reqs": p_reqs,
                 "totals": totals,
                 "clasifica": clasifica,
+                "p_ingresos_total": _sum_or_none_decimal(p_ingresos),
+                "p_clientes_total": _sum_or_none_decimal(p_clientes),
+                "p_venta_total": _sum_or_none_decimal(p_venta),
+                "p_reqs_total": _sum_or_none_decimal(p_reqs),
+                "totals_ytd": _sum_or_none_decimal(totals),
             }
         )
 
@@ -1591,6 +1607,7 @@ def respuesta_reqs_report(request):
         "report_sort": report_sort,
         "available_periods": _get_available_periods(),
         "month_count_options": MONTH_COUNT_OPTIONS,
+        "insurance_reqs_grace_note": INSURANCE_REQS_GRACE_NOTE,
     }
     return render(request, "pgc/respuesta_reqs.html", context)
 
@@ -1691,6 +1708,10 @@ def respuesta_reqs_export_md(request):
 
 INGRESOS_DECIMAL_OPTIONS = (1, 2, 3)
 INGRESOS_DEFAULT_DECIMALS = 1
+INGRESOS_CURRENCY_USD = "usd"
+INGRESOS_CURRENCY_GTQ = "gtq"
+INGRESOS_CURRENCY_OPTIONS = (INGRESOS_CURRENCY_USD, INGRESOS_CURRENCY_GTQ)
+INGRESOS_DEFAULT_CURRENCY = INGRESOS_CURRENCY_USD
 INGRESOS_VIEW_LIST = "lista"
 INGRESOS_VIEW_ANUAL = "anual"
 INGRESOS_VIEW_OPTIONS = (INGRESOS_VIEW_LIST, INGRESOS_VIEW_ANUAL)
@@ -1740,14 +1761,30 @@ def _get_ingresos_report_settings(request):
     else:
         show_detail_cols = True
 
+    raw_currency = (
+        request.GET.get("moneda")
+        or request.session.get("pgc_ingresos_currency")
+        or INGRESOS_DEFAULT_CURRENCY
+    ).strip().lower()
+    currency = (
+        raw_currency
+        if raw_currency in INGRESOS_CURRENCY_OPTIONS
+        else INGRESOS_DEFAULT_CURRENCY
+    )
+
     request.session["pgc_ingresos_decimals"] = decimals
     request.session["pgc_ingresos_view_v2"] = view
     request.session["pgc_ingresos_show_detail_cols"] = show_detail_cols
+    request.session["pgc_ingresos_currency"] = currency
 
     return {
         "decimals": decimals,
         "view": view,
         "show_detail_cols": show_detail_cols,
+        "currency": currency,
+        "currency_usd": INGRESOS_CURRENCY_USD,
+        "currency_gtq": INGRESOS_CURRENCY_GTQ,
+        "currency_options": INGRESOS_CURRENCY_OPTIONS,
         "decimal_options": INGRESOS_DECIMAL_OPTIONS,
         "view_options": INGRESOS_VIEW_OPTIONS,
     }
@@ -1822,12 +1859,18 @@ def _build_ingresos_annual_tables(year):
             period_pending = (year > now.year) or (year == now.year and month > now.month)
             if not period_pending:
                 if une.code in {"INVESTMENT", "INVESTMENTS", "INVERSIONES"}:
-                    if (year, month, une.id) in investment_real_map:
-                        real = investment_real_map[(year, month, une.id)]
+                    inv_key = (year, month, une.id)
+                    if inv_key in investment_real_map:
+                        real = investment_real_map[inv_key]
+                    else:
+                        result = result_map.get((une.id, month))
+                        if result is not None and result.measured_value is not None:
+                            real = result.measured_value
+                    if real is not None:
                         meta_v = income_meta[month - 1]
-                        if real is not None and meta_v is not None:
+                        if meta_v is not None:
                             achieved = real >= meta_v
-                        elif real is not None:
+                        else:
                             achieved = False
                 else:
                     result = result_map.get((une.id, month))
@@ -1917,8 +1960,12 @@ def _get_ingresos_rows(periods=None):
         investment_codes = {"INVESTMENT", "INVESTMENTS", "INVERSIONES"}
         
         if target.une.code in investment_codes:
-            if (target.year, target.month, target.une_id) in investment_real_map:
-                real = investment_real_map[(target.year, target.month, target.une_id)]
+            inv_key = (target.year, target.month, target.une_id)
+            if inv_key in investment_real_map:
+                real = investment_real_map[inv_key]
+            elif real is not None:
+                # Sin Δ calculable (p. ej. mes anterior sin saldos); conservar PGC guardado.
+                pass
             else:
                 real = None
 
@@ -2008,6 +2055,21 @@ def _get_ingresos_rows(periods=None):
         ):
             source_gtq = result.source_value
 
+        meta_gtq = None
+        if target and getattr(target, "presupuesto_gtq", None):
+            meta_gtq = target.presupuesto_gtq
+        elif (
+            meta is not None
+            and result
+            and getattr(result, "exchange_rate_used", None)
+        ):
+            try:
+                meta_gtq = Decimal(str(meta)) * Decimal("1000") * Decimal(
+                    str(result.exchange_rate_used)
+                )
+            except Exception:
+                meta_gtq = None
+
         rows.append({
             "target": target,
             "result": result,
@@ -2021,6 +2083,7 @@ def _get_ingresos_rows(periods=None):
             "observacion_base": display_base,
             "tc_label": tc_label,
             "source_gtq": source_gtq,
+            "meta_gtq": meta_gtq,
             "is_insurance": target.une.code == "INSURANCE",  # Flag para el template
         })
 
@@ -2128,6 +2191,7 @@ def ingresos_report(request):
         "annual_tables": annual_tables,
         "view_lista": INGRESOS_VIEW_LIST,
         "view_anual": INGRESOS_VIEW_ANUAL,
+        "insurance_reqs_grace_note": INSURANCE_REQS_GRACE_NOTE,
     }
 
     return render(request, "pgc/ingresos.html", context)
