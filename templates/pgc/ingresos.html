@@ -174,7 +174,10 @@
   <p class="muted">
     Meta y resultado mensual de ingresos por UNE y periodo.
   </p>
-  <p class="currency-hint">Montos oficiales en miles de US$.</p>
+  <p class="currency-hint">
+    Montos oficiales en miles de US$ (política PGC). Use «Moneda» para ver quetzales de referencia
+    (comisiones Objetivos) al validar contra la hoja del autor.
+  </p>
 
   <form method="get" class="filters" id="ingresos-filter-form">
       <div>
@@ -251,6 +254,13 @@
       <select name="view" id="view" form="ingresos-filter-form">
         <option value="{{ view_lista }}" {% if report_settings.view == view_lista %}selected{% endif %}>Lista (detalle)</option>
         <option value="{{ view_anual }}" {% if report_settings.view == view_anual %}selected{% endif %}>Anual por UNE</option>
+      </select>
+    </div>
+    <div>
+      <label for="moneda">Moneda</label><br>
+      <select name="moneda" id="moneda" form="ingresos-filter-form">
+        <option value="{{ report_settings.currency_usd }}" {% if report_settings.currency == report_settings.currency_usd %}selected{% endif %}>USD (miles, default)</option>
+        <option value="{{ report_settings.currency_gtq }}" {% if report_settings.currency == report_settings.currency_gtq %}selected{% endif %}>GTQ (Objetivos)</option>
       </select>
     </div>
     <div class="setting-check">
@@ -337,12 +347,18 @@
       <tr>
         <th style="text-align:left;">UNE</th>
         <th class="col-periodo">Periodo</th>
+        {% if report_settings.currency == report_settings.currency_gtq %}
+        <th title="Presupuesto comisiones GTQ (Objetivos)">Meta GTQ</th>
+        <th title="Ejecución comisiones GTQ (Objetivos)">Ejec. GTQ</th>
+        <th title="Referencia miles USD">Ref. USD</th>
+        {% else %}
         <th title="Meta en USD">Meta USD</th>
         <th title="Ejecutado en USD (oficial)">Ejec.USD</th>
         {% if not report_settings.show_detail_cols %}
-        <th title="Referencia en quetzales (solo si hay captura GTQ)">GTQ</th>
+        <th title="Referencia en quetzales (captura Objetivos)">GTQ</th>
         {% endif %}
         <th title="Diferencia en USD">Dif. USD</th>
+        {% endif %}
         <th>Cumple</th>
         {% if report_settings.show_detail_cols %}
         <th class="ingresos-col-full">Método de cálculo</th>
@@ -360,6 +376,19 @@
                 <tr>
                     <td style="text-align:left;">{{ row.target.une.name_es|default:row.target.une.name_es }}</td>
                     <td class="col-periodo">{{ row.target.year }}-{{ row.target.month|stringformat:"02d" }}</td>
+                    {% if report_settings.currency == report_settings.currency_gtq %}
+                    <td class="usd-official">
+                        {% if row.meta_gtq is not None %}Q{{ row.meta_gtq|wcg_num:0 }}{% else %}-{% endif %}
+                    </td>
+                    <td class="usd-official">
+                        {% if row.source_gtq is not None %}Q{{ row.source_gtq|wcg_num:decimals }}{% else %}-{% endif %}
+                    </td>
+                    <td class="usd-official muted" style="font-size:0.82rem;">
+                        {% if row.meta is not None %}${{ row.meta|wcg_num:decimals }}{% else %}-{% endif %}
+                        /
+                        {% if row.real is not None %}{{ row.real|wcg_num:decimals }}{% else %}-{% endif %}
+                    </td>
+                    {% else %}
                     <td class="usd-official">
                         {% if row.meta is not None %}
                             ${{ row.meta|wcg_num:decimals }}
@@ -371,7 +400,7 @@
                         {% if row.real is not None %}
                             ${{ row.real|wcg_num:decimals }}
                             {% if report_settings.show_detail_cols and row.source_gtq is not None %}
-                            <span class="gtq-ref" title="Captura manual en GTQ (referencia; el score usa USD)">
+                            <span class="gtq-ref" title="Comisiones GTQ (Objetivos)">
                               ref Q{{ row.source_gtq|wcg_num:decimals }}
                             </span>
                             {% endif %}
@@ -383,6 +412,8 @@
                     <td class="usd-official">
                         {% if row.source_gtq is not None %}
                           Q{{ row.source_gtq|wcg_num:decimals }}
+                        {% elif row.meta_gtq is not None %}
+                          Q{{ row.meta_gtq|wcg_num:0 }}
                         {% endif %}
                     </td>
                     {% endif %}
@@ -393,6 +424,7 @@
                             -
                         {% endif %}
                     </td>
+                    {% endif %}
                     <td>
                         {% if row.cumple %}
                             <span class="ok">Sí</span>
@@ -459,7 +491,7 @@ document.addEventListener("DOMContentLoaded", function () {
         syncSortFields();
     }
 
-    ["month_count", "start_year", "start_month", "decimals", "view", "show_detail_cols"].forEach(function (id) {
+    ["month_count", "start_year", "start_month", "decimals", "view", "moneda", "show_detail_cols"].forEach(function (id) {
         const el = document.getElementById(id);
         if (!el) return;
         if (el.tagName === "SELECT" || el.type === "checkbox") {

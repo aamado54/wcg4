@@ -53,6 +53,7 @@ def _read_objetivos_rows(path: Path, year: int, month: int) -> list[dict]:
                 "uen": uen_code,
                 "pres_cli": row[1] if len(row) > 1 else None,
                 "pres_com_gtq": row[3] if len(row) > 3 else None,
+                "pres_cli": row[1] if len(row) > 1 else None,
                 "exec_cli": exec_cli,
                 "exec_com_gtq": exec_com,
             }
@@ -74,7 +75,10 @@ class Command(BaseCommand):
         parser.add_argument(
             "--sync-targets",
             action="store_true",
-            help="Actualizar metas mensuales (presupuesto) desde columnas B y D del Excel.",
+            help=(
+                "OBSOLETO — no usar. Las metas oficiales vienen de PGC-metas-YYYY.tsv "
+                "(comando import_pgc_metas). El Excel Objetivos es solo para ejecución."
+            ),
         )
 
     @transaction.atomic
@@ -106,28 +110,14 @@ class Command(BaseCommand):
             raise CommandError(f"Sin filas Objetivos para {year}-{month:02d}")
 
         sync_targets = options.get("sync_targets")
+        if sync_targets:
+            raise CommandError(
+                "La opción --sync-targets está deshabilitada. "
+                "Use import_pgc_metas con el TSV oficial (PGC-metas-2026.tsv)."
+            )
 
         for rec in records:
             une = UNE.objects.get(code=UEN_TO_UNE[rec["uen"]])
-
-            if sync_targets:
-                if rec.get("pres_cli") is not None:
-                    tgt_cli = MonthlyTarget.objects.filter(
-                        plan=plan, une=une, metric=metric_cli, year=year, month=month
-                    ).first()
-                    if tgt_cli:
-                        tgt_cli.target_value = Decimal(str(rec["pres_cli"]))
-                        tgt_cli.save(update_fields=["target_value", "updated_at"])
-                if rec.get("pres_com_gtq") is not None and une.code != "INVESTMENT":
-                    tgt_ing = MonthlyTarget.objects.filter(
-                        plan=plan, une=une, metric=metric_ing, year=year, month=month
-                    ).first()
-                    if tgt_ing:
-                        pres_usd = _gtq_comisiones_to_usd_miles(
-                            Decimal(str(rec["pres_com_gtq"])), fx
-                        )
-                        tgt_ing.target_value = pres_usd
-                        tgt_ing.save(update_fields=["target_value", "updated_at"])
 
             if rec["exec_cli"] is not None:
                 tgt_cli = MonthlyTarget.objects.filter(
@@ -185,6 +175,14 @@ class Command(BaseCommand):
                 )
                 apply_result_achievement(mmr_ing, tgt_ing)
                 mmr_ing.save()
+
+            if rec.get("pres_com_gtq") is not None:
+                tgt_ing = MonthlyTarget.objects.filter(
+                    plan=plan, une=une, metric=metric_ing, year=year, month=month
+                ).first()
+                if tgt_ing:
+                    tgt_ing.presupuesto_gtq = Decimal(str(rec["pres_com_gtq"]))
+                    tgt_ing.save(update_fields=["presupuesto_gtq", "updated_at"])
 
             self.stdout.write(
                 self.style.SUCCESS(

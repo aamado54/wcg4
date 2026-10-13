@@ -137,6 +137,13 @@ class MonthlyTarget(TimeStampedModel):
         blank=True,
         help_text="Solo referencia; no asigna puntos por sí misma.",
     )
+    presupuesto_gtq = models.DecimalField(
+        max_digits=20,
+        decimal_places=4,
+        null=True,
+        blank=True,
+        help_text="Presupuesto comisiones GTQ (hoja Objetivos); puntos ingresos modo2.",
+    )
     notes = models.TextField(blank=True)
 
     class Meta:

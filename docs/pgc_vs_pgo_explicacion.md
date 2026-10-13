@@ -70,7 +70,8 @@ Si no hay soporte suficiente, se indica explícitamente.
 
 ### Qué falta confirmar
 
-- Detalle fino de todas las reglas `modo2` por métrica (el código las tiene; este documento no reescribe cada fórmula).
+- Detalle fino de todas las reglas `modo2` por métrica en **código actual** (`recalc_pgc.apply_modo2`, proporción en USD + reservas).
+- **Procedimiento objetivo** para cuadrar el Tablero con la hoja del autor: ver `pgc-puntos-proporcion-objetivos.md` (previsto sustituir la lógica de puntos en 2.Proporción, no el ejecutado en miles USD).
 - Si en producción siempre se recalcula tras cada carga (depende del uso del botón “Recalcular pendientes” / admin).
 
 ---

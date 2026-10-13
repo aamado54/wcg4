@@ -20,6 +20,7 @@ Manuales obsoletos eliminados de esta carpeta:
 |---------|-----------|
 | Documento-1 a Documento-5 | Especificaciones y memoria WCG One |
 | `pgc_vs_pgo_explicacion.md` | Diferencias PGC vs PGO |
+| `pgc-puntos-proporcion-objetivos.md` | Tablero 2.Proporción vs hoja Objetivos (fórmulas; excepción GTQ en puntos) |
 | `deploy_railway_demo.md` | Despliegue Railway |
 | `reglas-pgo.md` | Reglas de cálculo PGO |
 | Otros `*.md` | Notas técnicas y hallazgos |

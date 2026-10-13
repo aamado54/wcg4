@@ -4,6 +4,12 @@ from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
 from core.models import MetricDefinition, UNE
+from pgc.objetivos_scoring import (
+    INSURANCE_REQS_GRACE_NOTE,
+    ingresos_points_objetivos,
+    insurance_reqs_uses_grace_points,
+    proportional_points,
+)
 from pgc.models import (
     PGCPlan,
     MonthlyTarget,
@@ -134,7 +140,16 @@ class Command(BaseCommand):
                 if mode == "modo1":
                     self.apply_modo1(score, metric, target)
                 else:
-                    self.apply_modo2(plan, year, month, une, score, metric, target)
+                    self.apply_modo2(
+                        plan,
+                        year,
+                        month,
+                        une,
+                        score,
+                        metric,
+                        target,
+                        source_result=source_result,
+                    )
 
                 if metric.code == MetricDefinition.CODE_RESPUESTA_REQS:
                     self.apply_manual_requirements_override(
@@ -225,88 +240,55 @@ class Command(BaseCommand):
             metric_score.points_awarded = 0
             metric_score.calculation_note = "Modo1 sin valor medido para este mes."
 
-    def apply_modo2(self, plan, year, month, une, metric_score, metric, target):
+    def apply_modo2(
+        self,
+        plan,
+        year,
+        month,
+        une,
+        metric_score,
+        metric,
+        target,
+        source_result=None,
+    ):
+        """
+        2.Proporción alineado a hoja Objetivos (sin reservas de puntos).
+        """
         if metric.code == MetricDefinition.CODE_RESPUESTA_REQS:
             self.apply_modo1(metric_score, metric, target)
             metric_score.calculation_note = (
-                f"Modo2 requerimientos se calculan igual que modo1. "
-                f"{metric_score.calculation_note}"
+                f"Modo2 requerimientos (binario). {metric_score.calculation_note}"
             )
+            return
+
+        if metric.code == MetricDefinition.CODE_INGRESOS:
+            pts, achieved, note = ingresos_points_objetivos(
+                target,
+                source_result,
+                une_code=une.code,
+            )
+            metric_score.points_awarded = pts
+            metric_score.is_achieved = achieved
+            metric_score.calculation_note = note
             return
 
         if metric.code not in self.SCORABLE_MODE2_CODES:
             self.apply_modo1(metric_score, metric, target)
             metric_score.calculation_note = (
-                f"Modo2 métrica no configurada para proporcionalidad. "
-                f"{metric_score.calculation_note}"
+                f"Modo2 sin regla Objetivos; modo1. {metric_score.calculation_note}"
             )
             return
 
-        measured = metric_score.measured_value or Decimal("0")
-        target_value = metric_score.target_value or Decimal("0")
-        full_points = Decimal(str(target.points_if_achieved or 0))
-
-        if target_value <= Decimal("0"):
-            metric_score.is_achieved = False
-            metric_score.points_awarded = Decimal("0")
-            metric_score.calculation_note = "Modo2 meta vacía o igual a cero."
-            return
-
-        reserve_points_available = self.get_available_reserve(
-            plan, une, metric, year, month
+        measured = metric_score.measured_value
+        target_value = metric_score.target_value
+        pts, achieved, note = proportional_points(
+            target.points_if_achieved,
+            measured,
+            target_value,
         )
-
-        raw_points = (
-            full_points * (measured / target_value)
-        ).quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP)
-
-        available_points = raw_points + reserve_points_available
-        points_awarded = min(full_points, available_points).quantize(
-            Decimal("0.0001"), rounding=ROUND_HALF_UP
-        )
-
-        reserve_points_to_use = min(
-            reserve_points_available,
-            max(Decimal("0"), points_awarded - raw_points)
-        ).quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP)
-
-        if reserve_points_to_use > 0:
-            self.consume_reserve(
-                plan, une, metric, year, month, reserve_points_to_use
-            )
-
-        extra_points_current_month = max(
-            Decimal("0"), raw_points - full_points
-        ).quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP)
-
-        if extra_points_current_month > 0:
-            MetricReserve.objects.create(
-                plan=plan,
-                une=une,
-                metric=metric,
-                source_year=year,
-                source_month=month,
-                amount=extra_points_current_month,
-                remaining=extra_points_current_month,
-            )
-
-        metric_score.is_achieved = points_awarded >= full_points
-        metric_score.points_awarded = points_awarded
-
-        reserve_points_remaining = (
-            reserve_points_available - reserve_points_to_use + extra_points_current_month
-        ).quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP)
-
-        metric_score.calculation_note = (
-            f"Modo2 medido={measured}, "
-            f"meta={target_value}, "
-            f"puntos_teoricos={raw_points}, "
-            f"reserva_puntos_disponible={reserve_points_available}, "
-            f"reserva_puntos_usada={reserve_points_to_use}, "
-            f"puntos_otorgados={points_awarded}, "
-            f"excedente_puntos_generado={extra_points_current_month}, "
-            f"reserva_puntos_final={reserve_points_remaining}."
-        )
+        metric_score.points_awarded = pts
+        metric_score.is_achieved = achieved
+        metric_score.calculation_note = note
 
     def apply_manual_requirements_override(
         self, plan, une, year, month, metric_score, source_result=None, target=None
@@ -339,9 +321,10 @@ class Command(BaseCommand):
             metric_score.target_value = target_value if target_value is not None else Decimal("1")
             metric_score.is_achieved = True
             metric_score.points_awarded = points_if
-            metric_score.calculation_note = (
-                "Cumplimiento manual: Cumple. Puntos otorgados según meta."
-            )
+            note = "Cumplimiento manual: Cumple. Puntos otorgados según meta."
+            if insurance_reqs_uses_grace_points(une.code, points_if):
+                note += f" {INSURANCE_REQS_GRACE_NOTE}"
+            metric_score.calculation_note = note
         else:
             metric_score.measured_value = Decimal("0")
             metric_score.target_value = target_value if target_value is not None else Decimal("1")
