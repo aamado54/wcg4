@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
@@ -126,14 +127,37 @@ def _sync_monthly_target_points(
 
 class Command(BaseCommand):
     help = (
-        "Carga ejecución y metas Tablero (proporción) desde la hoja Objetivos: "
-        "clientes/comisiones GTQ, presupuestos VC, P_ing…P_req y cumplimiento reqs."
+        "Carga ejecución Tablero (proporción) desde la hoja Objetivos: "
+        "clientes y puntos P_ing/P_cli. Comisiones (ingresos) preferir import_ingresos. "
+        "VC y reqs no se cargan desde Excel salvo --sync-vc / --sync-reqs."
     )
 
     def add_arguments(self, parser):
         parser.add_argument("--path", type=str, required=True, help="Ruta al .xlsx")
         parser.add_argument("--year", type=int, required=True)
         parser.add_argument("--month", type=int, required=True)
+        parser.add_argument(
+            "--skip-venta-cruzada",
+            action=argparse.BooleanOptionalAction,
+            default=True,
+            help="No escribir VC desde Excel (default). Equivalente a omitir --sync-vc.",
+        )
+        parser.add_argument(
+            "--skip-requisitos",
+            action=argparse.BooleanOptionalAction,
+            default=True,
+            help="No escribir cumplimiento reqs desde Excel (default). Use --sync-reqs.",
+        )
+        parser.add_argument(
+            "--sync-vc",
+            action="store_true",
+            help="Importar venta cruzada (ejecución/meta puntos VC) desde Objetivos.",
+        )
+        parser.add_argument(
+            "--sync-reqs",
+            action="store_true",
+            help="Importar ManualRequirementsCompliance desde Objetivos.",
+        )
         parser.add_argument(
             "--sync-targets",
             action="store_true",
@@ -179,6 +203,9 @@ class Command(BaseCommand):
                 "Use import_pgc_metas con el TSV oficial (PGC-metas-2026.tsv)."
             )
 
+        sync_vc = options["sync_vc"] or not options["skip_venta_cruzada"]
+        sync_reqs = options["sync_reqs"] or not options["skip_requisitos"]
+
         for rec in records:
             une = UNE.objects.get(code=UEN_TO_UNE[rec["uen"]])
 
@@ -197,8 +224,10 @@ class Command(BaseCommand):
 
             _sync_monthly_target_points(tgt_ing, rec["pts_ing"])
             _sync_monthly_target_points(tgt_cli, rec["pts_cli"])
-            _sync_monthly_target_points(tgt_vc, rec["pts_vc"])
-            _sync_monthly_target_points(tgt_req, rec["pts_req"], skip_zero=True)
+            if sync_vc:
+                _sync_monthly_target_points(tgt_vc, rec["pts_vc"])
+            if sync_reqs:
+                _sync_monthly_target_points(tgt_req, rec["pts_req"], skip_zero=True)
 
             pres_cli = _cell_decimal(rec["pres_cli"])
             if pres_cli is not None and tgt_cli:
@@ -206,11 +235,12 @@ class Command(BaseCommand):
                     tgt_cli.target_value = pres_cli
                     tgt_cli.save(update_fields=["target_value", "updated_at"])
 
-            pres_vc = _cell_decimal(rec["pres_vc"])
-            if pres_vc is not None and tgt_vc:
-                if pres_vc > 0 and tgt_vc.target_value != pres_vc:
-                    tgt_vc.target_value = pres_vc
-                    tgt_vc.save(update_fields=["target_value", "updated_at"])
+            if sync_vc:
+                pres_vc = _cell_decimal(rec["pres_vc"])
+                if pres_vc is not None and tgt_vc:
+                    if pres_vc > 0 and tgt_vc.target_value != pres_vc:
+                        tgt_vc.target_value = pres_vc
+                        tgt_vc.save(update_fields=["target_value", "updated_at"])
 
             if rec["exec_cli"] is not None:
                 if not tgt_cli:
@@ -267,26 +297,27 @@ class Command(BaseCommand):
                 tgt_ing.presupuesto_gtq = Decimal(str(rec["pres_com_gtq"]))
                 tgt_ing.save(update_fields=["presupuesto_gtq", "updated_at"])
 
-            exec_vc = _cell_decimal(rec["exec_vc"])
-            if exec_vc is not None and tgt_vc:
-                mmr_vc, _ = MonthlyMetricResult.objects.get_or_create(
-                    plan=plan,
-                    une=une,
-                    metric=metric_vc,
-                    year=year,
-                    month=month,
-                    defaults={"target_value": tgt_vc.target_value},
-                )
-                mmr_vc.target_value = tgt_vc.target_value
-                mmr_vc.measured_value = exec_vc
-                mmr_vc.calculation_note = (
-                    f"Importado desde {path.name} Objetivos (referidos VC ejecución)."
-                )
-                apply_result_achievement(mmr_vc, tgt_vc)
-                mmr_vc.save()
+            if sync_vc:
+                exec_vc = _cell_decimal(rec["exec_vc"])
+                if exec_vc is not None and tgt_vc:
+                    mmr_vc, _ = MonthlyMetricResult.objects.get_or_create(
+                        plan=plan,
+                        une=une,
+                        metric=metric_vc,
+                        year=year,
+                        month=month,
+                        defaults={"target_value": tgt_vc.target_value},
+                    )
+                    mmr_vc.target_value = tgt_vc.target_value
+                    mmr_vc.measured_value = exec_vc
+                    mmr_vc.calculation_note = (
+                        f"Importado desde {path.name} Objetivos (referidos VC ejecución)."
+                    )
+                    apply_result_achievement(mmr_vc, tgt_vc)
+                    mmr_vc.save()
 
             pts_req_exec = _cell_decimal(rec["pts_exec_req"])
-            if tgt_req and pts_req_exec is not None:
+            if sync_reqs and tgt_req and pts_req_exec is not None:
                 if une.code == UNE.CODE_INSURANCE:
                     # Hoja: NO APLICA / 0 pts ejecución → no cumple (cuadra modo2 con Excel).
                     compliant = pts_req_exec > 0

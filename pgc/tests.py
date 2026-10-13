@@ -1,4 +1,5 @@
-from datetime import date, timedelta
+import tempfile
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
 
@@ -634,6 +635,113 @@ class ImportPgcObjetivosTests(TestCase):
         )
         self.assertEqual(cli.measured_value, Decimal("1"))
 
+    def _write_min_objetivos_xlsx(self, path: Path, cells: dict | None = None):
+        import openpyxl
+
+        from pgc.management.commands.import_pgc_objetivos import (
+            COL_EXEC_VC,
+            COL_PTS_EXEC_REQ,
+        )
+
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Objetivos"
+        row = [None] * (COL_PTS_EXEC_REQ + 2)
+        row[0] = datetime(self.year, self.month, 10)
+        row[5] = "WC"
+        for col, val in (cells or {}).items():
+            row[col] = val
+        ws.append(["header"])
+        ws.append(row)
+        wb.save(path)
+
+    def test_import_skips_vc_and_reqs_by_default(self):
+        from pgc.management.commands import import_pgc_objetivos as ipo_mod
+
+        with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp:
+            path = Path(tmp.name)
+        self.addCleanup(path.unlink, missing_ok=True)
+        self._write_min_objetivos_xlsx(
+            path,
+            {
+                ipo_mod.COL_EXEC_VC: 12,
+                ipo_mod.COL_PTS_EXEC_REQ: 5,
+            },
+        )
+
+        call_command(
+            "import_pgc_objetivos",
+            path=str(path),
+            year=self.year,
+            month=self.month,
+        )
+
+        factoring = UNE.objects.get(code="FACTORING")
+        metric_vc = MetricDefinition.objects.get(
+            code=MetricDefinition.CODE_VENTA_CRUZADA
+        )
+        self.assertFalse(
+            MonthlyMetricResult.objects.filter(
+                plan=self.plan,
+                une=factoring,
+                metric=metric_vc,
+                year=self.year,
+                month=self.month,
+                calculation_note__icontains="Objetivos (referidos VC",
+            ).exists()
+        )
+        self.assertFalse(
+            ManualRequirementsCompliance.objects.filter(
+                plan=self.plan,
+                une=factoring,
+                year=self.year,
+                month=self.month,
+            ).exists()
+        )
+
+    def test_import_sync_vc_and_sync_reqs(self):
+        with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp:
+            path = Path(tmp.name)
+        self.addCleanup(path.unlink, missing_ok=True)
+        from pgc.management.commands import import_pgc_objetivos as ipo_mod
+
+        self._write_min_objetivos_xlsx(
+            path,
+            {
+                ipo_mod.COL_EXEC_VC: 4,
+                ipo_mod.COL_PTS_EXEC_REQ: 5,
+            },
+        )
+
+        call_command(
+            "import_pgc_objetivos",
+            path=str(path),
+            year=self.year,
+            month=self.month,
+            sync_vc=True,
+            sync_reqs=True,
+        )
+
+        factoring = UNE.objects.get(code="FACTORING")
+        metric_vc = MetricDefinition.objects.get(
+            code=MetricDefinition.CODE_VENTA_CRUZADA
+        )
+        vc = MonthlyMetricResult.objects.get(
+            plan=self.plan,
+            une=factoring,
+            metric=metric_vc,
+            year=self.year,
+            month=self.month,
+        )
+        self.assertEqual(vc.measured_value, Decimal("4"))
+        mrc = ManualRequirementsCompliance.objects.get(
+            plan=self.plan,
+            une=factoring,
+            year=self.year,
+            month=self.month,
+        )
+        self.assertTrue(mrc.is_compliant)
+
 
 class ObjetivosScoringTests(TestCase):
     def test_factoraje_ago_ingresos_gtq_proportion(self):
@@ -865,3 +973,22 @@ class OpsFlagsTests(TestCase):
 
         flags = collect_ops_flags(self.year, self.month, plan=self.plan)
         self.assertIn("modo2_stale_objetivos", self._warn_codes(flags))
+
+    def test_vc_without_cross_sale_import_flag(self):
+        from pgc.ops_flags import collect_ops_flags
+
+        metric_vc, _ = MetricDefinition.objects.get_or_create(
+            code=MetricDefinition.CODE_VENTA_CRUZADA,
+            defaults={"name": "VC", "is_scored": True},
+        )
+        MonthlyMetricResult.objects.create(
+            plan=self.plan,
+            une=self.une,
+            metric=metric_vc,
+            year=self.year,
+            month=self.month,
+            measured_value=Decimal("3"),
+            target_value=Decimal("1"),
+        )
+        flags = collect_ops_flags(self.year, self.month, plan=self.plan)
+        self.assertIn("vc_without_operational_import", self._warn_codes(flags))

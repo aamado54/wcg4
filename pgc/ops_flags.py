@@ -10,8 +10,16 @@ from django.db.models import Max, Q
 from django.utils import timezone
 
 from core.models import MetricDefinition
+from imports.models import CrossSaleImportHeader
 from pgc.admin_utils import AdminPeriod
-from pgc.models import MonthlyMetricResult, MonthlyMetricScore, MonthlyTarget, PGCMode, PGCPlan
+from pgc.models import (
+    ManualRequirementsCompliance,
+    MonthlyMetricResult,
+    MonthlyMetricScore,
+    MonthlyTarget,
+    PGCMode,
+    PGCPlan,
+)
 
 OBJETIVOS_IMPORT_NOTE = Q(calculation_note__icontains="Importado desde") & Q(
     calculation_note__icontains="Objetivos"
@@ -55,6 +63,13 @@ def plan_for_year(year: int) -> PGCPlan | None:
 
 def _ingresos_metric_id() -> int | None:
     row = MetricDefinition.objects.filter(code=MetricDefinition.CODE_INGRESOS).first()
+    return row.id if row else None
+
+
+def _venta_cruzada_metric_id() -> int | None:
+    row = MetricDefinition.objects.filter(
+        code=MetricDefinition.CODE_VENTA_CRUZADA
+    ).first()
     return row.id if row else None
 
 
@@ -193,6 +208,68 @@ def collect_ops_flags(
                         month=month,
                     )
                 )
+
+    if plan:
+        vc_metric_id = _venta_cruzada_metric_id()
+        if vc_metric_id:
+            vc_positive = MonthlyMetricResult.objects.filter(
+                plan=plan,
+                metric_id=vc_metric_id,
+                year=year,
+                month=month,
+                measured_value__gt=0,
+            ).exists()
+            has_cross_sale = CrossSaleImportHeader.objects.filter(
+                year=year, month=month
+            ).exists()
+            if vc_positive and not has_cross_sale:
+                flags.append(
+                    OpsFlag(
+                        code="vc_without_operational_import",
+                        level="warn",
+                        title="Venta cruzada sin carga operativa",
+                        message=(
+                            "Hay ejecución VENTA_CRUZADA > 0 pero no existe "
+                            "CrossSaleImportHeader para este mes (política: VC=0 "
+                            "sin ventas cruzadas reales)."
+                        ),
+                        fix=(
+                            "Revise MonthlyMetricResult de VC o ejecute "
+                            "`clear_operational_fiction_from_objetivos` si son "
+                            "datos heredados de Excel Objetivos. Cargas reales: "
+                            "tablero mensual / import_venta_cruzada."
+                        ),
+                        year=year,
+                        month=month,
+                    )
+                )
+
+        excel_reqs = ManualRequirementsCompliance.objects.filter(
+            plan=plan,
+            year=year,
+            month=month,
+            incident_note__icontains="Excel Objetivos",
+        )
+        if excel_reqs.exists():
+            flags.append(
+                OpsFlag(
+                    code="reqs_from_excel_objetivos",
+                    level="warn",
+                    title="Requerimientos sincronizados desde Excel",
+                    message=(
+                        "Existen registros ManualRequirementsCompliance con nota "
+                        "«Excel Objetivos»; los reqs no se reportan vía Objetivos."
+                    ),
+                    fix=(
+                        "Elimine esos MRC o use la matriz anual de requerimientos. "
+                        "Limpieza masiva: "
+                        "`python manage.py clear_operational_fiction_from_objetivos "
+                        f"--year {year} --months {month}`."
+                    ),
+                    year=year,
+                    month=month,
+                )
+            )
 
     if recalc_status and recalc_status.get("is_pending"):
         label = f"{year}-{month:02d}"
