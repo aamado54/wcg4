@@ -23,7 +23,7 @@ from imports.models import (
     NewClientImportRow,
     StationTimeImportHeader,
 )
-from imports.new_client_rules import aggregate_clientes_nuevos_counts
+from imports.new_client_rules import aggregate_clientes_nuevos_counts, normalize_nit
 from pgc.models import (
     AdminManualEditLog,
     ManualRequirementsCompliance,
@@ -252,15 +252,24 @@ def _block_financial(plan: PGCPlan | None, year: int, month: int) -> dict[str, A
 
 def _new_client_row_dedup_key(row: NewClientImportRow) -> tuple:
     # counts_as_new is derived; ignore it so Sí/No twins count as duplicates.
+    nit_key = normalize_nit(row.nit) or (row.nit or "").strip()
     return (
         row.une_id,
         (row.client_name or "").strip().casefold(),
-        (row.nit or "").strip(),
+        nit_key,
         (row.operation_code or "").strip(),
         row.previous_contracts,
         row.currency_id,
         str(row.amount) if row.amount is not None else "",
     )
+
+
+def _count_scored_new_clients(year: int, month: int) -> int:
+    """Clientes que puntúan en CLIENTES_NUEVOS (misma regla que el importador)."""
+    rows = NewClientImportRow.objects.filter(year=year, month=month).select_related(
+        "une", "header"
+    )
+    return sum(aggregate_clientes_nuevos_counts(rows).values())
 
 
 def count_duplicate_new_client_rows(year: int, month: int) -> int:
@@ -429,7 +438,7 @@ def _block_new_clients(plan: PGCPlan | None, year: int, month: int) -> dict[str,
     upload = _latest_upload_for_period(year, month, FileUpload.TYPE_NEW_CLIENTS)
     header = NewClientImportHeader.objects.filter(year=year, month=month).first()
     rows_qs = NewClientImportRow.objects.filter(year=year, month=month)
-    valid_rows = rows_qs.filter(counts_as_new=True).count()
+    valid_rows = _count_scored_new_clients(year, month)
     obs_rows = rows_qs.exclude(observations="").count()
     duplicate_rows = count_duplicate_new_client_rows(year, month)
     has_error = upload and upload.status == FileUpload.STATUS_PARSED_ERROR
@@ -654,7 +663,7 @@ def get_admin_period_snapshot(year: int, month: int) -> dict[str, Any]:
 
     uploads = FileUpload.objects.filter(detected_year=year, detected_month=month)
     valid_rows = (
-        NewClientImportRow.objects.filter(year=year, month=month, counts_as_new=True).count()
+        _count_scored_new_clients(year, month)
         + CrossSaleImportRow.objects.filter(year=year, month=month).count()
     )
     obs_rows = NewClientImportRow.objects.filter(year=year, month=month).exclude(observations="").count()

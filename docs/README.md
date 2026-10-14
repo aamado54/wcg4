@@ -23,6 +23,7 @@ Manuales obsoletos eliminados de esta carpeta:
 | `pgc-puntos-proporcion-objetivos.md` | Tablero 2.Proporción vs hoja Objetivos (fórmulas; excepción GTQ en puntos) |
 | `pgc-sin-excel-objetivos-validacion.md` | Política sin import Objetivos; mapa métrica → hub/comandos |
 | `pgc-cierre-mensual-operacion.md` | Checklist cierre mensual PGC, banderas ops_flags y validación CLI |
+| `pgc-clientes-nuevos-reglas-importacion.md` | Reglas permanentes CLIENTES_NUEVOS (NIT único, Investment, filtro intercompañía AP/PG) |
 | `deploy_railway_demo.md` | Despliegue Railway |
 | `reglas-pgo.md` | Reglas de cálculo PGO |
 | Otros `*.md` | Notas técnicas y hallazgos |

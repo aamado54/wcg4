@@ -38,7 +38,7 @@ La UI marca advertencias si el valor guardado en PGC no coincide con el recálcu
 
 ## Fuentes de datos
 
-- `InvestmentGrowthRow` — import `investment_growth`  
+- `InvestmentGrowthRow` — import `import_inversiones_crecimiento` (excluye AP/PG intercompañía WC; ver `pgc-clientes-nuevos-reglas-importacion.md`)  
 - `BankLoanMonthSnapshot` — import `bank_loans`  
 - Recálculo: `recalc_investment_ingresos_from_new_clients`
 

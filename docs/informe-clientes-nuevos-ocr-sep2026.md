@@ -24,6 +24,8 @@
 
 ## Reglas implementadas en código (`imports/new_client_rules.py`)
 
+Referencia permanente (sin OCR): `pgc-clientes-nuevos-reglas-importacion.md`.
+
 1. **Insurance:** ninguna fila suma a la métrica `CLIENTES_NUEVOS`.
 2. **Inversiones (clientes nuevos):** solo filas con `ContratosPrevios = 0` y categoría:
    - `INVESTMENT - WC LEASING`
