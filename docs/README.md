@@ -24,6 +24,8 @@ Manuales obsoletos eliminados de esta carpeta:
 | `pgc-sin-excel-objetivos-validacion.md` | Política sin import Objetivos; mapa métrica → hub/comandos |
 | `pgc-cierre-mensual-operacion.md` | Checklist cierre mensual PGC, banderas ops_flags y validación CLI |
 | `pgc-clientes-nuevos-reglas-importacion.md` | Reglas permanentes CLIENTES_NUEVOS (NIT único, Investment, filtro intercompañía AP/PG) |
+| **`pgc-SUPER-TAREA-regresion-importadores.md`** | **Super-tarea PAUSADA:** cierre PGC solo importadores, baseline `sep-save`, triple validación (retomar ~2 semanas) |
+| `informe-regresion-operativa-sep2026.md` | Informe corto regresión operativa sep-2026 |
 | `deploy_railway_demo.md` | Despliegue Railway |
 | `reglas-pgo.md` | Reglas de cálculo PGO |
 | Otros `*.md` | Notas técnicas y hallazgos |
