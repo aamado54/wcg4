@@ -75,7 +75,7 @@ class Command(BaseCommand):
             "--baseline-path",
             type=str,
             default="",
-            help="JSON baseline (default data/pgc_baselines/{tag}-YYYY-MM.json).",
+            help="JSON baseline (default pgc/fixtures/baselines/{tag}-YYYY-MM.json).",
         )
         parser.add_argument(
             "--skip-bancos",
