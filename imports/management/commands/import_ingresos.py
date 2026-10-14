@@ -9,6 +9,11 @@ from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
 from core.models import UNE, MetricDefinition
+from imports.ingresos_er_parse import (
+    is_pga_mensuales_workbook,
+    objetivos_style_ingresos_values,
+    read_pga_mensuales_comisiones_gtq,
+)
 from pgc.income_conversion import apply_result_achievement
 from pgc.models import PGCPlan, MonthlyTarget, MonthlyMetricResult, MonthlyExchangeRate
 
@@ -43,6 +48,12 @@ class Command(BaseCommand):
             type=str,
             default="",
             help="ER del mes anterior (opcional; se infiere por nombre si falta).",
+        )
+        parser.add_argument(
+            "--une-code",
+            type=str,
+            default="",
+            help="UNE explícita (FACTORING/LEASING/INSURANCE) para PGA Mensuales u otros xlsx sin prefijo WCF/WCL/WCI.",
         )
 
     def _infer_une_from_filename(self, path: Path) -> UNE:
@@ -301,7 +312,31 @@ class Command(BaseCommand):
         except MetricDefinition.DoesNotExist:
             raise CommandError("No existe MetricDefinition para CODE_INGRESOS")
 
-        une = self._infer_une_from_filename(path)
+        une_code_opt = (options.get("une_code") or "").strip().upper()
+        if is_pga_mensuales_workbook(path):
+            if not une_code_opt:
+                raise CommandError(
+                    "Archivo PGA Mensuales: indique --une-code "
+                    "(FACTORING, LEASING o INSURANCE)."
+                )
+            try:
+                une = UNE.objects.get(code=une_code_opt)
+            except UNE.DoesNotExist:
+                raise CommandError(f"UNE {une_code_opt} no existe.")
+            ingreso_mensual_gtq = read_pga_mensuales_comisiones_gtq(
+                path, une.code, month
+            )
+            method = "pga_mensuales_comisiones"
+        else:
+            une = (
+                UNE.objects.get(code=une_code_opt)
+                if une_code_opt
+                else self._infer_une_from_filename(path)
+            )
+            ingreso_mensual_gtq, method = self._read_ingreso_from_excel(
+                path, month, prev_path=prev_path
+            )
+
         if une.code == "INVESTMENT":
             raise CommandError(
                 "Este comando no debe usarse para INVESTMENT; "
@@ -310,17 +345,10 @@ class Command(BaseCommand):
 
         self.stdout.write(self.style.WARNING(f"Archivo detectado para UNE={une.code}"))
 
-        ingreso_mensual_gtq, method = self._read_ingreso_from_excel(
-            path, month, prev_path=prev_path
-        )
-
-        if une.code in ("FACTORING", "LEASING", "INSURANCE"):
-            ingreso_ajustado_gtq = ingreso_mensual_gtq / Decimal("1000")
-        else:
-            ingreso_ajustado_gtq = ingreso_mensual_gtq
-
         tipo_cambio = self._get_exchange_rate(year, month)
-        ingreso_usd_miles = ingreso_ajustado_gtq / tipo_cambio
+        source_value, ingreso_usd_miles = objetivos_style_ingresos_values(
+            ingreso_mensual_gtq, tipo_cambio
+        )
 
         try:
             target = MonthlyTarget.objects.get(
@@ -363,18 +391,18 @@ class Command(BaseCommand):
 
         mmr.target_value = target.target_value
         mmr.source_currency = MonthlyMetricResult.CURRENCY_GTQ
-        mmr.source_value = ingreso_mensual_gtq
+        mmr.source_value = source_value
         mmr.exchange_rate_used = tipo_cambio
         mmr.conversion_status = MonthlyMetricResult.CONVERSION_CONVERTED
         mmr.measured_value = ingreso_usd_miles
         apply_result_achievement(mmr, target)
 
         mmr.calculation_note = (
-            f"Ingreso importado desde {path.name}, hoja Datos ({method}). "
-            f"MensualGTQ(4+8)={ingreso_mensual_gtq}, "
-            f"AjustadoGTQ={ingreso_ajustado_gtq}, "
+            f"Ingreso importado desde {path.name} ({method}). "
+            f"ComisionesGTQ={ingreso_mensual_gtq}, "
+            f"source≈GTQ/FX={source_value}, "
             f"TipoCambioGTQxUSD={tipo_cambio}, "
-            f"USD miles={ingreso_usd_miles}, UNE={une.code}."
+            f"USD miles (tablero)={ingreso_usd_miles}, UNE={une.code}."
         )
         mmr.save()
 

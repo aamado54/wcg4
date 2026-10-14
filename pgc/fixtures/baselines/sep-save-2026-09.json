@@ -1,0 +1,322 @@
+{
+  "version": 1,
+  "tag": "sep-save",
+  "year": 2026,
+  "month": 9,
+  "mode": "modo2",
+  "plan_year": 2026,
+  "results": [
+    {
+      "une": "FACTORING",
+      "metric": "CLIENTES_NUEVOS",
+      "measured_value": "0.000000",
+      "source_value": null,
+      "source_currency": "",
+      "target_value": "1.00",
+      "is_achieved": false,
+      "points_awarded": 0
+    },
+    {
+      "une": "FACTORING",
+      "metric": "INGRESOS",
+      "measured_value": "26.016961",
+      "source_value": "198732.11442994",
+      "source_currency": "GTQ",
+      "target_value": "330.00",
+      "is_achieved": false,
+      "points_awarded": 0
+    },
+    {
+      "une": "FACTORING",
+      "metric": "RESPUESTA_REQS",
+      "measured_value": "1.000000",
+      "source_value": null,
+      "source_currency": "",
+      "target_value": "1.00",
+      "is_achieved": true,
+      "points_awarded": 5
+    },
+    {
+      "une": "FACTORING",
+      "metric": "VENTA_CRUZADA",
+      "measured_value": "0.000000",
+      "source_value": null,
+      "source_currency": "",
+      "target_value": "1.00",
+      "is_achieved": false,
+      "points_awarded": 0
+    },
+    {
+      "une": "LEASING",
+      "metric": "CLIENTES_NUEVOS",
+      "measured_value": "3.000000",
+      "source_value": null,
+      "source_currency": "",
+      "target_value": "1.00",
+      "is_achieved": true,
+      "points_awarded": 15
+    },
+    {
+      "une": "LEASING",
+      "metric": "INGRESOS",
+      "measured_value": "10.149659",
+      "source_value": "77528.78291196",
+      "source_currency": "GTQ",
+      "target_value": "108.00",
+      "is_achieved": false,
+      "points_awarded": 0
+    },
+    {
+      "une": "LEASING",
+      "metric": "RESPUESTA_REQS",
+      "measured_value": "1.000000",
+      "source_value": null,
+      "source_currency": "",
+      "target_value": "1.00",
+      "is_achieved": true,
+      "points_awarded": 5
+    },
+    {
+      "une": "LEASING",
+      "metric": "VENTA_CRUZADA",
+      "measured_value": "0.000000",
+      "source_value": null,
+      "source_currency": "",
+      "target_value": "1.00",
+      "is_achieved": false,
+      "points_awarded": 0
+    },
+    {
+      "une": "INSURANCE",
+      "metric": "CLIENTES_NUEVOS",
+      "measured_value": "0.000000",
+      "source_value": null,
+      "source_currency": "",
+      "target_value": "12.00",
+      "is_achieved": false,
+      "points_awarded": 0
+    },
+    {
+      "une": "INSURANCE",
+      "metric": "INGRESOS",
+      "measured_value": "0.414508",
+      "source_value": "3166.24206657",
+      "source_currency": "GTQ",
+      "target_value": "11.85",
+      "is_achieved": false,
+      "points_awarded": 0
+    },
+    {
+      "une": "INSURANCE",
+      "metric": "RESPUESTA_REQS",
+      "measured_value": null,
+      "source_value": null,
+      "source_currency": "",
+      "target_value": "1.00",
+      "is_achieved": false,
+      "points_awarded": 0
+    },
+    {
+      "une": "INSURANCE",
+      "metric": "VENTA_CRUZADA",
+      "measured_value": "0.000000",
+      "source_value": null,
+      "source_currency": "",
+      "target_value": "1.00",
+      "is_achieved": false,
+      "points_awarded": 0
+    },
+    {
+      "une": "INVESTMENT",
+      "metric": "CLIENTES_NUEVOS",
+      "measured_value": "3.000000",
+      "source_value": null,
+      "source_currency": "",
+      "target_value": "1.00",
+      "is_achieved": true,
+      "points_awarded": 15
+    },
+    {
+      "une": "INVESTMENT",
+      "metric": "INGRESOS",
+      "measured_value": "1545.694770",
+      "source_value": "1545.69477000",
+      "source_currency": "USD",
+      "target_value": "1.00",
+      "is_achieved": true,
+      "points_awarded": 70
+    },
+    {
+      "une": "INVESTMENT",
+      "metric": "RESPUESTA_REQS",
+      "measured_value": "1.000000",
+      "source_value": null,
+      "source_currency": "",
+      "target_value": "0.00",
+      "is_achieved": true,
+      "points_awarded": 5
+    },
+    {
+      "une": "INVESTMENT",
+      "metric": "VENTA_CRUZADA",
+      "measured_value": "0.000000",
+      "source_value": null,
+      "source_currency": "",
+      "target_value": "1.00",
+      "is_achieved": false,
+      "points_awarded": 0
+    }
+  ],
+  "metric_scores": [
+    {
+      "une": "FACTORING",
+      "metric": "CLIENTES_NUEVOS",
+      "measured_value": "0.0000",
+      "target_value": "1.0000",
+      "points_awarded": "0.0000",
+      "is_achieved": false
+    },
+    {
+      "une": "FACTORING",
+      "metric": "INGRESOS",
+      "measured_value": "26.0170",
+      "target_value": "330.0000",
+      "points_awarded": "42.1600",
+      "is_achieved": false
+    },
+    {
+      "une": "FACTORING",
+      "metric": "RESPUESTA_REQS",
+      "measured_value": "1.0000",
+      "target_value": "1.0000",
+      "points_awarded": "5.0000",
+      "is_achieved": true
+    },
+    {
+      "une": "FACTORING",
+      "metric": "VENTA_CRUZADA",
+      "measured_value": "0.0000",
+      "target_value": "1.0000",
+      "points_awarded": "0.0000",
+      "is_achieved": false
+    },
+    {
+      "une": "LEASING",
+      "metric": "CLIENTES_NUEVOS",
+      "measured_value": "3.0000",
+      "target_value": "1.0000",
+      "points_awarded": "15.0000",
+      "is_achieved": true
+    },
+    {
+      "une": "LEASING",
+      "metric": "INGRESOS",
+      "measured_value": "10.1497",
+      "target_value": "108.0000",
+      "points_awarded": "50.2500",
+      "is_achieved": false
+    },
+    {
+      "une": "LEASING",
+      "metric": "RESPUESTA_REQS",
+      "measured_value": "1.0000",
+      "target_value": "1.0000",
+      "points_awarded": "5.0000",
+      "is_achieved": true
+    },
+    {
+      "une": "LEASING",
+      "metric": "VENTA_CRUZADA",
+      "measured_value": "0.0000",
+      "target_value": "1.0000",
+      "points_awarded": "0.0000",
+      "is_achieved": false
+    },
+    {
+      "une": "INSURANCE",
+      "metric": "CLIENTES_NUEVOS",
+      "measured_value": "0.0000",
+      "target_value": "12.0000",
+      "points_awarded": "0.0000",
+      "is_achieved": false
+    },
+    {
+      "une": "INSURANCE",
+      "metric": "INGRESOS",
+      "measured_value": "0.4145",
+      "target_value": "11.8500",
+      "points_awarded": "24.8100",
+      "is_achieved": false
+    },
+    {
+      "une": "INSURANCE",
+      "metric": "RESPUESTA_REQS",
+      "measured_value": null,
+      "target_value": "1.0000",
+      "points_awarded": "0.0000",
+      "is_achieved": false
+    },
+    {
+      "une": "INSURANCE",
+      "metric": "VENTA_CRUZADA",
+      "measured_value": "0.0000",
+      "target_value": "1.0000",
+      "points_awarded": "0.0000",
+      "is_achieved": false
+    },
+    {
+      "une": "INVESTMENT",
+      "metric": "CLIENTES_NUEVOS",
+      "measured_value": "3.0000",
+      "target_value": "1.0000",
+      "points_awarded": "15.0000",
+      "is_achieved": true
+    },
+    {
+      "une": "INVESTMENT",
+      "metric": "INGRESOS",
+      "measured_value": "1545.6948",
+      "target_value": "1.0000",
+      "points_awarded": "70.0000",
+      "is_achieved": true
+    },
+    {
+      "une": "INVESTMENT",
+      "metric": "RESPUESTA_REQS",
+      "measured_value": "1.0000",
+      "target_value": "0.0000",
+      "points_awarded": "5.0000",
+      "is_achieved": true
+    },
+    {
+      "une": "INVESTMENT",
+      "metric": "VENTA_CRUZADA",
+      "measured_value": "0.0000",
+      "target_value": "1.0000",
+      "points_awarded": "0.0000",
+      "is_achieved": false
+    }
+  ],
+  "mode_scorecards": [
+    {
+      "une": "FACTORING",
+      "total_points": "47.1600",
+      "is_month_qualified": false
+    },
+    {
+      "une": "LEASING",
+      "total_points": "70.2500",
+      "is_month_qualified": false
+    },
+    {
+      "une": "INSURANCE",
+      "total_points": "24.8100",
+      "is_month_qualified": false
+    },
+    {
+      "une": "INVESTMENT",
+      "total_points": "90.0000",
+      "is_month_qualified": true
+    }
+  ]
+}
