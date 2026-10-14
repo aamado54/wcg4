@@ -8,9 +8,11 @@ from decimal import Decimal
 from django.core.management.base import BaseCommand, CommandError
 from django.core.management import call_command
 from django.db import transaction
+from django.db.models import Q
 from imports.client_rates import parse_rate, rate_basis_for, row_get
 from imports.currency_normalize import normalize_currency_code
 from imports.models import FileUpload, NewClientImportHeader, NewClientImportRow
+from imports.new_client_rules import aggregate_clientes_nuevos_counts
 from pathlib import Path
 from pgc.models import PGCPlan, MonthlyTarget, MonthlyMetricResult
 
@@ -108,8 +110,6 @@ class Command(BaseCommand):
         }
         unes_by_code = {u.code: u for u in UNE.objects.all()}
 
-        # clave: (year, month, une_id) -> conteo clientes nuevos
-        counts: dict[tuple[int, int, int], int] = {}
         rows_written = 0
         rows_skipped = 0
         months_touched: set[tuple[int, int]] = set()
@@ -250,9 +250,12 @@ class Command(BaseCommand):
                 )
                 rows_written += 1
 
-                if counts_as_new:
-                    key = (year, month, une.id)
-                    counts[key] = counts.get(key, 0) + 1
+        period_q = Q()
+        for y, m in months_touched:
+            period_q |= Q(year=y, month=m)
+        counts = aggregate_clientes_nuevos_counts(
+            NewClientImportRow.objects.filter(period_q).select_related("une", "header")
+        )
 
         if months_touched:
             months_label = ", ".join(

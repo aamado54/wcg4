@@ -4,7 +4,11 @@ from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
 from imports.investment_growth_parse import parse_inversiones_crecimiento_csv
-from imports.models import FileUpload, InvestmentGrowthRow
+from imports.models import FileUpload, InvestmentGrowthRow, NewClientImportRow
+from imports.new_client_rules import (
+    intercompany_investment_operation_codes,
+    is_intercompany_investment_growth_row,
+)
 
 
 class Command(BaseCommand):
@@ -32,6 +36,37 @@ class Command(BaseCommand):
         parsed = parse_inversiones_crecimiento_csv(path)
         if not parsed:
             raise CommandError("No se leyeron filas válidas del archivo.")
+
+        intercompany_ops = intercompany_investment_operation_codes(
+            NewClientImportRow.objects.all().only(
+                "raw_une_value",
+                "nit",
+                "client_name",
+                "operation_code",
+            )
+        )
+        skipped_intercompany = 0
+        external_rows = []
+        for row in parsed:
+            if is_intercompany_investment_growth_row(
+                row.company,
+                row.operation_code,
+                intercompany_ops=intercompany_ops,
+            ):
+                skipped_intercompany += 1
+                continue
+            external_rows.append(row)
+        parsed = external_rows
+        if not parsed:
+            raise CommandError(
+                "Tras excluir inversiones intercompañía del grupo WC no quedaron filas."
+            )
+        if skipped_intercompany:
+            self.stdout.write(
+                self.style.WARNING(
+                    f"Omitidas {skipped_intercompany} fila(s) AP/PG intercompañía WC."
+                )
+            )
 
         upload = None
         if options.get("file_upload_id"):

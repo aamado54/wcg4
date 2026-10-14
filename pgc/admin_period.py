@@ -23,6 +23,7 @@ from imports.models import (
     NewClientImportRow,
     StationTimeImportHeader,
 )
+from imports.new_client_rules import aggregate_clientes_nuevos_counts
 from pgc.models import (
     AdminManualEditLog,
     ManualRequirementsCompliance,
@@ -282,12 +283,13 @@ def _sync_clientes_nuevos_metrics_from_rows(year: int, month: int) -> int:
         return 0
 
     metric = MetricDefinition.objects.get(code=MetricDefinition.CODE_CLIENTES_NUEVOS)
-    counts = {
-        row["une_id"]: row["cnt"]
-        for row in NewClientImportRow.objects.filter(year=year, month=month, counts_as_new=True)
-        .values("une_id")
-        .annotate(cnt=Count("id"))
-    }
+    period_rows = NewClientImportRow.objects.filter(year=year, month=month).select_related(
+        "une", "header"
+    )
+    counts_by_period = aggregate_clientes_nuevos_counts(period_rows)
+    counts: dict[int, int] = {}
+    for (_y, _m, une_id), cnt in counts_by_period.items():
+        counts[une_id] = cnt
 
     updated = 0
     for une in UNE.objects.filter(is_active=True):

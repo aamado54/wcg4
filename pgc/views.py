@@ -1175,9 +1175,11 @@ def _get_clientes_nuevos_rows(periods=None):
         if row.une_id and row_year and row_month:
             detail_keys.add((row.une_id, row_year, row_month))
 
+    from imports.new_client_rules import aggregate_clientes_nuevos_counts
+
     investment_new_clients_map = {}
     investment_ingresos_map = {}
-    
+
     investment_une = (
         UNE.objects.filter(code__in=["INVESTMENT", "INVESTMENTS", "INVERSIONES"])
         .order_by("sort_order", "id")
@@ -1189,19 +1191,22 @@ def _get_clientes_nuevos_rows(periods=None):
         for item in MonthlyExchangeRate.objects.all()
     }
     
+    metric_counts = aggregate_clientes_nuevos_counts(
+        detail_rows.select_related("une", "header", "currency")
+    )
     if investment_une:
+        for (row_year, row_month, une_id), count in metric_counts.items():
+            if une_id == investment_une.id:
+                investment_new_clients_map[(une_id, row_year, row_month)] = count
+
         for row in detail_rows.select_related("currency", "header"):
             row_year = row.year or (row.header.year if row.header else None)
             row_month = row.month or (row.header.month if row.header else None)
-    
+
             if row.une_id != investment_une.id or not row_year or not row_month:
                 continue
-    
+
             key = (row.une_id, row_year, row_month)
-    
-            if row.counts_as_new:
-                investment_new_clients_map[key] = investment_new_clients_map.get(key, 0) + 1
-    
             investment_ingresos_map[key] = (
                 investment_ingresos_map.get(key, Decimal("0"))
                 + _convert_row_amount_to_usd(row, fx_map)
