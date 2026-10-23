@@ -175,7 +175,14 @@ def compute_concept_month(
             note="Mes sin cierre PGO (aún no medido)",
         )
 
+    from pgo.archivos_pgo_score import score_concept_month_from_archivos_pgo
     from pgo.archivos_score import score_concept_month_from_expedientes
+
+    pgo_cell = score_concept_month_from_archivos_pgo(
+        concept.id, year, month, une, max_pts
+    )
+    if pgo_cell is not None:
+        return pgo_cell
 
     archivos_cell = score_concept_month_from_expedientes(
         concept.id, year, month, une, max_pts

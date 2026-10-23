@@ -124,6 +124,32 @@ class PgoResultadoPeriodo(TimeStampedModel):
         return f"{self.periodo} — {self.unidad_negocio.code}"
 
 
+class PgoArchivoRegistro(TimeStampedModel):
+    """Fila de ArchivosPGO_YYYY-MM.csv (SharePoint / carpetas PGO)."""
+
+    carpeta = models.CharField(max_length=500)
+    archivo = models.CharField(max_length=500)
+    creado_por = models.CharField(max_length=200, blank=True)
+    creado_en = models.DateTimeField()
+    event_date = models.DateField(null=True, blank=True, db_index=True)
+    snapshot_key = models.CharField(max_length=40, db_index=True)
+    import_batch_id = models.PositiveIntegerField(db_index=True)
+
+    class Meta:
+        ordering = ["-creado_en"]
+        verbose_name = "Registro ArchivosPGO"
+        verbose_name_plural = "Registros ArchivosPGO"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["snapshot_key", "carpeta", "archivo", "creado_en"],
+                name="pgo_archivo_registro_uniq",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.archivo[:50]} ({self.event_date})"
+
+
 class PgoExpediente(TimeStampedModel):
     """
     Trabajo / expediente desde export «Archivos» (inicio → entrega).

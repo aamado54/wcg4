@@ -366,17 +366,60 @@ def import_archivos_catalogo(user, uploaded_file) -> DataImportBatch:
         prior.save(update_fields=["log_texto"])
         return prior
 
+    import re
+
+    from pgo.archivos_pgo_parse import parse_creado_en, parse_event_date_from_archivo
+    from pgo.models import PgoArchivoRegistro
+
     df = normalize_columns(read_dataframe(uploaded_file))
+    snap_m = re.search(r"(\d{4})[-_](\d{1,2})", uploaded_file.name or "")
+    snapshot_key = (
+        f"{snap_m.group(1)}-{int(snap_m.group(2)):02d}" if snap_m else content_hash[:16]
+    )
+
     batch = Batch.objects.create(
         modulo=Batch.MODULO_PGO,
         tipo_importacion="archivos_catalogo",
         archivo_nombre=uploaded_file.name,
         uploaded_by=user,
         filas_leidas=len(df),
-        status=Batch.STATUS_OK,
-        log_texto=(
-            f"{hash_tag}\n"
-            f"Catálogo leído ({len(df)} filas). Sin carga a tickets."
-        ),
+        status=Batch.STATUS_PENDING,
+        log_texto=hash_tag,
     )
+    PgoArchivoRegistro.objects.filter(snapshot_key=snapshot_key).delete()
+    creados = errores = 0
+    logs: list[str] = []
+    for idx, row in df.iterrows():
+        carpeta = pick(row, "carpeta", "folder") or ""
+        archivo = pick(row, "archivo", "file", "nombre") or ""
+        creado_por = pick(row, "creado_por", "creadopor", "autor") or ""
+        creado_raw = pick(row, "creado_en", "creadoen", "fecha")
+        creado_en = parse_creado_en(creado_raw)
+        if not archivo or not creado_en:
+            errores += 1
+            logs.append(f"Fila {idx + 2}: archivo o CreadoEn inválido")
+            continue
+        event_date = parse_event_date_from_archivo(archivo)
+        PgoArchivoRegistro.objects.create(
+            carpeta=carpeta[:500],
+            archivo=archivo[:500],
+            creado_por=creado_por[:200],
+            creado_en=creado_en,
+            event_date=event_date,
+            snapshot_key=snapshot_key,
+            import_batch_id=batch.pk,
+        )
+        creados += 1
+
+    batch.creados = creados
+    batch.errores = errores
+    batch.status = (
+        Batch.STATUS_OK if errores == 0 else Batch.STATUS_PARTIAL if creados else Batch.STATUS_ERROR
+    )
+    batch.log_texto = (
+        f"{hash_tag}\n"
+        f"ArchivosPGO snapshot {snapshot_key}: {creados} filas, {errores} errores.\n"
+        + "\n".join(logs)
+    )[:8000]
+    batch.save()
     return batch
