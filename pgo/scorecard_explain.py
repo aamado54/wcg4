@@ -218,7 +218,7 @@ def _doubts_for(concept_id: str) -> str:
             "• Sin importar Tickets-YYYY-MM.xlsx la BD puede estar vacía o desactualizada."
         ),
         "ti_backup_nas": (
-            "• Asumimos cumplido en mar/jun/sep/dic sin log de backup NAS."
+            "• Solo aplica en mar/jun/sep/dic; sin fuente NAS no se asignan puntos (celda en blanco)."
         ),
     }.get(concept_id, "")
 
@@ -271,8 +271,9 @@ def _explain_tickets(year: int, grid: ScoreGrid, unes: list[str]) -> str:
 
 def _explain_backup(year: int) -> str:
     return (
-        "Cómo se calcula (placeholder): puntos completos en marzo, junio, septiembre y diciembre; "
-        "0 en otros meses. No hay verificación de backup NAS en el sistema."
+        f"Cómo se calcula: en {year} solo los meses de trimestre (mar/jun/sep/dic) pueden puntuarse, "
+        "y únicamente cuando exista evidencia de backup NAS en el sistema. "
+        "Meses sin cierre PGO o sin evidencia quedan en blanco."
     )
 
 

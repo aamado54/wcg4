@@ -167,6 +167,14 @@ def compute_concept_month(
     if max_pts <= 0:
         return CellScore(points=None, max_points=0, confidence="none", note="N/A en plantilla")
 
+    if month not in months_processed_for_pgo(year):
+        return CellScore(
+            points=None,
+            max_points=max_pts,
+            confidence="none",
+            note="Mes sin cierre PGO (aún no medido)",
+        )
+
     period = f"{year}-{month:02d}"
     cid = concept.id
 
@@ -245,13 +253,18 @@ def compute_concept_month(
         )
 
     if cid == "ti_backup_nas":
-        ok = month in (3, 6, 9, 12)
-        return _full_or_zero(
-            ok,
-            max_pts,
-            "Trimestre natural: asumido cumplido sin evidencia NAS",
-            "Mes fuera de trimestre MAR/JUN/SEP/DIC",
-            "low",
+        if month not in (3, 6, 9, 12):
+            return CellScore(
+                points=None,
+                max_points=max_pts,
+                confidence="none",
+                note="Mes fuera de trimestre MAR/JUN/SEP/DIC",
+            )
+        return CellScore(
+            points=None,
+            max_points=max_pts,
+            confidence="none",
+            note="Sin evidencia de backup NAS en el trimestre",
         )
 
     return CellScore(
