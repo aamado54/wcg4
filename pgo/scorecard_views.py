@@ -176,6 +176,8 @@ def tablero_puntos(request):
     else:
         display_rows.sort(key=lambda r: (r["table_id"], r["concept_key"], r["une"]))
 
+    _blank_repeated_detail_labels(display_rows)
+
     table_chunks = chunk_rows(display_rows, 10)
 
     footnote_registry = FootnoteRegistry()
@@ -212,6 +214,19 @@ def tablero_puntos(request):
             ],
         },
     )
+
+
+def _blank_repeated_detail_labels(rows: list[dict]) -> None:
+    """Detalle filtrado: no repetir Concepto/UNE en filas consecutivas iguales."""
+    prev_concept_key: str | None = None
+    prev_une: str | None = None
+    for row in rows:
+        ck = row["concept_key"]
+        une = row["une"]
+        row["show_concept"] = ck != prev_concept_key
+        row["show_une"] = une != prev_une
+        prev_concept_key = ck
+        prev_une = une
 
 
 def _build_table_matrix(

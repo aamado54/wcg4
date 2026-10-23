@@ -152,8 +152,8 @@
       <tbody>
         {% for row in chunk %}
         <tr>
-          <td class="small">{% include "pgo/_pgo_concept_label.html" with label=row.label label_short=row.label_short %}</td>
-          <td class="small">{{ row.une_label }}</td>
+          <td class="small">{% if row.show_concept %}{% include "pgo/_pgo_concept_label.html" with label=row.label label_short=row.label_short %}{% endif %}</td>
+          <td class="small">{% if row.show_une %}{{ row.une_label }}{% endif %}</td>
           {% for cell in row.months %}
           <td class="text-end small" title="{{ cell.note }}">{{ cell.display }}</td>
           {% endfor %}
