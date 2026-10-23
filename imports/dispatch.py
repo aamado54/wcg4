@@ -18,6 +18,7 @@ from imports.detection import (
     TYPE_LABELS,
     TYPE_NEW_CLIENTS,
     TYPE_PGO_CATALOGO,
+    TYPE_PGO_EXPEDIENTES,
     TYPE_PGO_TICKETS,
     TYPE_RISK_LEASING,
     TYPE_RISK_RENTAS,
@@ -360,6 +361,23 @@ def run_import(user, uploaded_file: UploadedFile, tipo_forzado: str | None = Non
             forced=forced,
             warnings=_collect_upload_warnings(batch),
             duplicate_extra=dup,
+        )
+
+    if tipo == TYPE_PGO_EXPEDIENTES:
+        from pgo import services as pgo_services
+
+        batch = pgo_services.import_archivos_expedientes(user, uploaded_file)
+        _annotate_batch(batch, detection, tipo, forced)
+        return DispatchResult(
+            tipo=tipo,
+            label=label,
+            detection=detection,
+            batch=batch,
+            message=f"PGO expedientes Archivos: {_batch_summary(batch)}",
+            ok=batch.status in ("OK", "PARTIAL"),
+            redirect_hint="pgo:tablero_puntos",
+            forced=forced,
+            warnings=_collect_upload_warnings(batch),
         )
 
     if tipo == TYPE_PGO_CATALOGO:

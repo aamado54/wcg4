@@ -122,3 +122,37 @@ class PgoResultadoPeriodo(TimeStampedModel):
 
     def __str__(self):
         return f"{self.periodo} — {self.unidad_negocio.code}"
+
+
+class PgoExpediente(TimeStampedModel):
+    """
+    Trabajo / expediente desde export «Archivos» (inicio → entrega).
+    Clave natural: (source_batch_id, row_key) o external_id si existe.
+    """
+
+    external_id = models.CharField(max_length=120, blank=True, db_index=True)
+    row_key = models.CharField(max_length=64, db_index=True)
+    concept_id = models.CharField(max_length=80, db_index=True)
+    une = models.CharField(max_length=20, db_index=True)
+    fecha_inicio = models.DateTimeField()
+    fecha_entrega = models.DateTimeField(null=True, blank=True)
+    cumple_plazo = models.BooleanField(null=True, blank=True)
+    sla_kind = models.CharField(max_length=40, blank=True)
+    titulo = models.CharField(max_length=255, blank=True)
+    tipo_tramite = models.CharField(max_length=120, blank=True)
+    source_file = models.CharField(max_length=255, blank=True)
+    import_batch_id = models.PositiveIntegerField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-fecha_inicio"]
+        verbose_name = "Expediente PGO (Archivos)"
+        verbose_name_plural = "Expedientes PGO (Archivos)"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["import_batch_id", "row_key"],
+                name="pgo_expediente_batch_row_key",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.concept_id} {self.une} {self.fecha_inicio:%Y-%m-%d}"

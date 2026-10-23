@@ -57,6 +57,7 @@ class DetectionResult:
 TYPE_CRM_CLIENTES = "crm_clientes"
 TYPE_PGO_TICKETS = "pgo_tickets"
 TYPE_PGO_CATALOGO = "pgo_catalogo"
+TYPE_PGO_EXPEDIENTES = "pgo_expedientes"
 TYPE_RISK_LEASING = "risk_leasing"
 TYPE_RISK_RENTAS = "risk_rentas"
 TYPE_NEW_CLIENTS = "new_clients"
@@ -70,6 +71,7 @@ TYPE_LABELS = {
     TYPE_CRM_CLIENTES: "CRM — Clientes / entidades",
     TYPE_PGO_TICKETS: "PGO — Tickets helpdesk",
     TYPE_PGO_CATALOGO: "PGO — Catálogo de archivos (informativo)",
+    TYPE_PGO_EXPEDIENTES: "PGO — Expedientes Archivos (inicio → entrega)",
     TYPE_RISK_LEASING: "Balón de Riesgo — Base leasing / snapshots",
     TYPE_RISK_RENTAS: "Balón de Riesgo — Rentas / cuotas leasing",
     TYPE_NEW_CLIENTS: "PGC — Clientes nuevos",
@@ -84,6 +86,8 @@ ALL_IMPORTABLE = [
     TYPE_CRM_CLIENTES,
     TYPE_PGO_TICKETS,
     TYPE_PGO_CATALOGO,
+    TYPE_PGO_EXPEDIENTES,
+    TYPE_PGO_EXPEDIENTES,
     TYPE_RISK_LEASING,
     TYPE_RISK_RENTAS,
     TYPE_NEW_CLIENTS,
@@ -96,6 +100,7 @@ IMPORTER_LABELS = {
     TYPE_CRM_CLIENTES: "crm.services.import_entidades",
     TYPE_PGO_TICKETS: "pgo.services.import_tickets",
     TYPE_PGO_CATALOGO: "pgo.services.import_archivos_catalogo",
+    TYPE_PGO_EXPEDIENTES: "pgo.services.import_archivos_expedientes",
     TYPE_RISK_LEASING: "risk.services.import_leasing_database",
     TYPE_RISK_RENTAS: "risk.services.import_leasing_rentas",
     TYPE_NEW_CLIENTS: "import_clientes_nuevos",
@@ -279,6 +284,23 @@ def detect_from_columns(cols: set[str]) -> DetectionResult | None:
     catalog_score = _score_columns(cols, [["carpeta", "archivo"], ["creado_por", "creado_en"]])
     if catalog_score >= 2:
         candidates.append((TYPE_PGO_CATALOGO, catalog_score, ["estructura: Carpeta/Archivo"]))
+
+    exp_score = 0
+    if any(c in cols for c in ("fecha_inicio", "fechainicio", "fecha_de_inicio", "inicio")):
+        exp_score += 2
+    if any(
+        c in cols
+        for c in (
+            "fecha_entrega",
+            "fechaentrega",
+            "fecha_entrega_resultado",
+            "fecha_resultado",
+            "entrega",
+        )
+    ):
+        exp_score += 2
+    if exp_score >= 3:
+        candidates.append((TYPE_PGO_EXPEDIENTES, exp_score + 1, ["estructura: inicio + entrega Archivos"]))
 
     leasing_score = _score_columns(
         cols,

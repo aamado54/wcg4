@@ -203,6 +203,141 @@ def import_tickets(user, uploaded_file) -> DataImportBatch:
     return batch
 
 
+def import_archivos_expedientes(user, uploaded_file) -> DataImportBatch:
+    """
+    Export «Archivos» con fecha inicio (texto DD-MM) y entrega/resultado (fecha MM-DD).
+    Persiste PgoExpediente y recalcula cumplimiento de plazo.
+    """
+    from hashlib import sha1
+
+    from core.services.column_map import normalize_columns, pick
+    from pgo.archivos_dates import column_role, parse_entrega, parse_inicio
+    from pgo.archivos_mapping import infer_concept_id, infer_une
+    from pgo.archivos_sla import CONCEPT_SLA, cumple_plazo
+    from pgo.models import PgoExpediente
+
+    df = normalize_columns(read_dataframe(uploaded_file))
+    if df.empty:
+        batch = DataImportBatch.objects.create(
+            modulo=DataImportBatch.MODULO_PGO,
+            tipo_importacion="archivos_expedientes",
+            archivo_nombre=uploaded_file.name,
+            uploaded_by=user,
+            filas_leidas=0,
+            status=DataImportBatch.STATUS_ERROR,
+            log_texto="Archivo vacío.",
+        )
+        return batch
+
+    inicio_col = entrega_col = None
+    for col in df.columns:
+        role = column_role(str(col))
+        if role == "inicio":
+            inicio_col = col
+        elif role == "entrega":
+            entrega_col = col
+
+    batch = DataImportBatch.objects.create(
+        modulo=DataImportBatch.MODULO_PGO,
+        tipo_importacion="archivos_expedientes",
+        archivo_nombre=uploaded_file.name,
+        uploaded_by=user,
+        filas_leidas=len(df),
+        status=DataImportBatch.STATUS_PENDING,
+    )
+    logs: list[str] = []
+    creados = actualizados = errores = 0
+
+    if not inicio_col:
+        batch.status = DataImportBatch.STATUS_ERROR
+        batch.log_texto = "Falta columna de fecha de inicio (texto)."
+        batch.errores = len(df)
+        batch.save()
+        return batch
+
+    for idx, row in df.iterrows():
+        try:
+            inicio = parse_inicio(row.get(inicio_col))
+            if not inicio:
+                errores += 1
+                logs.append(f"Fila {idx + 2}: fecha inicio no legible")
+                continue
+            entrega = parse_entrega(row.get(entrega_col)) if entrega_col else None
+            titulo = pick(
+                row,
+                "titulo",
+                "solicitud",
+                "asunto",
+                "descripcion",
+                "tramite",
+                "nombre",
+                "archivo",
+            )
+            tipo = pick(row, "tipo", "tipo_tramite", "proceso", "categoria", "variable")
+            une = infer_une(
+                pick(row, "une", "unidad", "unidad_negocio", "bu", "area"),
+                titulo,
+                tipo,
+            )
+            if not une:
+                une = "FACTORING"
+            concept_id = infer_concept_id(tipo, titulo, pick(row, "concepto", "indicador"))
+            if not concept_id:
+                errores += 1
+                logs.append(f"Fila {idx + 2}: no se pudo mapear a concepto PGO")
+                continue
+            if concept_id not in CONCEPT_SLA:
+                errores += 1
+                logs.append(f"Fila {idx + 2}: concepto {concept_id} sin regla SLA")
+                continue
+            rule = CONCEPT_SLA[concept_id]
+            ext = pick(row, "id", "codigo", "folio", "id_expediente", "id_caso")
+            row_key = sha1(
+                f"{ext}|{inicio.isoformat()}|{titulo}|{idx}".encode("utf-8")
+            ).hexdigest()[:32]
+            ok = None
+            if entrega:
+                ok = cumple_plazo(inicio, entrega, rule)
+            defaults = {
+                "external_id": ext or "",
+                "concept_id": concept_id,
+                "une": une,
+                "fecha_inicio": inicio,
+                "fecha_entrega": entrega,
+                "cumple_plazo": ok,
+                "sla_kind": rule.kind.value,
+                "titulo": (titulo or "")[:255],
+                "tipo_tramite": (tipo or "")[:120],
+                "source_file": uploaded_file.name[:255],
+                "import_batch_id": batch.pk,
+            }
+            _, created = PgoExpediente.objects.update_or_create(
+                import_batch_id=batch.pk,
+                row_key=row_key,
+                defaults=defaults,
+            )
+            if created:
+                creados += 1
+            else:
+                actualizados += 1
+        except Exception as exc:
+            errores += 1
+            logs.append(f"Fila {idx + 2}: {exc}")
+
+    batch.creados = creados
+    batch.actualizados = actualizados
+    batch.errores = errores
+    if errores == 0:
+        batch.status = DataImportBatch.STATUS_OK
+    elif creados + actualizados > 0:
+        batch.status = DataImportBatch.STATUS_PARTIAL
+    else:
+        batch.status = DataImportBatch.STATUS_ERROR
+    batch.log_texto = "\n".join(logs)[:8000]
+    batch.save()
+    return batch
+
+
 def import_archivos_catalogo(user, uploaded_file) -> DataImportBatch:
     """
     Catálogo de archivos PGO — solo registra lote (sin crear tickets).
