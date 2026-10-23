@@ -10,8 +10,8 @@ BRIEF_TEXTS: dict[str, str] = {
         "Sin total de fila: ningún promedio mensual con puntaje en las UNE donde aplica el concepto."
     ),
     "row_has_total": (
-        "Total de fila: suma de los promedios mensuales del año (solo meses con dato) "
-        "en cada UNE donde aplica el concepto."
+        "Total de fila: suma de los promedios mensuales del año (solo meses con cierre y con dato; "
+        "oct–dic sin cierre no se muestran ni promedian) en cada UNE donde aplica el concepto."
     ),
     "weighted_corner": (
         "Total esquina (tabla completa): suma ponderada de cada total de columna UNE "

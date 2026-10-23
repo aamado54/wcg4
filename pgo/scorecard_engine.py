@@ -55,20 +55,29 @@ class ScoreGrid:
         )
 
 
-def _financiero_periods() -> set[str]:
+def _financiero_seed_lists() -> tuple[set[str], set[str]]:
     seed = Path(settings.BASE_DIR) / "risk" / "financiero" / "seed" / "combined_full.json"
     if not seed.is_file():
-        return set()
+        return set(), set()
     data = json.loads(seed.read_text(encoding="utf-8"))
-    return set(data.get("periods") or [])
+    return set(data.get("periods") or []), set(data.get("recent_periods") or [])
+
+
+def _financiero_periods() -> set[str]:
+    periods, _recent = _financiero_seed_lists()
+    return periods
 
 
 def months_processed_for_pgo(year: int) -> frozenset[int]:
-    """Meses con cierre operativo cargado (p. ej. EEFF en seed); el resto queda en blanco en tablero."""
+    """Meses con cierre PGO (recent_periods del seed); oct–dic sin cierre no cuentan."""
     months: set[int] = set()
     prefix = f"{year}-"
-    for period in _financiero_periods():
-        if not period.startswith(prefix) or len(period) < 7:
+    _all_periods, recent = _financiero_seed_lists()
+    candidates = {p for p in recent if p.startswith(prefix)}
+    if not candidates:
+        candidates = {p for p in _all_periods if p.startswith(prefix)}
+    for period in candidates:
+        if len(period) < 7:
             continue
         try:
             months.add(int(period[5:7]))
