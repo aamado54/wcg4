@@ -92,6 +92,16 @@
   <div class="col-12 col-xl-6">
     <div class="card border-0 shadow-sm h-100">
       <div class="card-header bg-white fw-semibold small">{{ mt.title }}</div>
+      {% if mt.footnotes %}
+      <div class="card-body py-2 border-bottom small text-muted">
+        <div class="fw-semibold text-dark mb-1">Notas de total fila</div>
+        <ul class="mb-0 ps-3">
+          {% for fn in mt.footnotes %}
+          <li><span class="text-dark fw-semibold">n.{{ fn.num }}</span> — {{ fn.text }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
       <div class="table-responsive">
         <table class="table table-sm table-bordered mb-0 small">
           <thead class="table-light">
@@ -100,18 +110,18 @@
               {% for code, label in une_options %}
               <th class="text-end">{{ label }}</th>
               {% endfor %}
-              <th class="text-end">Total fila</th>
+              <th class="text-end">Nota</th>
               <th></th>
             </tr>
           </thead>
           <tbody>
             {% for row in mt.rows %}
             <tr>
-              <td title="{{ row.label }}">{{ row.label|truncatechars:42 }}</td>
+              <td>{% include "pgo/_pgo_concept_label.html" with label=row.label label_short=row.label_short %}</td>
               {% for v in row.cells %}
               <td class="text-end">{% if v != None %}{{ v|floatformat:1 }}{% else %}—{% endif %}</td>
               {% endfor %}
-              <td class="text-end fw-semibold">{% if row.row_total != None %}{{ row.row_total|floatformat:1 }}{% else %}—{% endif %}</td>
+              <td class="text-end fw-semibold">{{ row.note_ref }}</td>
               <td class="text-center">{% include "pgo/_pgo_row_info_btn.html" with row_info=row.row_info label=row.label %}</td>
             </tr>
             {% endfor %}
@@ -121,6 +131,14 @@
               <td class="text-end">{% if v != None %}{{ v|floatformat:1 }}{% else %}—{% endif %}</td>
               {% endfor %}
               <td class="text-end">{% if mt.corner != None %}{{ mt.corner|floatformat:1 }}{% else %}—{% endif %}</td>
+              <td></td>
+            </tr>
+            <tr class="table-light small">
+              <td>Pesos</td>
+              {% for w in mt.weights %}
+              <td class="text-end text-muted">{{ w }}</td>
+              {% endfor %}
+              <td></td>
               <td></td>
             </tr>
           </tbody>
@@ -148,7 +166,7 @@
       <tbody>
         {% for row in chunk %}
         <tr>
-          <td class="small" title="{{ row.label }}">{{ row.label|truncatechars:55 }}</td>
+          <td class="small">{% include "pgo/_pgo_concept_label.html" with label=row.label label_short=row.label_short %}</td>
           <td class="small">{{ row.une_label }}</td>
           {% for cell in row.months %}
           <td class="text-end small" title="{{ cell.note }}">{{ cell.display }}</td>
@@ -162,6 +180,16 @@
         <tr><td colspan="16" class="text-center text-muted py-3">Seleccione al menos un concepto y una UNE.</td></tr>
         {% endfor %}
       </tbody>
+      <tfoot class="table-secondary small fw-semibold">
+        <tr>
+          <td colspan="2">Total columna (todos los conceptos PGO)</td>
+          {% for v in detail_month_totals %}
+          <td class="text-end">{% if v != None %}{{ v|floatformat:1 }}{% else %}—{% endif %}</td>
+          {% endfor %}
+          <td class="text-end">{% if detail_month_avg != None %}{{ detail_month_avg|floatformat:1 }}{% else %}—{% endif %}</td>
+          <td></td>
+        </tr>
+      </tfoot>
     </table>
   </div>
 </div>
@@ -192,6 +220,8 @@
 .pgo-info-red { background-color: #dc3545; }
 .pgo-info-red:hover { background-color: #bb2d3b; color: #fff; }
 .pgo-info-modal-body { white-space: pre-wrap; font-size: 0.9rem; }
+.pgo-concept-label { font-size: inherit; color: inherit; text-decoration: none; border-bottom: 1px dotted #6c757d; }
+.pgo-concept-label:hover { color: #0d6efd; }
 </style>
 
 <div class="modal fade" id="pgo-row-info-modal" tabindex="-1" aria-labelledby="pgo-row-info-title" aria-hidden="true">
@@ -227,6 +257,10 @@
   const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
   const titleEl = document.getElementById('pgo-row-info-title');
   const bodyEl = document.getElementById('pgo-row-info-body');
+  document.querySelectorAll('[data-bs-toggle="popover"]').forEach(function(el){
+    new bootstrap.Popover(el);
+  });
+
   document.querySelectorAll('.pgo-info-btn').forEach(function(btn){
     btn.addEventListener('click', function(){
       const wrap = btn.closest('.pgo-info-wrap');

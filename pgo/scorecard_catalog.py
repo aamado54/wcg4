@@ -266,3 +266,31 @@ def table_by_id(table_id: str) -> PgoTable | None:
         if t.id == table_id:
             return t
     return None
+
+
+CONCEPT_SHORT_LABELS: dict[str, str] = {
+    "legal_garantias_100": "Garantías mobiliarias 100%",
+    "legal_tiempos_garantias_3d": "Formalización garantías ≤3 días",
+    "legal_titulos_inversion": "Títulos y contratos inversiones",
+    "legal_contratos_acreedores_15d": "Contratos acreedores −15 días",
+    "legal_actas_comite": "Actas post Comité de Créditos",
+    "fr_analisis_10d": "Análisis casos ≤10 días hábiles",
+    "fr_valuacion_cartera": "Plan valuación anual cartera",
+    "fr_carga_analitica": "Carga datos analítica mensual",
+    "fr_info_acreedores_3m": "Info acreedores −3 meses",
+    "fr_eeff_integraciones": "EEFF con integraciones",
+    "op_cronograma_proyectos": "Cronograma proyectos estratégicos",
+    "op_pago_freelances_7": "Pago freelances día 7",
+    "op_dashboard_jueves": "Dashboard operaciones (jueves)",
+    "op_reportes_pgc_pgo_7": "Reportes PGC/PGO día 7",
+    "op_gastos_admin_10": "Gastos administrativos día 10",
+    "ti_reportes_7": "Reportes analítica/PGC/PGO",
+    "ti_max_5_tickets": "Máx. 5 tickets cores abiertos",
+    "ti_cronograma_proyectos": "Cronograma proyectos TI",
+    "ti_encuesta_80": "Encuesta atención ≥80 pts",
+    "ti_backup_nas": "Backup NAS trimestral",
+}
+
+
+def concept_short_label(concept: PgoConcept) -> str:
+    return CONCEPT_SHORT_LABELS.get(concept.id, concept.label[:40])

@@ -10,7 +10,14 @@ from django.http import FileResponse, Http404
 from django.shortcuts import render
 from django.templatetags.static import static
 
-from pgo.scorecard_catalog import PGO_TABLES, UNE_CODES, UNE_LABELS, all_concepts, table_by_id
+from pgo.scorecard_catalog import (
+    PGO_TABLES,
+    UNE_CODES,
+    UNE_LABELS,
+    all_concepts,
+    concept_short_label,
+    table_by_id,
+)
 from pgo.scorecard_engine import (
     CellScore,
     build_score_grid,
@@ -67,7 +74,7 @@ def _concept_choices():
 @login_required
 def tablero_puntos(request):
     grid = build_score_grid()
-    years = sorted(grid.cells.keys()) or [2026]
+    years = sorted(y for y in grid.cells.keys() if y >= 2026) or [2026]
     year = int(request.GET.get("year") or years[-1])
     if year not in years:
         year = years[-1]
@@ -91,7 +98,7 @@ def tablero_puntos(request):
     # Build display rows: each row has label, une (optional), concept_id, table_id, months[1..12], avg
     display_rows: list[dict] = []
 
-    def add_row(label: str, une: str, concept_key: str, table_id: str, getter):
+    def add_row(label: str, une: str, concept_key: str, table_id: str, getter, label_short: str | None = None):
         months_vals = []
         row_cells = []
         for m in range(1, 13):
@@ -103,6 +110,7 @@ def tablero_puntos(request):
         display_rows.append(
             {
                 "label": label,
+                "label_short": label_short or label[:40],
                 "une": une,
                 "une_label": UNE_LABELS.get(une, une),
                 "concept_key": concept_key,
@@ -127,6 +135,7 @@ def tablero_puntos(request):
                         concept_sel,
                         table_id,
                         lambda m, u=une, tid=table_id: table_total(grid, tid, year, m, u),
+                        label_short=f"TOTAL {table.title}",
                     )
             else:
                 for une in selected_unes:
@@ -136,6 +145,7 @@ def tablero_puntos(request):
                         concept_sel,
                         table_id,
                         lambda m, u=une, tid=table_id: table_total(grid, tid, year, m, u),
+                        label_short=f"TOTAL {table.title}",
                     )
         else:
             concept = next((c for c in all_concepts() if c.id == concept_sel), None)
@@ -151,6 +161,7 @@ def tablero_puntos(request):
                         concept.id,
                         concept.table_id,
                         lambda m, u=une, c=concept: grid.get(year, m, u, c.id),
+                        label_short=concept_short_label(concept),
                     )
             else:
                 for une in selected_unes:
@@ -162,6 +173,7 @@ def tablero_puntos(request):
                         concept.id,
                         concept.table_id,
                         lambda m, u=une, c=concept: grid.get(year, m, u, c.id),
+                        label_short=concept_short_label(concept),
                     )
 
     if group_by == "une":
@@ -172,6 +184,8 @@ def tablero_puntos(request):
     table_chunks = chunk_rows(display_rows, 10)
 
     matrix_tables = [_build_table_matrix(grid, table, year) for table in PGO_TABLES]
+    detail_month_totals = _detail_month_column_totals(grid, year, selected_unes)
+    detail_month_avg = month_average(detail_month_totals)
 
     # Resumen calculable vs no
     summary_notes = _build_data_summary(grid, year)
@@ -193,6 +207,8 @@ def tablero_puntos(request):
             "month_labels": MONTH_LABELS,
             "table_chunks": table_chunks,
             "matrix_tables": matrix_tables,
+            "detail_month_totals": detail_month_totals,
+            "detail_month_avg": detail_month_avg,
             "summary_notes": summary_notes,
             "show_help": show_help,
             "help_pdf_url": request.build_absolute_uri(static("pgo/PGO-referencia.pdf")),
@@ -216,11 +232,22 @@ def _row_info_for_key(concept_key: str, une: str, year: int, grid: ScoreGrid):
     return explain_concept_row(concept, year, grid, une=une)
 
 
+def _row_total_footnote_text(year: int, total: float | None) -> str:
+    if total is None:
+        return "Sin total calculable (ningún promedio mensual con dato en UNE aplicables)."
+    return (
+        f"Total fila {total:.1f} pts — suma de los promedios mensuales {year} "
+        "en cada UNE donde aplica el concepto. Se recalcula al cambiar cualquier celda del concepto."
+    )
+
+
 def _build_table_matrix(grid, table, year: int) -> dict:
-    """Matriz concepto × UNE con promedio anual y fila/columna de totales (meses calificados)."""
+    """Matriz completa concepto × UNE; total columna = suma exacta de la columna."""
     rows = []
-    col_totals = {u: [] for u in UNE_CODES}
     une_order = list(UNE_CODES)
+    footnotes: list[dict] = []
+    note_idx = 0
+
     for concept in table.concepts:
         row_cells = []
         row_vals = []
@@ -233,25 +260,70 @@ def _build_table_matrix(grid, table, year: int) -> dict:
             row_cells.append(avg)
             if avg is not None:
                 row_vals.append(avg)
-                col_totals[une].append(avg)
+        row_total = sum(row_vals) if row_vals else None
+        note_idx += 1
+        footnotes.append(
+            {
+                "num": note_idx,
+                "text": _row_total_footnote_text(year, row_total),
+            }
+        )
         rows.append(
             {
                 "label": concept.label,
+                "label_short": concept_short_label(concept),
                 "concept_id": concept.id,
                 "cells": row_cells,
-                "row_total": sum(row_vals) if row_vals else None,
+                "row_total": row_total,
+                "note_ref": f"n.{note_idx}",
                 "row_info": explain_concept_row(concept, year, grid, une=None),
             }
         )
-    footer = [month_average(col_totals[u]) for u in une_order]
-    corner = month_average([v for v in footer if v is not None])
+
+    footer = []
+    for col_i, _une in enumerate(une_order):
+        col_sum = 0.0
+        any_val = False
+        for row in rows:
+            val = row["cells"][col_i]
+            if val is not None:
+                col_sum += val
+                any_val = True
+        footer.append(col_sum if any_val else None)
+
+    corner_sum = sum(v for v in footer if v is not None)
+    corner = corner_sum if any(v is not None for v in footer) else None
+
+    weights = [table.area_weights.get(u, "") for u in une_order]
+
     return {
         "title": table.title,
         "table_id": table.id,
         "rows": rows,
+        "footnotes": footnotes,
         "footer": footer,
         "corner": corner,
+        "weights": weights,
+        "is_full_table": True,
     }
+
+
+def _detail_month_column_totals(grid: ScoreGrid, year: int, unes: list[str]) -> list[float | None]:
+    """Totales por mes (todas las filas PGO × UNE seleccionadas); fijos al filtrar conceptos."""
+    totals: list[float | None] = []
+    for month in range(1, 13):
+        col_sum = 0.0
+        any_val = False
+        for concept in all_concepts():
+            for une in unes:
+                if une not in concept.max_points:
+                    continue
+                pts = grid.get(year, month, une, concept.id).points
+                if pts is not None:
+                    col_sum += pts
+                    any_val = True
+        totals.append(col_sum if any_val else None)
+    return totals
 
 
 def _build_data_summary(grid, year: int) -> list[dict]:

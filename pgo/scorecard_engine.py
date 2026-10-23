@@ -268,7 +268,7 @@ def _detect_years() -> list[int]:
         years.add(t.year)
     if not years:
         years.add(timezone.localdate().year)
-    return sorted(years)
+    return sorted(y for y in years if y >= 2026)
 
 
 def table_total(
