@@ -317,5 +317,12 @@ def month_average(values: list[float | None]) -> float | None:
     return sum(nums) / len(nums)
 
 
+def average_scored_months(points: list[float]) -> float | None:
+    """Promedio solo sobre meses con puntaje (lista ya filtrada)."""
+    if not points:
+        return None
+    return sum(points) / len(points)
+
+
 def chunk_rows(rows: list, size: int = 10) -> list[list]:
     return [rows[i : i + size] for i in range(0, len(rows), size)] or [[]]

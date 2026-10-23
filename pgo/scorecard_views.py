@@ -22,7 +22,7 @@ from pgo.scorecard_engine import (
     CellScore,
     build_score_grid,
     chunk_rows,
-    month_average,
+    average_scored_months,
     months_processed_for_pgo,
     table_total,
 )
@@ -98,16 +98,14 @@ def tablero_puntos(request):
     display_rows: list[dict] = []
 
     def add_row(label: str, une: str, concept_key: str, table_id: str, getter, label_short: str | None = None):
-        months_vals = []
+        scored_months: list[float] = []
         row_cells = []
         for m in range(1, 13):
             cell: CellScore = getter(m)
-            if m in processed_months:
-                months_vals.append(cell.points)
-            else:
-                months_vals.append(None)
             row_cells.append(cell)
-        avg = month_average(months_vals)
+            if m in processed_months and cell.points is not None:
+                scored_months.append(cell.points)
+        avg = average_scored_months(scored_months)
         display_rows.append(
             {
                 "label": label,
@@ -254,11 +252,14 @@ def _build_table_matrix(
             if une not in concept.max_points:
                 row_cells.append(None)
                 continue
-            monthly = [
-                grid.get(year, m, une, concept.id).points if m in processed_months else None
-                for m in range(1, 13)
-            ]
-            avg = month_average(monthly)
+            scored: list[float] = []
+            for m in range(1, 13):
+                if m not in processed_months:
+                    continue
+                pts = grid.get(year, m, une, concept.id).points
+                if pts is not None:
+                    scored.append(pts)
+            avg = average_scored_months(scored)
             row_cells.append(avg)
             if avg is not None:
                 row_vals.append(avg)
