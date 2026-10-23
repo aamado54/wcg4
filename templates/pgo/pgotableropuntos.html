@@ -163,15 +163,6 @@
         <tr><td colspan="15" class="text-center text-muted py-3">Seleccione al menos un concepto y una UNE.</td></tr>
         {% endfor %}
       </tbody>
-      <tfoot class="table-secondary small fw-semibold">
-        <tr>
-          <td colspan="2">Total columna (todos los conceptos PGO)</td>
-          {% for v in detail_month_totals %}
-          <td class="text-end">{% if v != None %}{{ v|floatformat:1 }}{% else %}—{% endif %}</td>
-          {% endfor %}
-          <td class="text-end">{% if detail_month_avg != None %}{{ detail_month_avg|floatformat:1 }}{% else %}—{% endif %}</td>
-        </tr>
-      </tfoot>
     </table>
   </div>
 </div>

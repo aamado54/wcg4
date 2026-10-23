@@ -184,8 +184,6 @@ def tablero_puntos(request):
     ]
     footnote_registry.ref("weighted_corner")
     global_footnotes = footnote_registry.as_list()
-    detail_month_totals = _detail_month_column_totals(grid, year, selected_unes)
-    detail_month_avg = month_average(detail_month_totals)
 
     return render(
         request,
@@ -205,8 +203,6 @@ def tablero_puntos(request):
             "table_chunks": table_chunks,
             "matrix_tables": matrix_tables,
             "global_footnotes": global_footnotes,
-            "detail_month_totals": detail_month_totals,
-            "detail_month_avg": detail_month_avg,
             "show_help": show_help,
             "help_pdf_url": request.build_absolute_uri(static("pgo/PGO-referencia.pdf")),
             "breadcrumbs": [
@@ -277,24 +273,6 @@ def _build_table_matrix(
         "corner": corner,
         "weights": weights,
     }
-
-
-def _detail_month_column_totals(grid: ScoreGrid, year: int, unes: list[str]) -> list[float | None]:
-    """Totales por mes (todas las filas PGO × UNE seleccionadas); fijos al filtrar conceptos."""
-    totals: list[float | None] = []
-    for month in range(1, 13):
-        col_sum = 0.0
-        any_val = False
-        for concept in all_concepts():
-            for une in unes:
-                if une not in concept.max_points:
-                    continue
-                pts = grid.get(year, month, une, concept.id).points
-                if pts is not None:
-                    col_sum += pts
-                    any_val = True
-        totals.append(col_sum if any_val else None)
-    return totals
 
 
 @login_required
