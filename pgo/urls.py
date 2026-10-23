@@ -1,11 +1,13 @@
 from django.urls import path
 
-from . import views
+from . import scorecard_views, views
 
 app_name = "pgo"
 
 urlpatterns = [
     path("", views.dashboard, name="dashboard"),
+    path("tablero/", scorecard_views.tablero_puntos, name="tablero_puntos"),
+    path("ayuda/pgo-referencia.pdf", scorecard_views.ayuda_pgo_pdf, name="ayuda_pgo_pdf"),
     path("tickets/", views.TicketListView.as_view(), name="ticket_list"),
     path("tickets/<str:codigo>/", views.TicketDetailView.as_view(), name="ticket_detail"),
     path("resultados/", views.resultados, name="resultados"),

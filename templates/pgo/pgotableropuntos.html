@@ -1,0 +1,197 @@
+{% extends "base_wcg.html" %}
+{% block title %}PGO — Tablero por puntos{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2 mt-2">
+  <div class="wcg-report-head">
+    <h1 class="h4 fw-semibold mb-0">PGO — Tablero por puntos</h1>
+    {% include "includes/module_mark.html" with module="pgo" %}
+    <p class="text-muted small mb-0">Plantillas Legal, Finanzas y Riesgos, Operaciones y Tecnología (ref. PGO 2026).</p>
+  </div>
+  <div class="d-flex gap-1 flex-wrap">
+    <button type="button" class="btn btn-sm btn-outline-secondary" id="pgo-help-open">Ayuda</button>
+    <a href="{% url 'pgo:dashboard' %}" class="btn btn-sm btn-outline-primary">Operación / tickets</a>
+  </div>
+</div>
+
+<form method="get" class="card border-0 shadow-sm mb-3" id="pgo-filter-form">
+  <div class="card-body">
+    <div class="row g-3">
+      {% if show_year_picker %}
+      <div class="col-lg-3">
+        <div class="fw-semibold small mb-2">Año</div>
+        {% for y in years %}
+        <label class="d-block small">
+          <input type="radio" name="year" value="{{ y }}" {% if y == year %}checked{% endif %} onchange="this.form.submit()">
+          {{ y }}
+        </label>
+        {% endfor %}
+      </div>
+      {% else %}
+      <input type="hidden" name="year" value="{{ year }}">
+      {% endif %}
+
+      <div class="col-lg-3">
+        <div class="fw-semibold small mb-2">Unidades (UNE)</div>
+        {% for code, label in une_options %}
+        <label class="d-block small">
+          <input type="checkbox" name="une" value="{{ code }}" {% if code in selected_unes %}checked{% endif %}>
+          {{ label }}
+        </label>
+        {% endfor %}
+      </div>
+
+      <div class="col-lg-5">
+        <div class="fw-semibold small mb-2">Conceptos</div>
+        <div style="max-height:220px;overflow:auto;border:1px solid #e5e7eb;border-radius:6px;padding:8px;">
+          {% for c in concept_choices %}
+          <label class="d-block small {% if c.is_total %}fw-semibold{% endif %}">
+            <input type="checkbox" name="concept" value="{{ c.id }}"
+              {% if c.id in selected_concepts %}checked{% endif %}>
+            {% if c.is_total %}{{ c.label }}{% else %}<span class="text-muted">{{ c.table_id }}</span> — {{ c.label|truncatechars:70 }}
+            {% endif %}
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="col-lg-1">
+        <div class="fw-semibold small mb-2">Orden</div>
+        <label class="d-block small">
+          <input type="radio" name="group_by" value="concept" {% if group_by == 'concept' %}checked{% endif %}>
+          Por concepto
+        </label>
+        <label class="d-block small">
+          <input type="radio" name="group_by" value="une" {% if group_by == 'une' %}checked{% endif %}>
+          Por UNE
+        </label>
+        <button type="submit" class="btn btn-sm btn-primary mt-2 w-100">Aplicar</button>
+      </div>
+    </div>
+  </div>
+</form>
+
+<div class="card border-0 shadow-sm mb-3">
+  <div class="card-header bg-white fw-semibold small">Estado de fuentes de datos ({{ year }})</div>
+  <div class="card-body small">
+    <p class="text-muted">Los puntajes mostrados usan solo información ya cargada en WCG (EEFF seed, PGC ingresos, imports, tickets). Muchos conceptos del PGO requieren Planner, SharePoint o cronogramas que aún no están en BD.</p>
+    <ul class="mb-0">
+      {% for row in summary_notes %}
+      <li>
+        <strong>{{ row.concept|truncatechars:80 }}</strong>
+        — <span class="{% if row.status == 'sin_dato' %}text-danger{% elif row.status == 'parcial' %}text-warning{% else %}text-success{% endif %}">{{ row.status }}</span>
+        {% if row.note %}: <span class="text-muted">{{ row.note }}</span>{% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+
+<h2 class="h6 fw-semibold mt-2 mb-2">Resumen {{ year }} — promedio mensual por tabla (esquina = total)</h2>
+<div class="row g-3 mb-4">
+  {% for mt in matrix_tables %}
+  <div class="col-12 col-xl-6">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header bg-white fw-semibold small">{{ mt.title }}</div>
+      <div class="table-responsive">
+        <table class="table table-sm table-bordered mb-0 small">
+          <thead class="table-light">
+            <tr>
+              <th>Variable</th>
+              {% for code, label in une_options %}
+              <th class="text-end">{{ label }}</th>
+              {% endfor %}
+              <th class="text-end">Total fila</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in mt.rows %}
+            <tr>
+              <td title="{{ row.label }}">{{ row.label|truncatechars:42 }}</td>
+              {% for v in row.cells %}
+              <td class="text-end">{% if v != None %}{{ v|floatformat:1 }}{% else %}—{% endif %}</td>
+              {% endfor %}
+              <td class="text-end fw-semibold">{% if row.row_total != None %}{{ row.row_total|floatformat:1 }}{% else %}—{% endif %}</td>
+            </tr>
+            {% endfor %}
+            <tr class="table-secondary fw-semibold">
+              <td>Total columna</td>
+              {% for v in mt.footer %}
+              <td class="text-end">{% if v != None %}{{ v|floatformat:1 }}{% else %}—{% endif %}</td>
+              {% endfor %}
+              <td class="text-end">{% if mt.corner != None %}{{ mt.corner|floatformat:1 }}{% else %}—{% endif %}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<h2 class="h6 fw-semibold mb-2">Detalle filtrado (mes a mes)</h2>
+{% for chunk in table_chunks %}
+<div class="card border-0 shadow-sm mb-4">
+  <div class="table-responsive">
+    <table class="table table-sm table-bordered table-wcg mb-0 align-middle">
+      <thead class="table-light">
+        <tr>
+          <th>Concepto</th>
+          <th>UNE</th>
+          {% for ml in month_labels %}<th class="text-end">{{ ml }}</th>{% endfor %}
+          <th class="text-end">Prom.</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in chunk %}
+        <tr>
+          <td class="small" title="{{ row.label }}">{{ row.label|truncatechars:55 }}</td>
+          <td class="small">{{ row.une_label }}</td>
+          {% for cell in row.months %}
+          <td class="text-end small" title="{{ cell.note }}">{{ cell.display }}</td>
+          {% endfor %}
+          <td class="text-end fw-semibold">{% if row.average != None %}{{ row.average|floatformat:1 }}{% else %}—{% endif %}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="15" class="text-center text-muted py-3">Seleccione al menos un concepto y una UNE.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endfor %}
+
+<div id="pgo-help-overlay" class="pgo-help-overlay{% if show_help %} show{% endif %}" aria-hidden="true">
+  <div class="pgo-help-backdrop" id="pgo-help-backdrop"></div>
+  <div class="pgo-help-panel">
+    <div class="d-flex justify-content-between align-items-center px-2 py-1 border-bottom bg-white">
+      <span class="small fw-semibold">Referencia PGO (PDF)</span>
+      <button type="button" class="btn btn-sm btn-outline-secondary" id="pgo-help-close">Cerrar (Esc)</button>
+    </div>
+    <iframe src="{{ help_pdf_url }}" class="pgo-help-iframe" title="PGO referencia PDF"></iframe>
+  </div>
+</div>
+
+<style>
+.pgo-help-overlay { display:none; position:fixed; inset:0; z-index:1050; }
+.pgo-help-overlay.show { display:block; }
+.pgo-help-backdrop { position:absolute; inset:0; background:rgba(15,23,42,.55); cursor:pointer; }
+.pgo-help-panel { position:absolute; inset:24px; background:#fff; border-radius:8px; display:flex; flex-direction:column; box-shadow:0 8px 32px rgba(0,0,0,.2); }
+.pgo-help-iframe { flex:1; width:100%; border:0; border-radius:0 0 8px 8px; cursor:pointer; }
+</style>
+
+<script>
+(function(){
+  const overlay = document.getElementById('pgo-help-overlay');
+  const openBtn = document.getElementById('pgo-help-open');
+  const closeBtn = document.getElementById('pgo-help-close');
+  const backdrop = document.getElementById('pgo-help-backdrop');
+  function show(){ overlay.classList.add('show'); overlay.setAttribute('aria-hidden','false'); }
+  function hide(){ overlay.classList.remove('show'); overlay.setAttribute('aria-hidden','true'); }
+  openBtn?.addEventListener('click', show);
+  closeBtn?.addEventListener('click', hide);
+  backdrop?.addEventListener('click', hide);
+  overlay?.querySelector('.pgo-help-iframe')?.addEventListener('click', hide);
+  document.addEventListener('keydown', function(e){ if(e.key === 'Escape') hide(); });
+})();
+</script>
+{% endblock %}
