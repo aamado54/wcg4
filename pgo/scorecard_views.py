@@ -241,13 +241,13 @@ def _build_table_matrix(
     footnote_registry: FootnoteRegistry,
     processed_months: frozenset[int],
 ) -> dict:
-    """Matriz completa concepto × UNE; total columna = suma; esquina = suma ponderada."""
+    """Matriz concepto × UNE; total fila y esquina = suma ponderada (fila Pesos); total columna = suma."""
     rows = []
     une_order = list(UNE_CODES)
+    weights = [table.area_weights.get(u, "") for u in une_order]
 
     for concept in table.concepts:
         row_cells = []
-        row_vals = []
         for une in une_order:
             if une not in concept.max_points:
                 row_cells.append(None)
@@ -261,9 +261,7 @@ def _build_table_matrix(
                     scored.append(pts)
             avg = average_scored_months(scored)
             row_cells.append(avg)
-            if avg is not None:
-                row_vals.append(avg)
-        row_total = sum(row_vals) if row_vals else None
+        row_total = weighted_column_total(row_cells, weights)
         note_key = "row_no_total" if row_total is None else "row_has_total"
         note_ref = footnote_registry.ref(note_key)
         detail = explain_concept_row(concept, year, grid, une=None)
@@ -292,7 +290,6 @@ def _build_table_matrix(
                 any_val = True
         footer.append(col_sum if any_val else None)
 
-    weights = [table.area_weights.get(u, "") for u in une_order]
     corner = weighted_column_total(footer, weights)
 
     return {
