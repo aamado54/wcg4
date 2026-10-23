@@ -28,6 +28,8 @@ class PgoTable:
     title: str
     area_weights: dict[str, str]  # UNE -> peso texto (ej. 33.30%)
     concepts: tuple[PgoConcept, ...] = field(default_factory=tuple)
+    # TOTAL oficial por UNE en PGO (fila TOTAL); si la suma de conceptos difiere, escala el resumen.
+    une_total_points: dict[str, int] = field(default_factory=dict)
 
 
 def _c(cid: str, tid: str, cat: str, label: str, **pts: int) -> PgoConcept:
@@ -141,6 +143,7 @@ PGO_TABLES: tuple[PgoTable, ...] = (
         id="operaciones",
         title="PGO Operaciones",
         area_weights={u: "25.00%" for u in UNE_CODES},
+        une_total_points={u: 100 for u in UNE_CODES},
         concepts=(
             _c(
                 "op_cronograma_proyectos",

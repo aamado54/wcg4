@@ -218,6 +218,35 @@ def tablero_puntos(request):
     )
 
 
+def _une_concept_points_sum(table, une: str) -> float:
+    return float(
+        sum(c.max_points[une] for c in table.concepts if une in c.max_points)
+    )
+
+
+def _scale_matrix_to_une_totals(table, rows: list[dict], footer: list, une_order: list[str]) -> None:
+    """Escala columnas al TOTAL oficial PGO por UNE (p. ej. Operaciones 90→100)."""
+    if not table.une_total_points:
+        return
+    for col_i, une in enumerate(une_order):
+        cap = table.une_total_points.get(une)
+        if not cap:
+            continue
+        raw_sum = _une_concept_points_sum(table, une)
+        if raw_sum <= 0 or raw_sum == cap:
+            continue
+        factor = cap / raw_sum
+        for row in rows:
+            val = row["cells"][col_i]
+            if val is not None:
+                row["cells"][col_i] = val * factor
+        if footer[col_i] is not None:
+            footer[col_i] = footer[col_i] * factor
+    for row in rows:
+        row_vals = [v for v in row["cells"] if v is not None]
+        row["row_total"] = sum(row_vals) if row_vals else None
+
+
 def _build_table_matrix(
     grid, table, year: int, footnote_registry: FootnoteRegistry
 ) -> dict:
@@ -265,6 +294,8 @@ def _build_table_matrix(
                 col_sum += val
                 any_val = True
         footer.append(col_sum if any_val else None)
+
+    _scale_matrix_to_une_totals(table, rows, footer, une_order)
 
     weights = [table.area_weights.get(u, "") for u in une_order]
     corner = weighted_column_total(footer, weights)
