@@ -25,11 +25,8 @@ from pgo.scorecard_engine import (
     month_average,
     table_total,
 )
-from pgo.scorecard_explain import (
-    concept_by_id,
-    explain_concept_row,
-    explain_total_row,
-)
+from pgo.scorecard_explain import explain_concept_row
+from pgo.scorecard_footnotes import FootnoteRegistry, weighted_column_total
 
 MONTH_LABELS = [
     "Ene",
@@ -106,7 +103,6 @@ def tablero_puntos(request):
             months_vals.append(cell.points)
             row_cells.append(cell)
         avg = month_average(months_vals)
-        row_info = _row_info_for_key(concept_key, une, year, grid)
         display_rows.append(
             {
                 "label": label,
@@ -117,7 +113,6 @@ def tablero_puntos(request):
                 "table_id": table_id,
                 "months": row_cells,
                 "average": avg,
-                "row_info": row_info,
             }
         )
 
@@ -183,12 +178,14 @@ def tablero_puntos(request):
 
     table_chunks = chunk_rows(display_rows, 10)
 
-    matrix_tables = [_build_table_matrix(grid, table, year) for table in PGO_TABLES]
+    footnote_registry = FootnoteRegistry()
+    matrix_tables = [
+        _build_table_matrix(grid, table, year, footnote_registry) for table in PGO_TABLES
+    ]
+    footnote_registry.ref("weighted_corner")
+    global_footnotes = footnote_registry.as_list()
     detail_month_totals = _detail_month_column_totals(grid, year, selected_unes)
     detail_month_avg = month_average(detail_month_totals)
-
-    # Resumen calculable vs no
-    summary_notes = _build_data_summary(grid, year)
 
     return render(
         request,
@@ -207,9 +204,9 @@ def tablero_puntos(request):
             "month_labels": MONTH_LABELS,
             "table_chunks": table_chunks,
             "matrix_tables": matrix_tables,
+            "global_footnotes": global_footnotes,
             "detail_month_totals": detail_month_totals,
             "detail_month_avg": detail_month_avg,
-            "summary_notes": summary_notes,
             "show_help": show_help,
             "help_pdf_url": request.build_absolute_uri(static("pgo/PGO-referencia.pdf")),
             "breadcrumbs": [
@@ -221,32 +218,12 @@ def tablero_puntos(request):
     )
 
 
-def _row_info_for_key(concept_key: str, une: str, year: int, grid: ScoreGrid):
-    if concept_key.startswith("total:"):
-        return explain_total_row(concept_key.split(":", 1)[1], year, grid, une)
-    concept = concept_by_id(concept_key)
-    if not concept:
-        from pgo.scorecard_explain import RowInfo
-
-        return RowInfo("red", "Concepto desconocido.")
-    return explain_concept_row(concept, year, grid, une=une)
-
-
-def _row_total_footnote_text(year: int, total: float | None) -> str:
-    if total is None:
-        return "Sin total calculable (ningún promedio mensual con dato en UNE aplicables)."
-    return (
-        f"Total fila {total:.1f} pts — suma de los promedios mensuales {year} "
-        "en cada UNE donde aplica el concepto. Se recalcula al cambiar cualquier celda del concepto."
-    )
-
-
-def _build_table_matrix(grid, table, year: int) -> dict:
-    """Matriz completa concepto × UNE; total columna = suma exacta de la columna."""
+def _build_table_matrix(
+    grid, table, year: int, footnote_registry: FootnoteRegistry
+) -> dict:
+    """Matriz completa concepto × UNE; total columna = suma; esquina = suma ponderada."""
     rows = []
     une_order = list(UNE_CODES)
-    footnotes: list[dict] = []
-    note_idx = 0
 
     for concept in table.concepts:
         row_cells = []
@@ -261,13 +238,9 @@ def _build_table_matrix(grid, table, year: int) -> dict:
             if avg is not None:
                 row_vals.append(avg)
         row_total = sum(row_vals) if row_vals else None
-        note_idx += 1
-        footnotes.append(
-            {
-                "num": note_idx,
-                "text": _row_total_footnote_text(year, row_total),
-            }
-        )
+        note_key = "row_no_total" if row_total is None else "row_has_total"
+        note_ref = footnote_registry.ref(note_key)
+        detail = explain_concept_row(concept, year, grid, une=None)
         rows.append(
             {
                 "label": concept.label,
@@ -275,8 +248,10 @@ def _build_table_matrix(grid, table, year: int) -> dict:
                 "concept_id": concept.id,
                 "cells": row_cells,
                 "row_total": row_total,
-                "note_ref": f"n.{note_idx}",
-                "row_info": explain_concept_row(concept, year, grid, une=None),
+                "note_ref": note_ref,
+                "detail_title": concept.label,
+                "detail_body": detail.body,
+                "detail_clickable": detail.level in ("green", "yellow"),
             }
         )
 
@@ -291,20 +266,16 @@ def _build_table_matrix(grid, table, year: int) -> dict:
                 any_val = True
         footer.append(col_sum if any_val else None)
 
-    corner_sum = sum(v for v in footer if v is not None)
-    corner = corner_sum if any(v is not None for v in footer) else None
-
     weights = [table.area_weights.get(u, "") for u in une_order]
+    corner = weighted_column_total(footer, weights)
 
     return {
         "title": table.title,
         "table_id": table.id,
         "rows": rows,
-        "footnotes": footnotes,
         "footer": footer,
         "corner": corner,
         "weights": weights,
-        "is_full_table": True,
     }
 
 
@@ -324,42 +295,6 @@ def _detail_month_column_totals(grid: ScoreGrid, year: int, unes: list[str]) -> 
                     any_val = True
         totals.append(col_sum if any_val else None)
     return totals
-
-
-def _build_data_summary(grid, year: int) -> list[dict]:
-    """Notas para el usuario sobre qué se puede calcular hoy."""
-    from pgo.scorecard_catalog import all_concepts
-
-    lines = []
-    for c in all_concepts():
-        sample = None
-        for m in range(1, 13):
-            for une in UNE_CODES:
-                if une not in c.max_points:
-                    continue
-                cell = grid.get(year, m, une, c.id)
-                if cell.points is not None:
-                    sample = cell
-                    break
-            if sample:
-                break
-        if sample and sample.confidence in ("high", "low"):
-            lines.append(
-                {
-                    "concept": c.label,
-                    "status": "parcial" if sample.confidence == "low" else "calculable",
-                    "note": sample.note,
-                }
-            )
-        else:
-            lines.append(
-                {
-                    "concept": c.label,
-                    "status": "sin_dato",
-                    "note": sample.note if sample else "Sin fuente en sistema",
-                }
-            )
-    return lines
 
 
 @login_required

@@ -1,0 +1,9 @@
+{% if detail_clickable %}
+<button type="button"
+  class="btn btn-link btn-sm p-0 pgo-note-ref-btn"
+  data-detail-title="{{ detail_title }}"
+  aria-label="Ver nota {{ note_ref }}">{{ note_ref }}</button>
+<span class="d-none pgo-note-detail-text">{{ detail_body }}</span>
+{% else %}
+<span class="text-muted">{{ note_ref }}</span>
+{% endif %}

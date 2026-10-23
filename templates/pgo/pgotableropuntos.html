@@ -70,48 +70,35 @@
   </div>
 </form>
 
-<div class="card border-0 shadow-sm mb-3">
+{% if global_footnotes %}
+<div class="card border-0 shadow-sm mb-4">
   <div class="card-header bg-white fw-semibold small">Estado de fuentes de datos ({{ year }})</div>
-  <div class="card-body small">
-    <p class="text-muted">Los puntajes mostrados usan solo información ya cargada en WCG (EEFF seed, PGC ingresos, imports, tickets). Muchos conceptos del PGO requieren Planner, SharePoint o cronogramas que aún no están en BD.</p>
-    <ul class="mb-0">
-      {% for row in summary_notes %}
-      <li>
-        <strong>{{ row.concept|truncatechars:80 }}</strong>
-        — <span class="{% if row.status == 'sin_dato' %}text-danger{% elif row.status == 'parcial' %}text-warning{% else %}text-success{% endif %}">{{ row.status }}</span>
-        {% if row.note %}: <span class="text-muted">{{ row.note }}</span>{% endif %}
-      </li>
+  <div class="card-body small text-muted mb-0">
+    <ul class="mb-0 ps-3">
+      {% for fn in global_footnotes %}
+      <li class="mb-1"><span class="text-dark fw-semibold">n.{{ fn.num }}</span> — {{ fn.text }}</li>
       {% endfor %}
     </ul>
   </div>
 </div>
+{% endif %}
 
-<h2 class="h6 fw-semibold mt-2 mb-2">Resumen {{ year }} — promedio mensual por tabla (esquina = total)</h2>
+<h2 class="h6 fw-semibold mt-2 mb-2">Resumen {{ year }} — promedio mensual por tabla</h2>
 <div class="row g-3 mb-4">
   {% for mt in matrix_tables %}
   <div class="col-12 col-xl-6">
     <div class="card border-0 shadow-sm h-100">
       <div class="card-header bg-white fw-semibold small">{{ mt.title }}</div>
-      {% if mt.footnotes %}
-      <div class="card-body py-2 border-bottom small text-muted">
-        <div class="fw-semibold text-dark mb-1">Notas de total fila</div>
-        <ul class="mb-0 ps-3">
-          {% for fn in mt.footnotes %}
-          <li><span class="text-dark fw-semibold">n.{{ fn.num }}</span> — {{ fn.text }}</li>
-          {% endfor %}
-        </ul>
-      </div>
-      {% endif %}
       <div class="table-responsive">
-        <table class="table table-sm table-bordered mb-0 small">
+        <table class="table table-sm table-bordered mb-0 small align-middle">
           <thead class="table-light">
             <tr>
               <th>Variable</th>
               {% for code, label in une_options %}
               <th class="text-end">{{ label }}</th>
               {% endfor %}
-              <th class="text-end">Nota</th>
-              <th></th>
+              <th class="text-end">Total fila</th>
+              <th class="text-center" style="width:3.5rem">Nota</th>
             </tr>
           </thead>
           <tbody>
@@ -121,8 +108,8 @@
               {% for v in row.cells %}
               <td class="text-end">{% if v != None %}{{ v|floatformat:1 }}{% else %}—{% endif %}</td>
               {% endfor %}
-              <td class="text-end fw-semibold">{{ row.note_ref }}</td>
-              <td class="text-center">{% include "pgo/_pgo_row_info_btn.html" with row_info=row.row_info label=row.label %}</td>
+              <td class="text-end fw-semibold">{% if row.row_total != None %}{{ row.row_total|floatformat:1 }}{% else %}—{% endif %}</td>
+              <td class="text-center">{% include "pgo/_pgo_note_ref.html" with note_ref=row.note_ref detail_clickable=row.detail_clickable detail_title=row.detail_title detail_body=row.detail_body %}</td>
             </tr>
             {% endfor %}
             <tr class="table-secondary fw-semibold">
@@ -160,7 +147,6 @@
           <th>UNE</th>
           {% for ml in month_labels %}<th class="text-end">{{ ml }}</th>{% endfor %}
           <th class="text-end">Prom.</th>
-          <th></th>
         </tr>
       </thead>
       <tbody>
@@ -172,12 +158,9 @@
           <td class="text-end small" title="{{ cell.note }}">{{ cell.display }}</td>
           {% endfor %}
           <td class="text-end fw-semibold">{% if row.average != None %}{{ row.average|floatformat:1 }}{% else %}—{% endif %}</td>
-          <td class="text-nowrap">
-            {% include "pgo/_pgo_row_info_btn.html" with row_info=row.row_info label=row.label %}
-          </td>
         </tr>
         {% empty %}
-        <tr><td colspan="16" class="text-center text-muted py-3">Seleccione al menos un concepto y una UNE.</td></tr>
+        <tr><td colspan="15" class="text-center text-muted py-3">Seleccione al menos un concepto y una UNE.</td></tr>
         {% endfor %}
       </tbody>
       <tfoot class="table-secondary small fw-semibold">
@@ -187,7 +170,6 @@
           <td class="text-end">{% if v != None %}{{ v|floatformat:1 }}{% else %}—{% endif %}</td>
           {% endfor %}
           <td class="text-end">{% if detail_month_avg != None %}{{ detail_month_avg|floatformat:1 }}{% else %}—{% endif %}</td>
-          <td></td>
         </tr>
       </tfoot>
     </table>
@@ -206,35 +188,29 @@
   </div>
 </div>
 
-<style>
-.pgo-help-overlay { display:none; position:fixed; inset:0; z-index:1050; }
-.pgo-help-overlay.show { display:block; }
-.pgo-help-backdrop { position:absolute; inset:0; background:rgba(15,23,42,.55); cursor:pointer; }
-.pgo-help-panel { position:absolute; inset:24px; background:#fff; border-radius:8px; display:flex; flex-direction:column; box-shadow:0 8px 32px rgba(0,0,0,.2); }
-.pgo-help-iframe { flex:1; width:100%; border:0; border-radius:0 0 8px 8px; cursor:pointer; }
-.pgo-info-btn { font-size: 0.7rem; line-height: 1.2; border: none; color: #fff; }
-.pgo-info-green { background-color: #198754; }
-.pgo-info-green:hover { background-color: #157347; color: #fff; }
-.pgo-info-yellow { background-color: #ffc107; color: #212529; }
-.pgo-info-yellow:hover { background-color: #e0a800; color: #212529; }
-.pgo-info-red { background-color: #dc3545; }
-.pgo-info-red:hover { background-color: #bb2d3b; color: #fff; }
-.pgo-info-modal-body { white-space: pre-wrap; font-size: 0.9rem; }
-.pgo-concept-label { font-size: inherit; color: inherit; text-decoration: none; border-bottom: 1px dotted #6c757d; }
-.pgo-concept-label:hover { color: #0d6efd; }
-</style>
-
 <div class="modal fade" id="pgo-row-info-modal" tabindex="-1" aria-labelledby="pgo-row-info-title" aria-hidden="true">
   <div class="modal-dialog modal-dialog-scrollable">
     <div class="modal-content">
       <div class="modal-header py-2">
-        <h2 class="modal-title h6" id="pgo-row-info-title">Info</h2>
+        <h2 class="modal-title h6" id="pgo-row-info-title">Detalle</h2>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
       </div>
       <div class="modal-body pgo-info-modal-body" id="pgo-row-info-body"></div>
     </div>
   </div>
 </div>
+
+<style>
+.pgo-help-overlay { display:none; position:fixed; inset:0; z-index:1050; }
+.pgo-help-overlay.show { display:block; }
+.pgo-help-backdrop { position:absolute; inset:0; background:rgba(15,23,42,.55); cursor:pointer; }
+.pgo-help-panel { position:absolute; inset:24px; background:#fff; border-radius:8px; display:flex; flex-direction:column; box-shadow:0 8px 32px rgba(0,0,0,.2); }
+.pgo-help-iframe { flex:1; width:100%; border:0; border-radius:0 0 8px 8px; cursor:pointer; }
+.pgo-concept-label { font-size: inherit; color: inherit; text-decoration: none; border-bottom: 1px dotted #6c757d; }
+.pgo-concept-label:hover { color: #0d6efd; }
+.pgo-info-modal-body { white-space: pre-wrap; font-size: 0.9rem; }
+.pgo-note-ref-btn { font-size: inherit; text-decoration: none; font-weight: 600; }
+</style>
 
 <script>
 (function(){
@@ -248,24 +224,24 @@
   closeBtn?.addEventListener('click', hide);
   backdrop?.addEventListener('click', hide);
   overlay?.querySelector('.pgo-help-iframe')?.addEventListener('click', hide);
-  document.addEventListener('keydown', function(e){ if(e.key === 'Escape') hide(); });
+  document.addEventListener('keydown', function(e){ if(e.key === 'Escape' && overlay?.classList.contains('show')) hide(); });
 })();
 
 (function(){
+  document.querySelectorAll('[data-bs-toggle="popover"]').forEach(function(el){
+    new bootstrap.Popover(el);
+  });
+
   const modalEl = document.getElementById('pgo-row-info-modal');
   if (!modalEl || typeof bootstrap === 'undefined') return;
   const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
   const titleEl = document.getElementById('pgo-row-info-title');
   const bodyEl = document.getElementById('pgo-row-info-body');
-  document.querySelectorAll('[data-bs-toggle="popover"]').forEach(function(el){
-    new bootstrap.Popover(el);
-  });
-
-  document.querySelectorAll('.pgo-info-btn').forEach(function(btn){
+  document.querySelectorAll('.pgo-note-ref-btn').forEach(function(btn){
     btn.addEventListener('click', function(){
-      const wrap = btn.closest('.pgo-info-wrap');
-      const textEl = wrap ? wrap.querySelector('.pgo-info-text') : null;
-      titleEl.textContent = (textEl && textEl.getAttribute('data-title')) || 'Info';
+      const wrap = btn.closest('td');
+      const textEl = wrap ? wrap.querySelector('.pgo-note-detail-text') : null;
+      titleEl.textContent = btn.getAttribute('data-detail-title') || 'Detalle';
       bodyEl.textContent = textEl ? textEl.textContent : '';
       modal.show();
     });
