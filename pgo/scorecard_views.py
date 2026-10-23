@@ -18,6 +18,11 @@ from pgo.scorecard_engine import (
     month_average,
     table_total,
 )
+from pgo.scorecard_explain import (
+    concept_by_id,
+    explain_concept_row,
+    explain_total_row,
+)
 
 MONTH_LABELS = [
     "Ene",
@@ -94,6 +99,7 @@ def tablero_puntos(request):
             months_vals.append(cell.points)
             row_cells.append(cell)
         avg = month_average(months_vals)
+        row_info = _row_info_for_key(concept_key, une, year, grid)
         display_rows.append(
             {
                 "label": label,
@@ -103,6 +109,7 @@ def tablero_puntos(request):
                 "table_id": table_id,
                 "months": row_cells,
                 "average": avg,
+                "row_info": row_info,
             }
         )
 
@@ -198,6 +205,17 @@ def tablero_puntos(request):
     )
 
 
+def _row_info_for_key(concept_key: str, une: str, year: int, grid: ScoreGrid):
+    if concept_key.startswith("total:"):
+        return explain_total_row(concept_key.split(":", 1)[1], year, grid, une)
+    concept = concept_by_id(concept_key)
+    if not concept:
+        from pgo.scorecard_explain import RowInfo
+
+        return RowInfo("red", "Concepto desconocido.")
+    return explain_concept_row(concept, year, grid, une=une)
+
+
 def _build_table_matrix(grid, table, year: int) -> dict:
     """Matriz concepto × UNE con promedio anual y fila/columna de totales (meses calificados)."""
     rows = []
@@ -219,8 +237,10 @@ def _build_table_matrix(grid, table, year: int) -> dict:
         rows.append(
             {
                 "label": concept.label,
+                "concept_id": concept.id,
                 "cells": row_cells,
                 "row_total": sum(row_vals) if row_vals else None,
+                "row_info": explain_concept_row(concept, year, grid, une=None),
             }
         )
     footer = [month_average(col_totals[u]) for u in une_order]
