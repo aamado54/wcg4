@@ -155,7 +155,7 @@
           <td class="small">{% if row.show_concept %}{% include "pgo/_pgo_concept_label.html" with label=row.label label_short=row.label_short %}{% endif %}</td>
           <td class="small">{% if row.show_une %}{{ row.une_label }}{% endif %}</td>
           {% for cell in row.months %}
-          <td class="text-end small" title="{{ cell.note }}">{{ cell.display }}</td>
+          <td class="text-end small"{% if forloop.counter in processed_months %} title="{{ cell.note }}"{% endif %}>{% if forloop.counter in processed_months %}{{ cell.display }}{% endif %}</td>
           {% endfor %}
           <td class="text-end fw-semibold">{% if row.average != None %}{{ row.average|floatformat:1 }}{% else %}—{% endif %}</td>
         </tr>

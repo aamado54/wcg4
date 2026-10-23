@@ -63,6 +63,20 @@ def _financiero_periods() -> set[str]:
     return set(data.get("periods") or [])
 
 
+def months_processed_for_pgo(year: int) -> frozenset[int]:
+    """Meses con cierre operativo cargado (p. ej. EEFF en seed); el resto queda en blanco en tablero."""
+    months: set[int] = set()
+    prefix = f"{year}-"
+    for period in _financiero_periods():
+        if not period.startswith(prefix) or len(period) < 7:
+            continue
+        try:
+            months.add(int(period[5:7]))
+        except ValueError:
+            continue
+    return frozenset(months)
+
+
 def _financiero_kpi_month(period: str, bu: str) -> bool:
     """bu: F,L,I,S en seed."""
     seed = Path(settings.BASE_DIR) / "risk" / "financiero" / "seed" / "combined_full.json"

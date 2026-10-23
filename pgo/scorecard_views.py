@@ -23,6 +23,7 @@ from pgo.scorecard_engine import (
     build_score_grid,
     chunk_rows,
     month_average,
+    months_processed_for_pgo,
     table_total,
 )
 from pgo.scorecard_explain import explain_concept_row
@@ -91,6 +92,7 @@ def tablero_puntos(request):
         group_by = "concept"
 
     show_help = request.GET.get("help") == "1"
+    processed_months = months_processed_for_pgo(year)
 
     # Build display rows: each row has label, une (optional), concept_id, table_id, months[1..12], avg
     display_rows: list[dict] = []
@@ -100,7 +102,10 @@ def tablero_puntos(request):
         row_cells = []
         for m in range(1, 13):
             cell: CellScore = getter(m)
-            months_vals.append(cell.points)
+            if m in processed_months:
+                months_vals.append(cell.points)
+            else:
+                months_vals.append(None)
             row_cells.append(cell)
         avg = month_average(months_vals)
         display_rows.append(
@@ -182,7 +187,8 @@ def tablero_puntos(request):
 
     footnote_registry = FootnoteRegistry()
     matrix_tables = [
-        _build_table_matrix(grid, table, year, footnote_registry) for table in PGO_TABLES
+        _build_table_matrix(grid, table, year, footnote_registry, processed_months)
+        for table in PGO_TABLES
     ]
     footnote_registry.ref("weighted_corner")
     global_footnotes = footnote_registry.as_list()
@@ -205,6 +211,7 @@ def tablero_puntos(request):
             "table_chunks": table_chunks,
             "matrix_tables": matrix_tables,
             "global_footnotes": global_footnotes,
+            "processed_months": processed_months,
             "show_help": show_help,
             "help_pdf_url": request.build_absolute_uri(static("pgo/PGO-referencia.pdf")),
             "breadcrumbs": [
@@ -230,7 +237,11 @@ def _blank_repeated_detail_labels(rows: list[dict]) -> None:
 
 
 def _build_table_matrix(
-    grid, table, year: int, footnote_registry: FootnoteRegistry
+    grid,
+    table,
+    year: int,
+    footnote_registry: FootnoteRegistry,
+    processed_months: frozenset[int],
 ) -> dict:
     """Matriz completa concepto × UNE; total columna = suma; esquina = suma ponderada."""
     rows = []
@@ -243,7 +254,10 @@ def _build_table_matrix(
             if une not in concept.max_points:
                 row_cells.append(None)
                 continue
-            monthly = [grid.get(year, m, une, concept.id).points for m in range(1, 13)]
+            monthly = [
+                grid.get(year, m, une, concept.id).points if m in processed_months else None
+                for m in range(1, 13)
+            ]
             avg = month_average(monthly)
             row_cells.append(avg)
             if avg is not None:
