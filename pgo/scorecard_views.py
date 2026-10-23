@@ -251,7 +251,7 @@ def _build_table_matrix(
                 "note_ref": note_ref,
                 "detail_title": concept.label,
                 "detail_body": detail.body,
-                "detail_clickable": detail.level in ("green", "yellow"),
+                "detail_clickable": bool((detail.body or "").strip()),
             }
         )
 

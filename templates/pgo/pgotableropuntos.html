@@ -226,7 +226,11 @@
   overlay?.querySelector('.pgo-help-iframe')?.addEventListener('click', hide);
   document.addEventListener('keydown', function(e){ if(e.key === 'Escape' && overlay?.classList.contains('show')) hide(); });
 })();
+</script>
+{% endblock %}
 
+{% block extra_js %}
+<script>
 (function(){
   document.querySelectorAll('[data-bs-toggle="popover"]').forEach(function(el){
     new bootstrap.Popover(el);
