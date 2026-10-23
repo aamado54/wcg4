@@ -286,11 +286,6 @@ def table_total(
             pts += cell.points
             any_val = True
         mx += cell.max_points
-    cap = table.une_total_points.get(une)
-    if cap:
-        if mx > 0 and pts is not None and cap != mx:
-            pts = pts * (cap / mx)
-        mx = cap
     if not any_val and mx == 0:
         return CellScore(points=None, max_points=0, note="N/A")
     return CellScore(
