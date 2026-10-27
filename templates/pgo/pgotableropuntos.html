@@ -25,7 +25,7 @@
         {% for y in years %}
         <label class="d-block small">
           <input type="radio" name="year" value="{{ y|unlocalize }}" {% if y == year %}checked{% endif %} onchange="this.form.submit()">
-          {{ y }}
+          {{ y|unlocalize }}
         </label>
         {% endfor %}
       </div>
@@ -43,7 +43,18 @@
         {% endfor %}
       </div>
 
-      <div class="col-lg-5">
+      <div class="col-lg-2">
+        <div class="fw-semibold small mb-2">Resumen</div>
+        <select name="resumen" class="form-select form-select-sm" onchange="this.form.submit()">
+          {% for opt in resumen_month_choices %}
+          <option value="{{ opt.value }}" {% if resumen == opt.value %}selected{% endif %}>{{ opt.label }}</option>
+          {% endfor %}
+          <option value="avg" {% if resumen == 'avg' %}selected{% endif %}>Promedio (con dato)</option>
+        </select>
+        <p class="text-muted mb-0 mt-1" style="font-size:0.72rem;">Por defecto: último mes con cierre.</p>
+      </div>
+
+      <div class="col-lg-4">
         <div class="fw-semibold small mb-2">Conceptos</div>
         <div style="max-height:220px;overflow:auto;border:1px solid #e5e7eb;border-radius:6px;padding:8px;">
           {% for c in concept_choices %}
@@ -74,7 +85,7 @@
 
 {% if global_footnotes %}
 <div class="card border-0 shadow-sm mb-4">
-  <div class="card-header bg-white fw-semibold small">Estado de fuentes de datos ({{ year }})</div>
+  <div class="card-header bg-white fw-semibold small">Estado de fuentes de datos ({{ year|unlocalize }})</div>
   <div class="card-body small text-muted mb-0">
     <ul class="mb-0 ps-3">
       {% for fn in global_footnotes %}
@@ -85,7 +96,7 @@
 </div>
 {% endif %}
 
-<h2 class="h6 fw-semibold mt-2 mb-2">Resumen {{ year }} — promedio mensual por tabla</h2>
+<h2 class="h6 fw-semibold mt-2 mb-2">Resumen {{ year|unlocalize }} — {{ resumen_subtitle }}</h2>
 <div class="row g-3 mb-4">
   {% for mt in matrix_tables %}
   <div class="col-12 col-xl-6">

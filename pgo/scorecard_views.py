@@ -41,6 +41,28 @@ def _parse_year_param(raw: str | None, default: int) -> int:
         return default
 
 
+def _parse_resumen_param(raw: str | None, processed_months: frozenset[int]) -> str:
+    """``avg`` o mes 1–12; por defecto el último mes con cierre PGO."""
+    if raw == "avg":
+        return "avg"
+    if raw:
+        cleaned = str(raw).strip().replace(",", "")
+        if cleaned.isdigit():
+            month = int(cleaned)
+            if 1 <= month <= 12 and (not processed_months or month in processed_months):
+                return str(month)
+    if processed_months:
+        return str(max(processed_months))
+    return "avg"
+
+
+def _resumen_subtitle(resumen: str, year: int) -> str:
+    if resumen == "avg":
+        return "promedio (solo meses con dato)"
+    month = int(resumen)
+    return f"{MONTH_LABELS[month - 1]} {year}"
+
+
 MONTH_LABELS = [
     "Ene",
     "Feb",
@@ -107,6 +129,11 @@ def tablero_puntos(request):
 
     show_help = request.GET.get("help") == "1"
     processed_months = processed_months_for_display(year)
+    resumen = _parse_resumen_param(request.GET.get("resumen"), processed_months)
+    resumen_month_choices = [
+        {"value": str(m), "label": f"{MONTH_LABELS[m - 1]} {year}"}
+        for m in sorted(processed_months)
+    ]
 
     # Build display rows: each row has label, une (optional), concept_id, table_id, months[1..12], avg
     display_rows: list[dict] = []
@@ -198,7 +225,7 @@ def tablero_puntos(request):
 
     footnote_registry = FootnoteRegistry()
     matrix_tables = [
-        _build_table_matrix(grid, table, year, footnote_registry, processed_months)
+        _build_table_matrix(grid, table, year, footnote_registry, processed_months, resumen)
         for table in PGO_TABLES
     ]
     footnote_registry.ref("weighted_corner")
@@ -219,6 +246,9 @@ def tablero_puntos(request):
             "selected_concepts": selected_concepts,
             "group_by": group_by,
             "month_labels": MONTH_LABELS,
+            "resumen": resumen,
+            "resumen_subtitle": _resumen_subtitle(resumen, year),
+            "resumen_month_choices": resumen_month_choices,
             "detail_rows": display_rows,
             "matrix_tables": matrix_tables,
             "global_footnotes": global_footnotes,
@@ -264,6 +294,7 @@ def _build_table_matrix(
     year: int,
     footnote_registry: FootnoteRegistry,
     processed_months: frozenset[int],
+    resumen: str,
 ) -> dict:
     """Matriz concepto × UNE; total fila y esquina = suma ponderada (fila Pesos); total columna = suma."""
     rows = []
@@ -276,15 +307,22 @@ def _build_table_matrix(
             if une not in concept.max_points:
                 row_cells.append(None)
                 continue
-            scored: list[float] = []
-            for m in range(1, 13):
-                if m not in processed_months:
-                    continue
-                pts = grid.get(year, m, une, concept.id).points
-                if pts is not None:
-                    scored.append(pts)
-            avg = average_scored_months(scored)
-            row_cells.append(avg)
+            if resumen == "avg":
+                scored: list[float] = []
+                for m in range(1, 13):
+                    if m not in processed_months:
+                        continue
+                    pts = grid.get(year, m, une, concept.id).points
+                    if pts is not None:
+                        scored.append(pts)
+                cell_val = average_scored_months(scored)
+            else:
+                month = int(resumen)
+                if month not in processed_months:
+                    cell_val = None
+                else:
+                    cell_val = grid.get(year, month, une, concept.id).points
+            row_cells.append(cell_val)
         row_total = weighted_column_total(row_cells, weights)
         note_key = "row_no_total" if row_total is None else "row_has_total"
         note_ref = footnote_registry.ref(note_key)
