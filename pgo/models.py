@@ -182,3 +182,49 @@ class PgoExpediente(TimeStampedModel):
 
     def __str__(self):
         return f"{self.concept_id} {self.une} {self.fecha_inicio:%Y-%m-%d}"
+
+
+class PgoScorecardCacheMeta(models.Model):
+    """Metadatos del último snapshot del tablero por puntos (fila única pk=1)."""
+
+    id = models.PositiveSmallIntegerField(primary_key=True, default=1)
+    fingerprint = models.CharField(max_length=64)
+    computed_at = models.DateTimeField()
+    years = models.JSONField(default=list)
+    processed_months = models.JSONField(default=dict)
+
+    class Meta:
+        verbose_name = "Caché tablero PGO (meta)"
+        verbose_name_plural = "Caché tablero PGO (meta)"
+
+    def __str__(self):
+        return f"Tablero PGO {self.computed_at:%Y-%m-%d %H:%M} ({self.fingerprint[:8]}…)"
+
+
+class PgoScorecardCell(models.Model):
+    """Celda persistida: año, mes, UNE, concepto."""
+
+    year = models.PositiveSmallIntegerField(db_index=True)
+    month = models.PositiveSmallIntegerField(db_index=True)
+    une = models.CharField(max_length=20, db_index=True)
+    concept_id = models.CharField(max_length=80, db_index=True)
+    points = models.FloatField(null=True, blank=True)
+    max_points = models.FloatField(default=0)
+    confidence = models.CharField(max_length=10, default="none")
+    note = models.TextField(blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["year", "month", "une", "concept_id"],
+                name="pgo_scorecard_cell_uniq",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["year", "month"]),
+        ]
+        verbose_name = "Celda tablero PGO"
+        verbose_name_plural = "Celdas tablero PGO"
+
+    def __str__(self):
+        return f"{self.year}-{self.month:02d} {self.une} {self.concept_id}"

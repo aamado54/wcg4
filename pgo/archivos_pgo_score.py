@@ -31,25 +31,41 @@ def _cumple_evento_creado(event_day, creado_en: datetime, concept_id: str) -> bo
     return cumple_plazo(inicio, creado_en, rule)
 
 
+def build_archivos_index() -> dict[str, list[PgoArchivoRegistro]]:
+    """Una lectura de BD agrupada por concept_id (para recálculo del tablero)."""
+    index: dict[str, list[PgoArchivoRegistro]] = {}
+    for r in PgoArchivoRegistro.objects.all().only(
+        "carpeta", "archivo", "creado_en", "event_date"
+    ):
+        cid = _concept_for_carpeta(r.carpeta)
+        if cid:
+            index.setdefault(cid, []).append(r)
+    return index
+
+
 def score_concept_month_from_archivos_pgo(
     concept_id: str,
     year: int,
     month: int,
     une: str,
     max_pts: float,
+    archivos_index: dict[str, list[PgoArchivoRegistro]] | None = None,
 ) -> CellScore | None:
     if concept_id == "legal_actas_comite" and une not in ("FACTORING", "LEASING"):
         return None
     if concept_id not in CONCEPT_SLA:
         return None
 
-    rows = [
-        r
-        for r in PgoArchivoRegistro.objects.all().only(
-            "carpeta", "archivo", "creado_en", "event_date"
-        )
-        if _concept_for_carpeta(r.carpeta) == concept_id
-    ]
+    if archivos_index is not None:
+        rows = archivos_index.get(concept_id, [])
+    else:
+        rows = [
+            r
+            for r in PgoArchivoRegistro.objects.all().only(
+                "carpeta", "archivo", "creado_en", "event_date"
+            )
+            if _concept_for_carpeta(r.carpeta) == concept_id
+        ]
     month_rows = [
         r
         for r in rows

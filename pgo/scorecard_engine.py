@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
+from functools import lru_cache
 from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
@@ -20,6 +21,14 @@ from pgo.models import Ticket
 from pgo.scorecard_catalog import PGO_TABLES, PgoConcept, UNE_CODES, all_concepts, table_by_id
 
 Confidence = Literal["high", "low", "none"]
+
+
+@dataclass
+class ScoreBuildContext:
+    """Datos precargados para un recálculo completo del scorecard."""
+
+    financiero: dict | None
+    archivos_index: dict
 
 
 @dataclass
@@ -55,24 +64,44 @@ class ScoreGrid:
         )
 
 
-def _financiero_seed_lists() -> tuple[set[str], set[str]]:
-    seed = Path(settings.BASE_DIR) / "risk" / "financiero" / "seed" / "combined_full.json"
+def _financiero_seed_path() -> Path:
+    return Path(settings.BASE_DIR) / "risk" / "financiero" / "seed" / "combined_full.json"
+
+
+@lru_cache(maxsize=4)
+def _financiero_data_cached(mtime_ns: int, size: int) -> dict | None:
+    seed = _financiero_seed_path()
     if not seed.is_file():
+        return None
+    return json.loads(seed.read_text(encoding="utf-8"))
+
+
+def _financiero_data() -> dict | None:
+    seed = _financiero_seed_path()
+    if not seed.is_file():
+        return None
+    st = seed.stat()
+    return _financiero_data_cached(st.st_mtime_ns, st.st_size)
+
+
+def _financiero_seed_lists(data: dict | None = None) -> tuple[set[str], set[str]]:
+    if data is None:
+        data = _financiero_data()
+    if not data:
         return set(), set()
-    data = json.loads(seed.read_text(encoding="utf-8"))
     return set(data.get("periods") or []), set(data.get("recent_periods") or [])
 
 
-def _financiero_periods() -> set[str]:
-    periods, _recent = _financiero_seed_lists()
+def _financiero_periods(data: dict | None = None) -> set[str]:
+    periods, _recent = _financiero_seed_lists(data)
     return periods
 
 
-def months_processed_for_pgo(year: int) -> frozenset[int]:
+def months_processed_for_pgo(year: int, data: dict | None = None) -> frozenset[int]:
     """Meses con cierre PGO (recent_periods del seed); oct–dic sin cierre no cuentan."""
     months: set[int] = set()
     prefix = f"{year}-"
-    _all_periods, recent = _financiero_seed_lists()
+    _all_periods, recent = _financiero_seed_lists(data)
     candidates = {p for p in recent if p.startswith(prefix)}
     if not candidates:
         candidates = {p for p in _all_periods if p.startswith(prefix)}
@@ -86,12 +115,12 @@ def months_processed_for_pgo(year: int) -> frozenset[int]:
     return frozenset(months)
 
 
-def _financiero_kpi_month(period: str, bu: str) -> bool:
+def _financiero_kpi_month(period: str, bu: str, data: dict | None = None) -> bool:
     """bu: F,L,I,S en seed."""
-    seed = Path(settings.BASE_DIR) / "risk" / "financiero" / "seed" / "combined_full.json"
-    if not seed.is_file():
+    if data is None:
+        data = _financiero_data()
+    if not data:
         return False
-    data = json.loads(seed.read_text(encoding="utf-8"))
     if period not in data.get("periods", []):
         return False
     kpis = data.get("kpis", {}).get(bu, {}).get(period, {})
@@ -161,13 +190,19 @@ def _full_or_zero(ok: bool, max_pts: float, note_ok: str, note_fail: str, confid
 
 
 def compute_concept_month(
-    concept: PgoConcept, year: int, month: int, une: str, grid: ScoreGrid
+    concept: PgoConcept,
+    year: int,
+    month: int,
+    une: str,
+    grid: ScoreGrid,
+    ctx: ScoreBuildContext | None = None,
 ) -> CellScore:
     max_pts = float(concept.max_points.get(une, 0))
     if max_pts <= 0:
         return CellScore(points=None, max_points=0, confidence="none", note="N/A en plantilla")
 
-    if month not in months_processed_for_pgo(year):
+    fin = ctx.financiero if ctx else None
+    if month not in months_processed_for_pgo(year, fin):
         return CellScore(
             points=None,
             max_points=max_pts,
@@ -178,8 +213,9 @@ def compute_concept_month(
     from pgo.archivos_pgo_score import score_concept_month_from_archivos_pgo
     from pgo.archivos_score import score_concept_month_from_expedientes
 
+    archivos_index = ctx.archivos_index if ctx else None
     pgo_cell = score_concept_month_from_archivos_pgo(
-        concept.id, year, month, une, max_pts
+        concept.id, year, month, une, max_pts, archivos_index=archivos_index
     )
     if pgo_cell is not None:
         return pgo_cell
@@ -195,7 +231,7 @@ def compute_concept_month(
 
     if cid in ("fr_eeff_integraciones", "fr_carga_analitica"):
         bu = _BU_MAP.get(une)
-        has_eeff = _financiero_kpi_month(period, bu) if bu else False
+        has_eeff = _financiero_kpi_month(period, bu, fin) if bu else False
         has_ing = _ingresos_imported(year, month, une)
         if cid == "fr_eeff_integraciones":
             return _full_or_zero(
@@ -217,7 +253,7 @@ def compute_concept_month(
         )
 
     if cid == "op_reportes_pgc_pgo_7":
-        has_fin = period in _financiero_periods()
+        has_fin = period in _financiero_periods(fin)
         has_clients = FileUpload.objects.filter(
             file_type_detected=FileUpload.TYPE_NEW_CLIENTS,
             created_at__year=year,
@@ -291,23 +327,27 @@ def compute_concept_month(
 
 
 def build_score_grid(years: list[int] | None = None) -> ScoreGrid:
+    from pgo.archivos_pgo_score import build_archivos_index
+
     grid = ScoreGrid()
     if years is None:
         years = _detect_years()
+    fin = _financiero_data()
+    ctx = ScoreBuildContext(financiero=fin, archivos_index=build_archivos_index())
     for year in years:
         for month in range(1, 13):
             for concept in all_concepts():
                 for une in UNE_CODES:
                     if une not in concept.max_points:
                         continue
-                    cell = compute_concept_month(concept, year, month, une, grid)
+                    cell = compute_concept_month(concept, year, month, une, grid, ctx=ctx)
                     _set_cell(grid, year, month, une, concept, cell)
     return grid
 
 
 def _detect_years() -> list[int]:
     years = set()
-    for p in _financiero_periods():
+    for p in _financiero_periods(_financiero_data()):
         if len(p) >= 7 and p[4] == "-":
             try:
                 years.add(int(p[:4]))

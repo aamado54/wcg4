@@ -18,12 +18,11 @@ from pgo.scorecard_catalog import (
     concept_short_label,
     table_by_id,
 )
+from pgo.scorecard_cache import load_scorecard, processed_months_for_display
 from pgo.scorecard_engine import (
     CellScore,
-    build_score_grid,
     chunk_rows,
     average_scored_months,
-    months_processed_for_pgo,
     table_total,
 )
 from pgo.scorecard_explain import explain_concept_row
@@ -85,7 +84,9 @@ def _concept_choices():
 
 @login_required
 def tablero_puntos(request):
-    grid = build_score_grid()
+    loaded = load_scorecard()
+    grid = loaded.grid
+    scorecard_meta = loaded.meta
     years = sorted(y for y in grid.cells.keys() if y >= 2026) or [2026]
     year = _parse_year_param(request.GET.get("year"), years[-1])
     if year not in years:
@@ -106,7 +107,7 @@ def tablero_puntos(request):
         group_by = "concept"
 
     show_help = request.GET.get("help") == "1"
-    processed_months = months_processed_for_pgo(year)
+    processed_months = processed_months_for_display(year)
 
     # Build display rows: each row has label, une (optional), concept_id, table_id, months[1..12], avg
     display_rows: list[dict] = []
@@ -225,6 +226,8 @@ def tablero_puntos(request):
             "global_footnotes": global_footnotes,
             "processed_months": processed_months,
             "show_help": show_help,
+            "scorecard_computed_at": scorecard_meta.computed_at,
+            "scorecard_from_cache": loaded.from_cache,
             "help_pdf_url": request.build_absolute_uri(static("pgo/PGO-referencia.pdf")),
             "breadcrumbs": [
                 {"label": "Panel principal", "url": "/panel/"},
