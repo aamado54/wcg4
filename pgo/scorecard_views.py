@@ -21,7 +21,6 @@ from pgo.scorecard_catalog import (
 from pgo.scorecard_cache import load_scorecard, processed_months_for_display
 from pgo.scorecard_engine import (
     CellScore,
-    chunk_rows,
     average_scored_months,
     table_total,
 )
@@ -195,8 +194,7 @@ def tablero_puntos(request):
         display_rows.sort(key=lambda r: (r["table_id"], r["concept_key"], r["une"]))
 
     _blank_repeated_detail_labels(display_rows)
-
-    table_chunks = chunk_rows(display_rows, 10)
+    _mark_detail_section_breaks(display_rows)
 
     footnote_registry = FootnoteRegistry()
     matrix_tables = [
@@ -221,7 +219,7 @@ def tablero_puntos(request):
             "selected_concepts": selected_concepts,
             "group_by": group_by,
             "month_labels": MONTH_LABELS,
-            "table_chunks": table_chunks,
+            "detail_rows": display_rows,
             "matrix_tables": matrix_tables,
             "global_footnotes": global_footnotes,
             "processed_months": processed_months,
@@ -249,6 +247,15 @@ def _blank_repeated_detail_labels(rows: list[dict]) -> None:
         row["show_une"] = une != prev_une
         prev_concept_key = ck
         prev_une = une
+
+
+def _mark_detail_section_breaks(rows: list[dict]) -> None:
+    """Separador visual al cambiar de tabla PGO (Finanzas, Legal, …)."""
+    prev_table_id: str | None = None
+    for row in rows:
+        tid = row.get("table_id")
+        row["section_start"] = prev_table_id is not None and tid != prev_table_id
+        prev_table_id = tid
 
 
 def _build_table_matrix(

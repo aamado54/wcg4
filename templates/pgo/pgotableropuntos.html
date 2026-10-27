@@ -139,27 +139,32 @@
 </div>
 
 <h2 class="h6 fw-semibold mb-2">Detalle filtrado (mes a mes)</h2>
-{% for chunk in table_chunks %}
 <div class="card border-0 shadow-sm mb-4">
   <div class="table-responsive">
-    <table class="table table-sm table-bordered table-wcg mb-0 align-middle">
+    <table class="table table-sm table-bordered table-wcg pgo-scorecard-detail-table mb-0 align-middle">
+      <colgroup>
+        <col class="pgo-col-concept">
+        <col class="pgo-col-une">
+        {% for ml in month_labels %}<col class="pgo-col-month">{% endfor %}
+        <col class="pgo-col-prom">
+      </colgroup>
       <thead class="table-light">
         <tr>
-          <th>Concepto</th>
-          <th>UNE</th>
-          {% for ml in month_labels %}<th class="text-end">{{ ml }}</th>{% endfor %}
-          <th class="text-end">Prom.</th>
+          <th class="pgo-th-concept">Concepto</th>
+          <th class="pgo-th-une">UNE</th>
+          {% for ml in month_labels %}<th class="text-end pgo-th-month">{{ ml }}</th>{% endfor %}
+          <th class="text-end pgo-th-prom">Prom.</th>
         </tr>
       </thead>
       <tbody>
-        {% for row in chunk %}
-        <tr>
-          <td class="small">{% if row.show_concept %}{% include "pgo/_pgo_concept_label.html" with label=row.label label_short=row.label_short %}{% endif %}</td>
-          <td class="small">{% if row.show_une %}{{ row.une_label }}{% endif %}</td>
+        {% for row in detail_rows %}
+        <tr{% if row.section_start %} class="pgo-detail-section-start"{% endif %}>
+          <td class="small pgo-td-concept">{% if row.show_concept %}{% include "pgo/_pgo_concept_label.html" with label=row.label label_short=row.label_short %}{% endif %}</td>
+          <td class="small pgo-td-une">{% if row.show_une %}{{ row.une_label }}{% endif %}</td>
           {% for cell in row.months %}
-          <td class="text-end small"{% if forloop.counter in processed_months %} title="{{ cell.note }}"{% endif %}>{% if forloop.counter in processed_months %}{{ cell.display }}{% endif %}</td>
+          <td class="text-end small pgo-td-month"{% if forloop.counter in processed_months %} title="{{ cell.note }}"{% endif %}>{% if forloop.counter in processed_months %}{{ cell.display }}{% endif %}</td>
           {% endfor %}
-          <td class="text-end fw-semibold">{% if row.average != None %}{{ row.average|floatformat:1 }}{% else %}—{% endif %}</td>
+          <td class="text-end fw-semibold pgo-td-prom">{% if row.average != None %}{{ row.average|floatformat:1 }}{% else %}—{% endif %}</td>
         </tr>
         {% empty %}
         <tr><td colspan="15" class="text-center text-muted py-3">Seleccione al menos un concepto y una UNE.</td></tr>
@@ -168,7 +173,6 @@
     </table>
   </div>
 </div>
-{% endfor %}
 
 <div id="pgo-help-overlay" class="pgo-help-overlay{% if show_help %} show{% endif %}" aria-hidden="true">
   <div class="pgo-help-backdrop" id="pgo-help-backdrop"></div>
@@ -203,6 +207,40 @@
 .pgo-concept-label:hover { color: #0d6efd; }
 .pgo-info-modal-body { white-space: pre-wrap; font-size: 0.9rem; }
 .pgo-note-ref-btn { font-size: inherit; text-decoration: none; font-weight: 600; }
+/* Detalle mes a mes: una sola tabla; concepto estrecho (texto largo en varias líneas). */
+.pgo-scorecard-detail-table {
+  table-layout: fixed;
+  width: 100%;
+}
+.pgo-scorecard-detail-table col.pgo-col-concept { width: 7.5rem; }
+.pgo-scorecard-detail-table col.pgo-col-une { width: 4.35rem; }
+.pgo-scorecard-detail-table col.pgo-col-prom { width: 2.65rem; }
+.pgo-scorecard-detail-table .pgo-th-concept,
+.pgo-scorecard-detail-table .pgo-td-concept {
+  width: 7.5rem;
+  max-width: 7.5rem;
+  overflow-wrap: anywhere;
+  vertical-align: top;
+  padding-right: 0.35rem;
+}
+.pgo-scorecard-detail-table .pgo-th-une,
+.pgo-scorecard-detail-table .pgo-td-une {
+  width: 4.35rem;
+  max-width: 4.35rem;
+  white-space: nowrap;
+  vertical-align: top;
+}
+.pgo-scorecard-detail-table .pgo-concept-label {
+  display: inline;
+  max-width: 100%;
+  white-space: normal;
+  line-height: 1.25;
+  text-align: left;
+}
+.pgo-scorecard-detail-table tr.pgo-detail-section-start td {
+  border-top-width: 2px;
+  border-top-color: #cbd5e1;
+}
 </style>
 
 <script>
