@@ -26,6 +26,7 @@ def _resolve_path(explicit: str | None) -> Path:
     from django.conf import settings
 
     bases = [
+        settings.BASE_DIR.parent / "data" / "now",
         settings.BASE_DIR.parent / "data" / "done",
         settings.BASE_DIR / "data" / "done",
     ]
