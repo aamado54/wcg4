@@ -110,7 +110,7 @@
               {% for v in row.cells %}
               <td class="text-end">{% if v != None %}{{ v|floatformat:1 }}{% else %}—{% endif %}</td>
               {% endfor %}
-              <td class="text-end fw-semibold">{% if row.row_total != None %}{{ row.row_total|floatformat:1 }}{% else %}—{% endif %}</td>
+              <td class="text-end fw-semibold">{% if row.row_total != None %}{{ row.row_total|floatformat:0 }}{% else %}—{% endif %}</td>
               <td class="text-center">{% include "pgo/_pgo_note_ref.html" with note_ref=row.note_ref detail_clickable=row.detail_clickable detail_title=row.detail_title detail_body=row.detail_body %}</td>
             </tr>
             {% endfor %}
@@ -119,7 +119,7 @@
               {% for v in mt.footer %}
               <td class="text-end">{% if v != None %}{{ v|floatformat:1 }}{% else %}—{% endif %}</td>
               {% endfor %}
-              <td class="text-end">{% if mt.corner != None %}{{ mt.corner|floatformat:1 }}{% else %}—{% endif %}</td>
+              <td class="text-end">{% if mt.corner != None %}{{ mt.corner|floatformat:0 }}{% else %}—{% endif %}</td>
               <td></td>
             </tr>
             <tr class="table-light small">
@@ -164,7 +164,7 @@
           {% for cell in row.months %}
           <td class="text-end small pgo-td-month"{% if forloop.counter in processed_months %} title="{{ cell.note }}"{% endif %}>{% if forloop.counter in processed_months %}{{ cell.display }}{% endif %}</td>
           {% endfor %}
-          <td class="text-end fw-semibold pgo-td-prom">{% if row.average != None %}{{ row.average|floatformat:1 }}{% else %}—{% endif %}</td>
+          <td class="text-end fw-semibold pgo-td-prom">{% if row.average != None %}{{ row.average|floatformat:0 }}{% else %}—{% endif %}</td>
         </tr>
         {% empty %}
         <tr><td colspan="15" class="text-center text-muted py-3">Seleccione al menos un concepto y una UNE.</td></tr>
@@ -212,13 +212,13 @@
   table-layout: fixed;
   width: 100%;
 }
-.pgo-scorecard-detail-table col.pgo-col-concept { width: 20.625rem; }
+.pgo-scorecard-detail-table col.pgo-col-concept { width: 18rem; }
 .pgo-scorecard-detail-table col.pgo-col-une { width: 4.35rem; }
-.pgo-scorecard-detail-table col.pgo-col-prom { width: 2.65rem; }
+.pgo-scorecard-detail-table col.pgo-col-prom { width: 3.3125rem; }
 .pgo-scorecard-detail-table .pgo-th-concept,
 .pgo-scorecard-detail-table .pgo-td-concept {
-  width: 20.625rem;
-  max-width: 20.625rem;
+  width: 18rem;
+  max-width: 18rem;
   overflow-wrap: anywhere;
   vertical-align: top;
   padding-right: 0.35rem;
@@ -229,6 +229,11 @@
   max-width: 4.35rem;
   white-space: nowrap;
   vertical-align: top;
+}
+.pgo-scorecard-detail-table .pgo-th-prom,
+.pgo-scorecard-detail-table .pgo-td-prom {
+  width: 3.3125rem;
+  max-width: 3.3125rem;
 }
 .pgo-scorecard-detail-table .pgo-concept-label {
   display: inline;
