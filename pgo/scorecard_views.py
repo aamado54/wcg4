@@ -29,6 +29,20 @@ from pgo.scorecard_engine import (
 from pgo.scorecard_explain import explain_concept_row
 from pgo.scorecard_footnotes import FootnoteRegistry, weighted_column_total
 
+def _parse_year_param(raw: str | None, default: int) -> int:
+    """GET year; tolerate localized forms like ``2,026`` from hidden inputs."""
+    if not raw:
+        return default
+    cleaned = str(raw).strip().replace(",", "").replace(" ", "")
+    try:
+        return int(cleaned)
+    except ValueError:
+        digits = "".join(c for c in cleaned if c.isdigit())
+        if len(digits) >= 4:
+            return int(digits[:4])
+        return default
+
+
 MONTH_LABELS = [
     "Ene",
     "Feb",
@@ -73,7 +87,7 @@ def _concept_choices():
 def tablero_puntos(request):
     grid = build_score_grid()
     years = sorted(y for y in grid.cells.keys() if y >= 2026) or [2026]
-    year = int(request.GET.get("year") or years[-1])
+    year = _parse_year_param(request.GET.get("year"), years[-1])
     if year not in years:
         year = years[-1]
 

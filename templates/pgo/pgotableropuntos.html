@@ -1,4 +1,5 @@
 {% extends "base_wcg.html" %}
+{% load l10n %}
 {% block title %}PGO — Tablero por puntos{% endblock %}
 {% block content %}
 <div class="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2 mt-2">
@@ -21,13 +22,13 @@
         <div class="fw-semibold small mb-2">Año</div>
         {% for y in years %}
         <label class="d-block small">
-          <input type="radio" name="year" value="{{ y }}" {% if y == year %}checked{% endif %} onchange="this.form.submit()">
+          <input type="radio" name="year" value="{{ y|unlocalize }}" {% if y == year %}checked{% endif %} onchange="this.form.submit()">
           {{ y }}
         </label>
         {% endfor %}
       </div>
       {% else %}
-      <input type="hidden" name="year" value="{{ year }}">
+      <input type="hidden" name="year" value="{{ year|unlocalize }}">
       {% endif %}
 
       <div class="col-lg-3">
