@@ -37,7 +37,7 @@
         <div class="fw-semibold small mb-2">Unidades (UNE)</div>
         {% for code, label in une_options %}
         <label class="d-block small">
-          <input type="checkbox" name="une" value="{{ code }}" {% if code in selected_unes %}checked{% endif %}>
+          <input type="checkbox" name="une" value="{{ code }}" {% if code in selected_unes %}checked{% endif %} onchange="this.form.submit()">
           {{ label }}
         </label>
         {% endfor %}
@@ -49,7 +49,7 @@
           {% for c in concept_choices %}
           <label class="d-block small {% if c.is_total %}fw-semibold{% endif %}">
             <input type="checkbox" name="concept" value="{{ c.id }}"
-              {% if c.id in selected_concepts %}checked{% endif %}>
+              {% if c.id in selected_concepts %}checked{% endif %} onchange="this.form.submit()">
             {% if c.is_total %}{{ c.label }}{% else %}<span class="text-muted">{{ c.table_id }}</span> — {{ c.label|truncatechars:70 }}
             {% endif %}
           </label>
@@ -60,14 +60,13 @@
       <div class="col-lg-1">
         <div class="fw-semibold small mb-2">Orden</div>
         <label class="d-block small">
-          <input type="radio" name="group_by" value="concept" {% if group_by == 'concept' %}checked{% endif %}>
+          <input type="radio" name="group_by" value="concept" {% if group_by == 'concept' %}checked{% endif %} onchange="this.form.submit()">
           Por concepto
         </label>
         <label class="d-block small">
-          <input type="radio" name="group_by" value="une" {% if group_by == 'une' %}checked{% endif %}>
+          <input type="radio" name="group_by" value="une" {% if group_by == 'une' %}checked{% endif %} onchange="this.form.submit()">
           Por UNE
         </label>
-        <button type="submit" class="btn btn-sm btn-primary mt-2 w-100">Aplicar</button>
       </div>
     </div>
   </div>
