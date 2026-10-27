@@ -395,6 +395,8 @@ def import_archivos_catalogo(user, uploaded_file) -> DataImportBatch:
         creado_por = pick(row, "creado_por", "creadopor", "autor") or ""
         creado_raw = pick(row, "creado_en", "creadoen", "fecha")
         creado_en = parse_creado_en(creado_raw)
+        if creado_en and timezone.is_naive(creado_en):
+            creado_en = timezone.make_aware(creado_en)
         if not archivo or not creado_en:
             errores += 1
             logs.append(f"Fila {idx + 2}: archivo o CreadoEn inválido")
@@ -422,4 +424,8 @@ def import_archivos_catalogo(user, uploaded_file) -> DataImportBatch:
         + "\n".join(logs)
     )[:8000]
     batch.save()
+    if creados > 0:
+        from pgo.scorecard_cache import rebuild_scorecard_cache
+
+        rebuild_scorecard_cache()
     return batch

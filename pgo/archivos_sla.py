@@ -69,5 +69,9 @@ def deadline(inicio: datetime, rule: SlaRule) -> datetime:
 
 def cumple_plazo(inicio: datetime, entrega: datetime, rule: SlaRule) -> bool:
     """Entrega a tiempo: cualquier hora del día límite cuenta (día siguiente hábil, etc.)."""
+    if inicio.tzinfo is not None:
+        inicio = inicio.replace(tzinfo=None)
+    if entrega.tzinfo is not None:
+        entrega = entrega.replace(tzinfo=None)
     lim = deadline(inicio, rule)
     return entrega <= lim

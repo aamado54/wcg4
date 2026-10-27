@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from datetime import datetime, time
 
+from django.utils import timezone
+
 from pgo.archivos_pgo_parse import parse_event_date_from_archivo
 from pgo.archivos_sla import CONCEPT_SLA, cumple_plazo
 from pgo.models import PgoArchivoRegistro
@@ -28,6 +30,8 @@ def _cumple_evento_creado(event_day, creado_en: datetime, concept_id: str) -> bo
     if not rule:
         return False
     inicio = datetime.combine(event_day, time.min)
+    if creado_en.tzinfo is not None:
+        inicio = timezone.make_aware(inicio)
     return cumple_plazo(inicio, creado_en, rule)
 
 
