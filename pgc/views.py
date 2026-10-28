@@ -49,13 +49,15 @@ report_une_order = {
 }
 
 PGC_MODE_KEY = "pgc.mode"
-PGC_DEFAULT_MODE = "modo1"
-PGC_MODE_OPTIONS = ("modo1", "modo2")
+PGC_DEFAULT_MODE = "modo2"
+PGC_MODES = frozenset({"modo1", "modo2"})
+# Orden en selector: Proporción arriba, Absolutos abajo.
+PGC_MODE_OPTIONS = ("modo2", "modo1")
 PGC_MODE_LABELS = {
-    "modo1": "1.Absolutos",
-    "modo2": "2.Proporción",
+    "modo1": "Absolutos",
+    "modo2": "Proporción",
 }
-DEFAULT_PGC_MODE = "modo1"
+DEFAULT_PGC_MODE = "modo2"
 
 DASHBOARD_VIEW_LIST = "lista"
 DASHBOARD_VIEW_ANUAL = "anual"
@@ -86,13 +88,14 @@ def _convert_row_amount_to_usd(row, fx_map):
   
 
 def _get_pgc_mode(request):
-    raw_mode = (request.GET.get("mode") or request.session.get("pgc_mode") or DEFAULT_PGC_MODE).strip().lower()
-
-    if raw_mode not in PGC_MODE_OPTIONS:
-        raw_mode = DEFAULT_PGC_MODE
-
-    request.session["pgc_mode"] = raw_mode
-    return raw_mode
+    """Modalidad del tablero: solo ?mode= en la petición actual; default Proporción (modo2)."""
+    raw = request.GET.get("mode")
+    if raw is None:
+        return DEFAULT_PGC_MODE
+    value = raw.strip().lower()
+    if value not in PGC_MODES:
+        return DEFAULT_PGC_MODE
+    return value
   
 
 def get_pgc_mode():
@@ -100,10 +103,10 @@ def get_pgc_mode():
     if not setting or not setting.value_text:
         return PGC_DEFAULT_MODE
     value = setting.value_text.strip().lower()
-    return value if value in ("modo1", "modo2") else PGC_DEFAULT_MODE
+    return value if value in PGC_MODES else PGC_DEFAULT_MODE
 
 def set_pgc_mode(mode: str):
-    if mode not in ("modo1", "modo2"):
+    if mode not in PGC_MODES:
         mode = PGC_DEFAULT_MODE
     SystemSetting.objects.update_or_create(
         key=PGC_MODE_KEY,
@@ -1046,7 +1049,7 @@ def _build_dashboard_chart_payload(periods=None, mode=DEFAULT_PGC_MODE):
     }
 
 
-def _build_dashboard_markdown(rows, report_filter, selected_mode="modo1"):
+def _build_dashboard_markdown(rows, report_filter, selected_mode="modo2"):
     generated_at = datetime.now().strftime("%Y-%m-%d %H:%M")
     start_year = report_filter["start_year"]
     start_month = report_filter["start_month"]

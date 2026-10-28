@@ -85,7 +85,7 @@ def build_pgc_results(cfg: ReportConfig | None = None) -> dict:
             "stamp_label": stamp_label,
         }
 
-    mode = "modo1"
+    mode = "modo2"
     latest = periods[-1] if periods else None
     if latest:
         prev = previous_month(*latest)

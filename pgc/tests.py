@@ -9,7 +9,7 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
 from django.core.management.base import CommandError
-from django.test import TestCase
+from django.test import RequestFactory, TestCase
 
 from core.models import MetricDefinition, UNE
 from pgc.admin_manual import save_fx, save_results
@@ -1203,3 +1203,33 @@ class ObjetivosImportPolicyTests(TestCase):
                 os.environ.pop("ALLOW_PGC_EXCEL_IMPORT", None)
             else:
                 os.environ["ALLOW_PGC_EXCEL_IMPORT"] = prev
+
+
+class PgcDashboardModeTests(TestCase):
+    def setUp(self):
+        self.factory = RequestFactory()
+
+    def test_default_mode_is_proporcion(self):
+        from pgc.views import DEFAULT_PGC_MODE, PGC_MODE_LABELS, PGC_MODE_OPTIONS, _get_pgc_mode
+
+        request = self.factory.get("/pgc/")
+        self.assertEqual(_get_pgc_mode(request), "modo2")
+        self.assertEqual(DEFAULT_PGC_MODE, "modo2")
+        self.assertEqual(PGC_MODE_OPTIONS[0], "modo2")
+        self.assertEqual(PGC_MODE_LABELS["modo2"], "Proporción")
+        self.assertEqual(PGC_MODE_LABELS["modo1"], "Absolutos")
+
+    def test_mode_from_query_only(self):
+        from pgc.views import _get_pgc_mode
+
+        session = self.client.session
+        session["pgc_mode"] = "modo1"
+        session.save()
+
+        request = self.factory.get("/pgc/")
+        request.session = session
+        self.assertEqual(_get_pgc_mode(request), "modo2")
+
+        request = self.factory.get("/pgc/", {"mode": "modo1"})
+        request.session = session
+        self.assertEqual(_get_pgc_mode(request), "modo1")

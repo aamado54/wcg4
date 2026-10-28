@@ -536,7 +536,7 @@ document.addEventListener("DOMContentLoaded", function () {
             month_count: document.getElementById("month_count")?.value || "",
             date_order: dateOrder.value || "asc",
             group_mode: groupMode.value || "une",
-            mode: mode?.value || "modo1"
+            mode: mode?.value || "modo2"
         });
 
         const url = `{% url 'pgc:dashboard_export_md' %}?` + params.toString();
