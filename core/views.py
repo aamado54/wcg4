@@ -1,3 +1,6 @@
-from django.shortcuts import render
+from django.http import HttpResponse
 
-# Create your views here.
+
+def healthz(_request):
+    """Liveness probe for Railway/load balancers (sin BD ni redirect SSL)."""
+    return HttpResponse("ok", content_type="text/plain")

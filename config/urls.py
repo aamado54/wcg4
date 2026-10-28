@@ -2,9 +2,11 @@ from django.contrib import admin
 from django.urls import include, path
 from django.views.generic import RedirectView
 
+from core import views as core_views
 from portal import views as portal_views
 
 urlpatterns = [
+    path("healthz/", core_views.healthz, name="healthz"),
     path("admin/", admin.site.urls),
     path("accounts/", include("django.contrib.auth.urls")),
     path("importaciones/", include("imports.urls")),
