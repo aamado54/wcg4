@@ -28,6 +28,15 @@ def gtq_to_usd(gtq: Decimal, usd_to_gtq: Decimal) -> Decimal:
     return (gtq / usd_to_gtq).quantize(USD_STORE_PLACES, rounding=ROUND_HALF_UP)
 
 
+def gtq_comisiones_to_usd_miles(gtq: Decimal, usd_to_gtq: Decimal) -> Decimal:
+    """Comisiones en GTQ → miles USD (convención PGC tablero / metas TSV)."""
+    if not gtq or not usd_to_gtq or usd_to_gtq <= 0:
+        return Decimal("0")
+    return ((gtq / Decimal("1000")) / usd_to_gtq).quantize(
+        USD_STORE_PLACES, rounding=ROUND_HALF_UP
+    )
+
+
 def format_currency_display(
     value: Decimal | None, *, max_decimal_places: int = 3
 ) -> str:
@@ -245,13 +254,13 @@ def recalc_stale_ingresos(
     for row in qs:
         old_usd = row.measured_value
         old_fx = row.exchange_rate_used
-        new_usd = gtq_to_usd(row.source_value, fx)
+        new_usd = gtq_comisiones_to_usd_miles(row.source_value, fx)
         row.measured_value = new_usd
         row.exchange_rate_used = fx
         row.conversion_status = MonthlyMetricResult.CONVERSION_CONVERTED
         row.calculation_note = (
             (row.calculation_note or "")
-            + f" [Recalc GTQ→USD: {row.source_value} GTQ / {fx} = {new_usd} USD; "
+            + f" [Recalc GTQ→USD miles: {row.source_value} GTQ / {fx} → {new_usd} miles; "
             f"prev USD={old_usd}, prev FX={old_fx}]"
         ).strip()
         achievement_fields = apply_result_achievement(row)

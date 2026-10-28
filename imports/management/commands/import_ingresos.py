@@ -400,7 +400,6 @@ class Command(BaseCommand):
         mmr.calculation_note = (
             f"Ingreso importado desde {path.name} ({method}). "
             f"ComisionesGTQ={ingreso_mensual_gtq}, "
-            f"source≈GTQ/FX={source_value}, "
             f"TipoCambioGTQxUSD={tipo_cambio}, "
             f"USD miles (tablero)={ingreso_usd_miles}, UNE={une.code}."
         )

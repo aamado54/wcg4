@@ -34,12 +34,12 @@ def _pga_file() -> Path:
 
 class IngresosErParseTests(TestCase):
     def test_objetivos_style_sep_factoring_matches_baseline_db(self):
-        """Sep-2026 Factoraje: GTQ PGA × convención hoja Objetivos."""
+        """Sep-2026 Factoraje: GTQ PGA → miles USD (GTQ/1000/FX)."""
         fx = Decimal("7.63856")
         gtq = Decimal("1518027.18")
         source, measured = objetivos_style_ingresos_values(gtq, fx)
-        self.assertAlmostEqual(float(source), 198732.11442994492, places=4)
-        self.assertAlmostEqual(float(measured), 26.01696058287752, places=8)
+        self.assertEqual(source, gtq)
+        self.assertAlmostEqual(float(measured), 198.73211442994492, places=4)
 
     def test_read_pga_sep_comisiones_if_file_present(self):
         path = _pga_file()

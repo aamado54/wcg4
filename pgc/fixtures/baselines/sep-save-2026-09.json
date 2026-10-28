@@ -19,8 +19,8 @@
     {
       "une": "FACTORING",
       "metric": "INGRESOS",
-      "measured_value": "26.016961",
-      "source_value": "198732.11442994",
+      "measured_value": "198.732114",
+      "source_value": "1518027.18000000",
       "source_currency": "GTQ",
       "target_value": "330.00",
       "is_achieved": false,
@@ -59,8 +59,8 @@
     {
       "une": "LEASING",
       "metric": "INGRESOS",
-      "measured_value": "10.149659",
-      "source_value": "77528.78291196",
+      "measured_value": "77.528783",
+      "source_value": "592208.26000000",
       "source_currency": "GTQ",
       "target_value": "108.00",
       "is_achieved": false,
@@ -99,8 +99,8 @@
     {
       "une": "INSURANCE",
       "metric": "INGRESOS",
-      "measured_value": "0.414508",
-      "source_value": "3166.24206657",
+      "measured_value": "3.166242",
+      "source_value": "24185.53000000",
       "source_currency": "GTQ",
       "target_value": "11.85",
       "is_achieved": false,
@@ -179,10 +179,10 @@
     {
       "une": "FACTORING",
       "metric": "INGRESOS",
-      "measured_value": "26.0170",
+      "measured_value": "198.7320",
       "target_value": "330.0000",
-      "points_awarded": "42.1600",
-      "is_achieved": false
+      "points_awarded": "70.0000",
+      "is_achieved": true
     },
     {
       "une": "FACTORING",
@@ -211,10 +211,10 @@
     {
       "une": "LEASING",
       "metric": "INGRESOS",
-      "measured_value": "10.1497",
+      "measured_value": "77.5288",
       "target_value": "108.0000",
-      "points_awarded": "50.2500",
-      "is_achieved": false
+      "points_awarded": "70.0000",
+      "is_achieved": true
     },
     {
       "une": "LEASING",
@@ -243,10 +243,10 @@
     {
       "une": "INSURANCE",
       "metric": "INGRESOS",
-      "measured_value": "0.4145",
+      "measured_value": "3.1662",
       "target_value": "11.8500",
-      "points_awarded": "24.8100",
-      "is_achieved": false
+      "points_awarded": "75.0000",
+      "is_achieved": true
     },
     {
       "une": "INSURANCE",
@@ -300,17 +300,17 @@
   "mode_scorecards": [
     {
       "une": "FACTORING",
-      "total_points": "47.1600",
+      "total_points": "75.0000",
       "is_month_qualified": false
     },
     {
       "une": "LEASING",
-      "total_points": "70.2500",
+      "total_points": "90.0000",
       "is_month_qualified": false
     },
     {
       "une": "INSURANCE",
-      "total_points": "24.8100",
+      "total_points": "75.0000",
       "is_month_qualified": false
     },
     {

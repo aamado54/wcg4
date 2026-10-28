@@ -35,7 +35,7 @@ Orden interno:
 
 | Área | Cambio |
 |------|--------|
-| `imports/ingresos_er_parse.py` | Lectura PGA Mensuales (fila Comisiones); par `source_value` / `measured_value` alineado a proporción modo2 (convención columna Objetivos: comisiones GTQ÷FX). |
+| `imports/ingresos_er_parse.py` | PGA Mensuales (fila Comisiones); `source_value` = GTQ; `measured_value` = **(GTQ/1000)/FX** miles USD. |
 | `import_ingresos` | Detecta PGA; `--une-code`; ya no depende de hoja «Datos» única. |
 | `pgc_operational_regression` | Comando `save` / `rebuild` / `verify` para repetir cada mes (extender manifiesto). |
 

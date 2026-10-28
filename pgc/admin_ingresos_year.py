@@ -17,7 +17,7 @@ from pgc.income_conversion import (
     format_currency_display,
     format_usd_3,
     get_fx_rate,
-    gtq_to_usd,
+    gtq_comisiones_to_usd_miles,
 )
 from pgc.investment_ingresos import (
     MILES_DIVISOR,
@@ -393,7 +393,7 @@ def save_ingresos_year(user, year: int, post_data, reason: str = "") -> dict:
                     f"No se puede convertir ingresos de {une.name_es} en Q. "
                     "Complete la columna TC de ese mes."
                 )
-            usd_value = gtq_to_usd(parsed, fx_rate)
+            usd_value = gtq_comisiones_to_usd_miles(parsed, fx_rate)
             obj, created = MonthlyMetricResult.objects.get_or_create(
                 plan=plan,
                 une=une,
@@ -425,8 +425,8 @@ def save_ingresos_year(user, year: int, post_data, reason: str = "") -> dict:
             obj.exchange_rate_used = fx_rate
             obj.conversion_status = MonthlyMetricResult.CONVERSION_CONVERTED
             obj.calculation_note = (
-                f"Matriz anual GTQ→USD: {parsed} GTQ / {fx_rate} = {usd_value} USD "
-                f"[{year}-{month:02d}]"
+                f"Matriz anual GTQ→USD miles: {parsed} GTQ / {fx_rate} → "
+                f"{usd_value} miles USD [{year}-{month:02d}]"
             )
             achievement_fields = apply_result_achievement(obj)
             obj.save(

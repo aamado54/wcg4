@@ -13,7 +13,7 @@ from django.test import TestCase
 
 from core.models import MetricDefinition, UNE
 from pgc.admin_manual import save_fx, save_results
-from pgc.income_conversion import gtq_to_usd, recalc_stale_ingresos
+from pgc.income_conversion import gtq_comisiones_to_usd_miles, gtq_to_usd, recalc_stale_ingresos
 from pgc.models import (
     ManualRequirementsCompliance,
     MonthlyExchangeRate,
@@ -96,7 +96,10 @@ class IngresosConversionTests(TestCase):
         self.assertEqual(row.source_value, Decimal("7850.12345678"))
         self.assertEqual(row.exchange_rate_used, Decimal("7.85000"))
         self.assertEqual(row.conversion_status, MonthlyMetricResult.CONVERSION_CONVERTED)
-        self.assertEqual(row.measured_value, gtq_to_usd(Decimal("7850.12345678"), Decimal("7.85")))
+        self.assertEqual(
+            row.measured_value,
+            gtq_comisiones_to_usd_miles(Decimal("7850.12345678"), Decimal("7.85")),
+        )
 
     def test_fx_change_marks_stale_and_recalc(self):
         MonthlyExchangeRate.objects.create(
@@ -129,7 +132,10 @@ class IngresosConversionTests(TestCase):
         row.refresh_from_db()
         self.assertEqual(row.conversion_status, MonthlyMetricResult.CONVERSION_CONVERTED)
         self.assertEqual(row.exchange_rate_used, Decimal("8.00"))
-        self.assertEqual(row.measured_value, gtq_to_usd(Decimal("7850"), Decimal("8.00")))
+        self.assertEqual(
+            row.measured_value,
+            gtq_comisiones_to_usd_miles(Decimal("7850"), Decimal("8.00")),
+        )
         self.assertNotEqual(row.measured_value, old_usd)
 
     def test_save_ingresos_usd_native_without_fx(self):
@@ -220,7 +226,10 @@ class IngresosYearGridTests(TestCase):
             month=3,
         )
         self.assertEqual(row.source_currency, "GTQ")
-        self.assertEqual(row.measured_value, gtq_to_usd(Decimal("7850"), Decimal("7.85")))
+        self.assertEqual(
+            row.measured_value,
+            gtq_comisiones_to_usd_miles(Decimal("7850"), Decimal("7.85")),
+        )
 
     def test_year_grid_requires_fx_for_gtq(self):
         from pgc.admin_ingresos_year import save_ingresos_year

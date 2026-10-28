@@ -27,7 +27,7 @@ from pgc.income_conversion import (
     count_stale_ingresos,
     format_usd_3,
     get_fx_rate,
-    gtq_to_usd,
+    gtq_comisiones_to_usd_miles,
     mark_ingresos_stale_for_fx_change,
 )
 
@@ -518,7 +518,7 @@ def save_results(user, year: int, month: int, post_data, reason: str = "") -> in
                         f"No se pueden guardar ingresos (GTQ) de {une.name_es} sin TC. "
                         "Vaya a la pestaña «Tipos de cambio»."
                     )
-                usd_value = gtq_to_usd(parsed, fx_rate)
+                usd_value = gtq_comisiones_to_usd_miles(parsed, fx_rate)
                 obj, created = MonthlyMetricResult.objects.get_or_create(
                     plan=plan,
                     une=une,

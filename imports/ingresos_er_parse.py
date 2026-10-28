@@ -30,19 +30,21 @@ PGA_MONTH_ABBR = {
 }
 
 
+from pgc.income_conversion import gtq_comisiones_to_usd_miles
+
+
 def objetivos_style_ingresos_values(
     ingreso_mensual_gtq: Decimal, fx: Decimal
 ) -> tuple[Decimal, Decimal]:
     """
-    Par source/measured alineado a import Objetivos (col. comisiones ejecución + miles USD).
+    Par source/measured alineado a import Objetivos y PGA.
 
-    La hoja guarda comisiones ≈ GTQ/FX; measured = (col/1000)/FX (convención tablero).
+    source_value = comisiones GTQ; measured_value = miles USD = (GTQ/1000)/FX.
     """
     if not fx or fx <= 0:
         raise ValueError("Tipo de cambio inválido para comisiones.")
-    col_i = ingreso_mensual_gtq / fx
-    source_value = col_i
-    measured_value = (col_i / Decimal("1000")) / fx
+    source_value = ingreso_mensual_gtq
+    measured_value = gtq_comisiones_to_usd_miles(ingreso_mensual_gtq, fx)
     return source_value, measured_value
 
 
