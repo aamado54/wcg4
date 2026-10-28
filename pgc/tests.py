@@ -13,7 +13,13 @@ from django.test import TestCase
 
 from core.models import MetricDefinition, UNE
 from pgc.admin_manual import save_fx, save_results
-from pgc.income_conversion import gtq_comisiones_to_usd_miles, gtq_to_usd, recalc_stale_ingresos
+from pgc.income_conversion import (
+    gtq_comisiones_to_usd_miles,
+    gtq_to_usd,
+    ingresos_has_legacy_double_fx_bug,
+    repair_ingresos_gtq_and_usd_miles,
+    recalc_stale_ingresos,
+)
 from pgc.models import (
     ManualRequirementsCompliance,
     MonthlyExchangeRate,
@@ -137,6 +143,40 @@ class IngresosConversionTests(TestCase):
             gtq_comisiones_to_usd_miles(Decimal("7850"), Decimal("8.00")),
         )
         self.assertNotEqual(row.measured_value, old_usd)
+
+    def test_repair_legacy_pga_double_fx_from_stored_gtq_over_fx(self):
+        """Bug histórico: source=GTQ/FX; repair restaura GTQ y miles."""
+        fx = Decimal("7.63856")
+        gtq_real = Decimal("1518027.18")
+        legacy_source = gtq_real / fx
+        legacy_measured = (legacy_source / Decimal("1000")) / (fx * fx)
+        self.assertTrue(
+            ingresos_has_legacy_double_fx_bug(legacy_source, legacy_measured, fx)
+        )
+        MonthlyExchangeRate.objects.create(
+            year=2026, month=9, usd_to_gtq=fx
+        )
+        row = MonthlyMetricResult.objects.create(
+            plan=self.plan,
+            une=self.une,
+            metric=self.metric,
+            year=2026,
+            month=9,
+            source_currency=MonthlyMetricResult.CURRENCY_GTQ,
+            source_value=legacy_source,
+            measured_value=legacy_measured,
+            exchange_rate_used=fx,
+            conversion_status=MonthlyMetricResult.CONVERSION_CONVERTED,
+        )
+        stats = repair_ingresos_gtq_and_usd_miles(year=2026, month=9)
+        self.assertEqual(stats["repaired_legacy"], 1)
+        row.refresh_from_db()
+        self.assertAlmostEqual(float(row.source_value), float(gtq_real), places=2)
+        self.assertAlmostEqual(
+            float(row.measured_value),
+            float(gtq_comisiones_to_usd_miles(gtq_real, fx)),
+            places=4,
+        )
 
     def test_save_ingresos_usd_native_without_fx(self):
         changes = save_results(

@@ -37,6 +37,36 @@ def gtq_comisiones_to_usd_miles(gtq: Decimal, usd_to_gtq: Decimal) -> Decimal:
     )
 
 
+LEGACY_INGRESOS_MILES_TOLERANCE = Decimal("0.05")
+
+
+def ingresos_has_legacy_double_fx_bug(
+    source_gtq: Decimal,
+    measured_miles: Decimal | None,
+    fx: Decimal,
+) -> bool:
+    """
+    Import PGA antiguo guardaba source≈GTQ/FX y measured con un ÷FX de más.
+
+    En ese caso el GTQ real = source × FX y miles correctos = (GTQ/1000)/FX = source/1000.
+    """
+    if measured_miles is None or not source_gtq or not fx or fx <= 0:
+        return False
+    legacy_miles = (source_gtq / Decimal("1000")) / (fx * fx)
+    return abs(measured_miles - legacy_miles) <= LEGACY_INGRESOS_MILES_TOLERANCE
+
+
+def measured_matches_gtq_comisiones(
+    source_gtq: Decimal,
+    measured_miles: Decimal | None,
+    fx: Decimal,
+) -> bool:
+    if measured_miles is None or not source_gtq or not fx or fx <= 0:
+        return False
+    expected = gtq_comisiones_to_usd_miles(source_gtq, fx)
+    return abs(measured_miles - expected) <= LEGACY_INGRESOS_MILES_TOLERANCE
+
+
 def format_currency_display(
     value: Decimal | None, *, max_decimal_places: int = 3
 ) -> str:
@@ -287,6 +317,108 @@ def recalc_stale_ingresos(
         updated += 1
 
     return {"updated": updated, "fx": fx}
+
+
+@transaction.atomic
+def repair_ingresos_gtq_and_usd_miles(
+    *,
+    year: int | None = None,
+    month: int | None = None,
+    dry_run: bool = False,
+) -> dict:
+    """
+    Normaliza INGRESOS GTQ en BD (comisiones en Q) y recalcula measured_value (miles USD).
+
+    - GTQ canónico en ``source_value`` (no se divide por TC al guardar).
+    - Miles USD = (GTQ/1000)/FX usando TC del mes (``exchange_rate_used`` o tabla FX).
+    - Filas con bug histórico (source guardado como GTQ/FX): restaura GTQ = source×FX.
+    """
+    from pgc.models import MonthlyMetricResult
+
+    metric = MetricDefinition.objects.filter(code=MetricDefinition.CODE_INGRESOS).first()
+    if not metric:
+        raise ValueError("No existe métrica INGRESOS.")
+
+    qs = MonthlyMetricResult.objects.filter(metric=metric).select_related("une", "plan")
+    if year is not None:
+        qs = qs.filter(year=year)
+    if month is not None:
+        qs = qs.filter(month=month)
+
+    stats = {
+        "scanned": 0,
+        "skipped_usd": 0,
+        "skipped_ok": 0,
+        "skipped_no_fx": 0,
+        "repaired_legacy": 0,
+        "repaired_measured": 0,
+        "dry_run": dry_run,
+    }
+
+    for row in qs.iterator():
+        stats["scanned"] += 1
+        if row.source_currency == MonthlyMetricResult.CURRENCY_USD:
+            stats["skipped_usd"] += 1
+            continue
+        if row.source_currency != MonthlyMetricResult.CURRENCY_GTQ or row.source_value is None:
+            stats["skipped_ok"] += 1
+            continue
+
+        fx = row.exchange_rate_used or get_fx_rate(row.year, row.month)
+        if fx is None or fx <= 0:
+            stats["skipped_no_fx"] += 1
+            continue
+
+        source_gtq = Decimal(str(row.source_value))
+        legacy = ingresos_has_legacy_double_fx_bug(
+            source_gtq, row.measured_value, fx
+        )
+        if legacy:
+            source_gtq = (source_gtq * fx).quantize(
+                USD_STORE_PLACES, rounding=ROUND_HALF_UP
+            )
+        elif measured_matches_gtq_comisiones(source_gtq, row.measured_value, fx):
+            stats["skipped_ok"] += 1
+            continue
+
+        new_measured = gtq_comisiones_to_usd_miles(source_gtq, fx)
+        if dry_run:
+            if legacy:
+                stats["repaired_legacy"] += 1
+            else:
+                stats["repaired_measured"] += 1
+            continue
+
+        old_source = row.source_value
+        old_measured = row.measured_value
+        row.source_value = source_gtq
+        row.measured_value = new_measured
+        row.exchange_rate_used = fx
+        row.conversion_status = MonthlyMetricResult.CONVERSION_CONVERTED
+        tag = "legacy GTQ/FX→GTQ" if legacy else "miles desde GTQ"
+        row.calculation_note = (
+            (row.calculation_note or "").strip()
+            + f" [Repair {tag}: GTQ {old_source}→{source_gtq}, "
+            f"miles {old_measured}→{new_measured}, FX={fx}]"
+        ).strip()
+        achievement_fields = apply_result_achievement(row)
+        row.save(
+            update_fields=[
+                "source_value",
+                "measured_value",
+                "exchange_rate_used",
+                "conversion_status",
+                "calculation_note",
+                *achievement_fields,
+                "updated_at",
+            ]
+        )
+        if legacy:
+            stats["repaired_legacy"] += 1
+        else:
+            stats["repaired_measured"] += 1
+
+    return stats
 
 
 def count_stale_ingresos(year: int, month: int) -> int:
