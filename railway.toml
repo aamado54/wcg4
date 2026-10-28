@@ -1,5 +1,10 @@
+[build]
+# Static en la imagen: gunicorn arranca antes y /healthz/ responde sin esperar collectstatic.
+buildCommand = "python manage.py collectstatic --noinput"
+
 [deploy]
 preDeployCommand = "python manage.py migrate --noinput && python manage.py apply_access_policy"
 healthcheckPath = "/healthz/"
-healthcheckTimeout = 120
-startCommand = "python manage.py collectstatic --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:${PORT} --timeout 120"
+# Probe instantánea (sin BD). 60s basta; 120s sumaba hasta 2 min por reintentos si el puerto tardaba.
+healthcheckTimeout = 60
+startCommand = "gunicorn config.wsgi:application --bind 0.0.0.0:${PORT} --timeout 120"

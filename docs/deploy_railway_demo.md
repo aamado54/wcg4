@@ -35,7 +35,7 @@ python -c "from django.core.management.utils import get_random_secret_key; print
 Ya definido en `railway.toml`:
 
 ```bash
-python manage.py collectstatic --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:${PORT}
+gunicorn config.wsgi:application --bind 0.0.0.0:${PORT} --timeout 120
 ```
 
 Equivalente en `Procfile`:
@@ -46,8 +46,26 @@ web: gunicorn config.wsgi:application --bind 0.0.0.0:${PORT}
 
 ## Migraciones y collectstatic
 
-- **Migraciones:** `railway.toml` → `preDeployCommand = "python manage.py migrate --noinput"`
-- **Static:** WhiteNoise + `collectstatic` en el start command (y en `Procfile` release)
+- **Migraciones + política de acceso:** `preDeployCommand` → `migrate --noinput` y `apply_access_policy` (contenedor efímero antes del arranque).
+- **Static:** WhiteNoise + `collectstatic` en **`[build].buildCommand`** (queda en la imagen; no bloquea el arranque ni el healthcheck).
+- **Healthcheck:** `GET /healthz/` (sin BD, sin redirect SSL). `healthcheckTimeout = 60` en Railway.
+
+## Tiempos de deploy (orientativo)
+
+| Fase | Qué hace | Orden de magnitud |
+|------|-----------|-------------------|
+| Build (Railpack) | `pip install`, **`collectstatic`** | ~1–3 min |
+| Pre-deploy | `migrate`, `apply_access_policy` | ~10–30 s sin migraciones nuevas |
+| Start | solo **gunicorn** | segundos |
+| Healthcheck | `/healthz/` | casi instantáneo si el puerto ya escucha |
+
+Un deploy “simple” suele quedar en **~2–4 min** (build + preDeploy + healthcheck). **5+ min** puede deberse a:
+
+- **`collectstatic` en el start command** (antes de abrir el puerto): Railway no ve `/healthz/` hasta que termina → reintentos hasta `healthcheckTimeout` (p. ej. 120 s).
+- **Healthcheck fallido** (`ALLOWED_HOSTS` sin `healthcheck.railway.app`, o probe distinto a `/healthz/`): ventana de reintentos completa por intento.
+- **Tráfico pesado en `/tablero/`** durante el cutover (recalc PGC en logs): no alarga el healthcheck, pero la UI puede sentirse lenta mientras el deploy termina.
+
+Tras mover `collectstatic` al build y `healthcheckTimeout = 60`, el cuello de botella habitual es el **build de dependencias**, no el arranque.
 
 No hace falta inventar dependencias nuevas: el proyecto ya incluye `gunicorn`, `whitenoise`, `psycopg[binary]`, `dj-database-url`.
 
@@ -57,7 +75,7 @@ No hace falta inventar dependencias nuevas: el proyecto ya incluye `gunicorn`, `
 2. Fijar **Root Directory** a `wcg4/dashboard` (si aplica).
 3. Añadir plugin **PostgreSQL** (inyecta `DATABASE_URL`).
 4. Configurar variables: `SECRET_KEY`, `DEBUG=False`, `ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS`.
-5. Deploy (Railway corre `preDeploy` migrate, luego start con collectstatic + gunicorn).
+5. Deploy (Railway: build con `collectstatic`, `preDeploy` migrate + apply_access_policy, start gunicorn, healthcheck `/healthz/`).
 6. Crear usuario de acceso (superuser o staff) vía Railway shell:
 
 ```bash

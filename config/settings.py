@@ -42,6 +42,13 @@ ALLOWED_HOSTS = [
     if host.strip()
 ]
 
+# Railway health checker usa Host: healthcheck.railway.app (evita 400 y timeouts de deploy).
+if (
+    os.environ.get("RAILWAY_ENVIRONMENT")
+    or os.environ.get("RAILWAY_PROJECT_ID")
+) and "healthcheck.railway.app" not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append("healthcheck.railway.app")
+
 CSRF_TRUSTED_ORIGINS = [
     origin.strip()
     for origin in os.environ.get(
