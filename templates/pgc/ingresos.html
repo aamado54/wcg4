@@ -239,12 +239,11 @@
       <div style="align-self:end;">
           <button type="button" id="btn-export-md">.md export</button>
       </div>
-  </form>
 
   <div class="ingresos-settings">
     <div>
       <label for="decimals">Decimales (USD / GTQ)</label><br>
-      <select name="decimals" id="decimals" form="ingresos-filter-form">
+      <select name="decimals" id="decimals">
         {% for d in report_settings.decimal_options %}
           <option value="{{ d }}" {% if report_settings.decimals == d %}selected{% endif %}>{{ d }}</option>
         {% endfor %}
@@ -252,14 +251,14 @@
     </div>
     <div>
       <label for="view">Formato del reporte</label><br>
-      <select name="view" id="view" form="ingresos-filter-form">
+      <select name="view" id="view">
         <option value="{{ view_lista }}" {% if report_settings.view == view_lista %}selected{% endif %}>Lista (detalle)</option>
         <option value="{{ view_anual }}" {% if report_settings.view == view_anual %}selected{% endif %}>Anual por UNE</option>
       </select>
     </div>
     <div>
       <label for="moneda">Moneda</label><br>
-      <select name="moneda" id="moneda" form="ingresos-filter-form">
+      <select name="moneda" id="moneda">
         <option value="{{ report_settings.currency_usd }}" {% if report_settings.currency == report_settings.currency_usd %}selected{% endif %}>USD (miles, default)</option>
         <option value="{{ report_settings.currency_gtq }}" {% if report_settings.currency == report_settings.currency_gtq %}selected{% endif %}>GTQ (Objetivos)</option>
       </select>
@@ -268,12 +267,13 @@
       </p>
     </div>
     <div class="setting-check">
-      <input type="hidden" name="show_detail_cols" value="0" form="ingresos-filter-form">
-      <input type="checkbox" name="show_detail_cols" id="show_detail_cols" value="1" form="ingresos-filter-form"
+      <input type="hidden" name="show_detail_cols" value="0">
+      <input type="checkbox" name="show_detail_cols" id="show_detail_cols" value="1"
              {% if report_settings.show_detail_cols %}checked{% endif %}>
       <label for="show_detail_cols" style="margin:0; font-weight:600;">Método y Observación</label>
     </div>
   </div>
+  </form>
 
   {% if report_settings.view == view_anual %}
   <div class="ingresos-anual-wrap">
@@ -507,10 +507,13 @@ document.addEventListener("DOMContentLoaded", function () {
     }
     syncViewHints();
     if (viewSelect) {
-        viewSelect.addEventListener("change", syncViewHints);
+        viewSelect.addEventListener("change", function () {
+            syncViewHints();
+            applyFilters();
+        });
     }
 
-    ["month_count", "start_year", "start_month", "decimals", "view", "moneda", "show_detail_cols"].forEach(function (id) {
+    ["month_count", "start_year", "start_month", "decimals", "moneda", "show_detail_cols"].forEach(function (id) {
         const el = document.getElementById(id);
         if (!el) return;
         if (el.tagName === "SELECT" || el.type === "checkbox") {
