@@ -20,6 +20,7 @@ from pgc.income_conversion import (
     ingresos_has_legacy_double_fx_bug,
     repair_ingresos_gtq_and_usd_miles,
     ingresos_has_gtq_over_fx_source_with_correct_miles,
+    ingresos_has_extra_fx_on_gtq_over_fx_source,
     recalc_stale_ingresos,
 )
 from pgc.models import (
@@ -173,7 +174,24 @@ class IngresosConversionTests(TestCase):
         )
         self.assertNotEqual(row.measured_value, old_usd)
 
-    def test_repair_legacy_pga_double_fx_from_stored_gtq_over_fx(self):
+    def test_extra_fx_detects_large_factoring_gtq_over_fx(self):
+        fx = Decimal("7.63856")
+        gtq_real = Decimal("2288849")
+        stored_source = gtq_real / fx
+        wrong_miles = gtq_comisiones_to_usd_miles(stored_source, fx)
+        correct_miles = gtq_comisiones_to_usd_miles(gtq_real, fx)
+        self.assertGreater(correct_miles, wrong_miles * Decimal("5"))
+        self.assertTrue(
+            ingresos_has_extra_fx_on_gtq_over_fx_source(
+                stored_source, wrong_miles, fx
+            )
+        )
+        self.assertFalse(
+            ingresos_has_extra_fx_on_gtq_over_fx_source(
+                gtq_real, correct_miles, fx
+            )
+        )
+
         """Bug histórico: source=GTQ/FX; repair restaura GTQ y miles."""
         fx = Decimal("7.63856")
         gtq_real = Decimal("1518027.18")

@@ -53,12 +53,7 @@ def _source_stored_as_gtq_over_fx(
         USD_STORE_PLACES, rounding=ROUND_HALF_UP
     )
     expected = gtq_comisiones_to_usd_miles(canonical_gtq, fx)
-    if abs(expected - semi_legacy_miles) > LEGACY_INGRESOS_MILES_TOLERANCE:
-        return False
-    # GTQ canónico mensual (factoraje) en source_value supera esto; no es GTQ/FX.
-    if source_stored >= Decimal("250000"):
-        return False
-    return True
+    return abs(expected - semi_legacy_miles) <= LEGACY_INGRESOS_MILES_TOLERANCE
 
 
 def ingresos_has_extra_fx_on_gtq_over_fx_source(
@@ -66,18 +61,24 @@ def ingresos_has_extra_fx_on_gtq_over_fx_source(
     measured_miles: Decimal | None,
     fx: Decimal,
 ) -> bool:
-    """Repair previo dejó source=GTQ/FX y measured=(GTQ/FX)/1000/FX (÷FX de más)."""
+    """
+    GTQ/FX guardado como source: measured cuadra con gtq(source,fx) pero debe ser
+    gtq(source×FX, FX). Factoraje mensual en GTQ canónico suele ser ≥400k Q.
+    """
     if measured_miles is None or not source_stored or not fx or fx <= 0:
         return False
-    if not _source_stored_as_gtq_over_fx(source_stored, measured_miles, fx):
+    if source_stored >= Decimal("400000"):
         return False
-    wrong_miles = gtq_comisiones_to_usd_miles(source_stored, fx)
-    if abs(measured_miles - wrong_miles) > LEGACY_INGRESOS_MILES_TOLERANCE:
+    if not measured_matches_gtq_comisiones(source_stored, measured_miles, fx):
         return False
-    semi_legacy_miles = (source_stored / Decimal("1000")).quantize(
+    canonical_gtq = (source_stored * fx).quantize(
         USD_STORE_PLACES, rounding=ROUND_HALF_UP
     )
-    return abs(measured_miles - semi_legacy_miles) > LEGACY_INGRESOS_MILES_TOLERANCE
+    correct_miles = gtq_comisiones_to_usd_miles(canonical_gtq, fx)
+    shrunk = (correct_miles / fx).quantize(
+        USD_STORE_PLACES, rounding=ROUND_HALF_UP
+    )
+    return abs(measured_miles - shrunk) <= LEGACY_INGRESOS_MILES_TOLERANCE
 
 
 def ingresos_has_legacy_double_fx_bug(
@@ -451,8 +452,9 @@ def repair_ingresos_gtq_and_usd_miles(
                 USD_STORE_PLACES, rounding=ROUND_HALF_UP
             )
         elif measured_matches_gtq_comisiones(source_gtq, row.measured_value, fx):
-            stats["skipped_ok"] += 1
-            continue
+            if not extra_fx_source:
+                stats["skipped_ok"] += 1
+                continue
 
         if semi_legacy_source:
             new_measured = row.measured_value
