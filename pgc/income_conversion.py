@@ -67,6 +67,46 @@ def measured_matches_gtq_comisiones(
     return abs(measured_miles - expected) <= LEGACY_INGRESOS_MILES_TOLERANCE
 
 
+def ingresos_has_gtq_over_fx_source_with_correct_miles(
+    source_stored: Decimal,
+    measured_miles: Decimal | None,
+    fx: Decimal,
+) -> bool:
+    """
+    Convención intermedia PGA: source_value = GTQ/FX, measured_value = source/1000 (miles USD).
+
+    Es correcto en pantalla pero el GTQ canónico falta en source. No debe recalcularse
+    measured como (GTQ/FX)/1000/FX (un ÷FX de más → totales ~670 vs ~11000).
+    """
+    if measured_miles is None or not source_stored or not fx or fx <= 0:
+        return False
+    miles_from_stored_source = (source_stored / Decimal("1000")).quantize(
+        USD_STORE_PLACES, rounding=ROUND_HALF_UP
+    )
+    if abs(measured_miles - miles_from_stored_source) > LEGACY_INGRESOS_MILES_TOLERANCE:
+        return False
+    if measured_matches_gtq_comisiones(source_stored, measured_miles, fx):
+        return False
+    return True
+
+
+def ingresos_has_extra_fx_on_gtq_over_fx_source(
+    source_stored: Decimal,
+    measured_miles: Decimal | None,
+    fx: Decimal,
+) -> bool:
+    """Repair previo dejó source=GTQ/FX y measured=(GTQ/FX)/1000/FX (÷FX de más)."""
+    if measured_miles is None or not source_stored or not fx or fx <= 0:
+        return False
+    wrong_miles = gtq_comisiones_to_usd_miles(source_stored, fx)
+    correct_miles = (source_stored / Decimal("1000")).quantize(
+        USD_STORE_PLACES, rounding=ROUND_HALF_UP
+    )
+    if abs(measured_miles - wrong_miles) > LEGACY_INGRESOS_MILES_TOLERANCE:
+        return False
+    return abs(wrong_miles - correct_miles) > LEGACY_INGRESOS_MILES_TOLERANCE
+
+
 def format_currency_display(
     value: Decimal | None, *, max_decimal_places: int = 3
 ) -> str:
@@ -373,7 +413,17 @@ def repair_ingresos_gtq_and_usd_miles(
         legacy = ingresos_has_legacy_double_fx_bug(
             source_gtq, row.measured_value, fx
         )
+        semi_legacy_source = ingresos_has_gtq_over_fx_source_with_correct_miles(
+            source_gtq, row.measured_value, fx
+        )
+        extra_fx_source = ingresos_has_extra_fx_on_gtq_over_fx_source(
+            source_gtq, row.measured_value, fx
+        )
         if legacy:
+            source_gtq = (source_gtq * fx).quantize(
+                USD_STORE_PLACES, rounding=ROUND_HALF_UP
+            )
+        elif semi_legacy_source or extra_fx_source:
             source_gtq = (source_gtq * fx).quantize(
                 USD_STORE_PLACES, rounding=ROUND_HALF_UP
             )
@@ -381,9 +431,12 @@ def repair_ingresos_gtq_and_usd_miles(
             stats["skipped_ok"] += 1
             continue
 
-        new_measured = gtq_comisiones_to_usd_miles(source_gtq, fx)
+        if semi_legacy_source:
+            new_measured = row.measured_value
+        else:
+            new_measured = gtq_comisiones_to_usd_miles(source_gtq, fx)
         if dry_run:
-            if legacy:
+            if legacy or semi_legacy_source or extra_fx_source:
                 stats["repaired_legacy"] += 1
             else:
                 stats["repaired_measured"] += 1
@@ -395,7 +448,14 @@ def repair_ingresos_gtq_and_usd_miles(
         row.measured_value = new_measured
         row.exchange_rate_used = fx
         row.conversion_status = MonthlyMetricResult.CONVERSION_CONVERTED
-        tag = "legacy GTQ/FX→GTQ" if legacy else "miles desde GTQ"
+        if legacy:
+            tag = "legacy GTQ/FX→GTQ"
+        elif semi_legacy_source:
+            tag = "GTQ/FX source→GTQ canónico (miles OK)"
+        elif extra_fx_source:
+            tag = "GTQ/FX source→GTQ; miles ÷FX extra corregidos"
+        else:
+            tag = "miles desde GTQ"
         row.calculation_note = (
             (row.calculation_note or "").strip()
             + f" [Repair {tag}: GTQ {old_source}→{source_gtq}, "
@@ -413,7 +473,7 @@ def repair_ingresos_gtq_and_usd_miles(
                 "updated_at",
             ]
         )
-        if legacy:
+        if legacy or semi_legacy_source or extra_fx_source:
             stats["repaired_legacy"] += 1
         else:
             stats["repaired_measured"] += 1

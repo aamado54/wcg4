@@ -1803,6 +1803,10 @@ def _build_ingresos_annual_tables(year):
     Formato anual horizontal por UNE (estilo PRESUPUESTO de referencia):
     Clientes nuevos / Comisiones|Capital / % + Ejecutado + Cumple.
     """
+    active_plan = get_active_pgc_plan()
+    if not active_plan:
+        return []
+
     investment_une = get_investment_une()
     fx_map = build_fx_map()
     periods = [(year, m) for m in range(1, 13)]
@@ -1817,6 +1821,7 @@ def _build_ingresos_annual_tables(year):
     ordered_unes = [une_by_code[c] for c in INGRESOS_ANUAL_UNE_ORDER if c in une_by_code]
 
     targets = MonthlyTarget.objects.filter(
+        plan=active_plan,
         year=year,
         metric__code__in=(
             MetricDefinition.CODE_INGRESOS,
@@ -1826,6 +1831,7 @@ def _build_ingresos_annual_tables(year):
     ).select_related("une", "metric")
 
     results = MonthlyMetricResult.objects.filter(
+        plan=active_plan,
         year=year,
         metric__code=MetricDefinition.CODE_INGRESOS,
         une_id__in=[u.id for u in ordered_unes],

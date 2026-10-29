@@ -18,6 +18,7 @@ from pgc.income_conversion import (
     gtq_to_usd,
     ingresos_has_legacy_double_fx_bug,
     repair_ingresos_gtq_and_usd_miles,
+    ingresos_has_gtq_over_fx_source_with_correct_miles,
     recalc_stale_ingresos,
 )
 from pgc.models import (
@@ -177,6 +178,67 @@ class IngresosConversionTests(TestCase):
             float(gtq_comisiones_to_usd_miles(gtq_real, fx)),
             places=4,
         )
+
+    def test_repair_does_not_shrink_correct_miles_gtq_over_fx_source(self):
+        """Tras repair erróneo previo: source=GTQ/FX + miles=source/1000 no debe ÷FX otra vez."""
+        fx = Decimal("7.63856")
+        gtq_real = Decimal("1518027.18")
+        stored_source = gtq_real / fx
+        correct_miles = (stored_source / Decimal("1000")).quantize(Decimal("0.000001"))
+        self.assertTrue(
+            ingresos_has_gtq_over_fx_source_with_correct_miles(
+                stored_source, correct_miles, fx
+            )
+        )
+        MonthlyExchangeRate.objects.create(
+            year=2026, month=9, usd_to_gtq=fx
+        )
+        row = MonthlyMetricResult.objects.create(
+            plan=self.plan,
+            une=self.une,
+            metric=self.metric,
+            year=2026,
+            month=9,
+            source_currency=MonthlyMetricResult.CURRENCY_GTQ,
+            source_value=stored_source,
+            measured_value=correct_miles,
+            exchange_rate_used=fx,
+            conversion_status=MonthlyMetricResult.CONVERSION_CONVERTED,
+        )
+        stats = repair_ingresos_gtq_and_usd_miles(year=2026, month=9)
+        self.assertEqual(stats["repaired_legacy"], 1)
+        row.refresh_from_db()
+        self.assertAlmostEqual(float(row.source_value), float(gtq_real), places=2)
+        self.assertAlmostEqual(float(row.measured_value), float(correct_miles), places=4)
+
+    def test_repair_restores_miles_after_wrong_extra_fx_division(self):
+        """Simula BD prod dañada por repair previo (measured ÷ FX de más)."""
+        fx = Decimal("7.63856")
+        gtq_real = Decimal("1518027.18")
+        stored_source = gtq_real / fx
+        correct_miles = (stored_source / Decimal("1000")).quantize(Decimal("0.000001"))
+        wrong_miles = gtq_comisiones_to_usd_miles(stored_source, fx)
+        self.assertAlmostEqual(float(wrong_miles), float(correct_miles / fx), places=4)
+        MonthlyExchangeRate.objects.create(
+            year=2026, month=9, usd_to_gtq=fx
+        )
+        row = MonthlyMetricResult.objects.create(
+            plan=self.plan,
+            une=self.une,
+            metric=self.metric,
+            year=2026,
+            month=9,
+            source_currency=MonthlyMetricResult.CURRENCY_GTQ,
+            source_value=stored_source,
+            measured_value=wrong_miles,
+            exchange_rate_used=fx,
+            conversion_status=MonthlyMetricResult.CONVERSION_CONVERTED,
+        )
+        stats = repair_ingresos_gtq_and_usd_miles(year=2026, month=9)
+        self.assertEqual(stats["repaired_legacy"], 1)
+        row.refresh_from_db()
+        self.assertAlmostEqual(float(row.source_value), float(gtq_real), places=2)
+        self.assertAlmostEqual(float(row.measured_value), float(correct_miles), places=4)
 
     def test_save_ingresos_usd_native_without_fx(self):
         changes = save_results(
