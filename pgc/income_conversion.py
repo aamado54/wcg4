@@ -38,8 +38,41 @@ def gtq_comisiones_to_usd_miles(gtq: Decimal, usd_to_gtq: Decimal) -> Decimal:
 
 
 LEGACY_INGRESOS_MILES_TOLERANCE = Decimal("0.05")
-# Comisiones mensuales factoraje en Q (canónico en source_value); PGA GTQ/FX queda << esto.
-INGRESOS_CANONICAL_GTQ_SOURCE_MIN = Decimal("400000")
+
+
+def _source_stored_as_gtq_over_fx(
+    source_stored: Decimal, measured_miles: Decimal | None, fx: Decimal
+) -> bool:
+    """True si source_value parece GTQ/FX (no GTQ canónico mensual completo)."""
+    if measured_miles is None or not source_stored or not fx or fx <= 0:
+        return False
+    semi_legacy_miles = (source_stored / Decimal("1000")).quantize(
+        USD_STORE_PLACES, rounding=ROUND_HALF_UP
+    )
+    canonical_gtq = (source_stored * fx).quantize(
+        USD_STORE_PLACES, rounding=ROUND_HALF_UP
+    )
+    expected = gtq_comisiones_to_usd_miles(canonical_gtq, fx)
+    return abs(expected - semi_legacy_miles) <= LEGACY_INGRESOS_MILES_TOLERANCE
+
+
+def ingresos_has_extra_fx_on_gtq_over_fx_source(
+    source_stored: Decimal,
+    measured_miles: Decimal | None,
+    fx: Decimal,
+) -> bool:
+    """Repair previo dejó source=GTQ/FX y measured=(GTQ/FX)/1000/FX (÷FX de más)."""
+    if measured_miles is None or not source_stored or not fx or fx <= 0:
+        return False
+    if not _source_stored_as_gtq_over_fx(source_stored, measured_miles, fx):
+        return False
+    wrong_miles = gtq_comisiones_to_usd_miles(source_stored, fx)
+    if abs(measured_miles - wrong_miles) > LEGACY_INGRESOS_MILES_TOLERANCE:
+        return False
+    semi_legacy_miles = (source_stored / Decimal("1000")).quantize(
+        USD_STORE_PLACES, rounding=ROUND_HALF_UP
+    )
+    return abs(measured_miles - semi_legacy_miles) > LEGACY_INGRESOS_MILES_TOLERANCE
 
 
 def ingresos_has_legacy_double_fx_bug(
@@ -88,27 +121,6 @@ def ingresos_has_gtq_over_fx_source_with_correct_miles(
     if abs(measured_miles - miles_from_stored_source) > LEGACY_INGRESOS_MILES_TOLERANCE:
         return False
     if measured_matches_gtq_comisiones(source_stored, measured_miles, fx):
-        return False
-    return True
-
-
-def ingresos_has_extra_fx_on_gtq_over_fx_source(
-    source_stored: Decimal,
-    measured_miles: Decimal | None,
-    fx: Decimal,
-) -> bool:
-    """Repair previo dejó source=GTQ/FX y measured=(GTQ/FX)/1000/FX (÷FX de más)."""
-    if measured_miles is None or not source_stored or not fx or fx <= 0:
-        return False
-    wrong_miles = gtq_comisiones_to_usd_miles(source_stored, fx)
-    if abs(measured_miles - wrong_miles) > LEGACY_INGRESOS_MILES_TOLERANCE:
-        return False
-    semi_legacy_miles = (source_stored / Decimal("1000")).quantize(
-        USD_STORE_PLACES, rounding=ROUND_HALF_UP
-    )
-    if abs(measured_miles - semi_legacy_miles) <= LEGACY_INGRESOS_MILES_TOLERANCE:
-        return False
-    if source_stored >= INGRESOS_CANONICAL_GTQ_SOURCE_MIN:
         return False
     return True
 
