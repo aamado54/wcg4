@@ -12,6 +12,9 @@ from django.core.management import call_command
 from django.db import transaction
 from django.db.models import Max
 from django.utils import timezone
+import logging
+
+logger = logging.getLogger(__name__)
 
 from core.models import MetricDefinition, SystemSetting, UNE
 from imports.models import (
@@ -467,6 +470,12 @@ def run_smart_recalc_all(*, user=None, force_all: bool = False) -> dict[str, Any
             messages.append(f"{item['label']}: error — {exc}")
 
     status_after = get_global_recalc_status()
+    try:
+        from pgc.tv_charts_generate import schedule_tv_charts_refresh
+
+        schedule_tv_charts_refresh(reason="smart_recalc")
+    except Exception:
+        logger.exception("No se pudo programar refresh de charts TV tras recalc")
     return {
         "ran": True,
         "periods_processed": len(targets),

@@ -398,6 +398,13 @@ def tv_live_png(request, name: str):
     if not parsed_live:
         raise Http404("Archivo TV no encontrado.")
     slot, ext = parsed_live
+    if ext == "png":
+        try:
+            from pgc.tv_charts_generate import ensure_tv_live_charts_current
+
+            ensure_tv_live_charts_current()
+        except Exception as exc:
+            logger.warning("TV chart auto-refresh before serve failed: %s", exc)
     path = live_path(slot, ext)
     if not path.is_file() or path.stat().st_size == 0:
         # Disco vacío (redeploy): rehidratar desde Postgres.
@@ -421,6 +428,19 @@ def tv_live_png(request, name: str):
     response = FileResponse(path.open("rb"), content_type=content_type)
     response["Cache-Control"] = "no-cache, no-store, must-revalidate"
     response["Pragma"] = "no-cache"
+    try:
+        from pgc.models import TvLiveChart
+
+        row = TvLiveChart.objects.filter(slot=slot, ext=ext).only(
+            "updated_at", "byte_size"
+        ).first()
+        if row and row.updated_at:
+            response["Last-Modified"] = row.updated_at.strftime(
+                "%a, %d %b %Y %H:%M:%S GMT"
+            )
+            response["ETag"] = f'"{slot}-{ext}-{row.byte_size}-{int(row.updated_at.timestamp())}"'
+    except (OperationalError, ProgrammingError):
+        pass
     return response
 
 

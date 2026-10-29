@@ -1233,3 +1233,42 @@ class PgcDashboardModeTests(TestCase):
         request = self.factory.get("/pgc/", {"mode": "modo1"})
         request.session = session
         self.assertEqual(_get_pgc_mode(request), "modo1")
+
+
+class TvChartsSeriesTests(TestCase):
+    def test_accumulate_and_grupo_sum(self):
+        from pgc.tv_charts_generate import (
+            ExportPeriod,
+            accumulate,
+            build_income_series,
+        )
+
+        self.assertEqual(accumulate([10, 20, 5]), [10.0, 30.0, 35.0])
+        periods = [
+            ExportPeriod(
+                2026,
+                1,
+                "2026-01",
+                {
+                    "FACTORING": {"real": 1.0, "target": 2.0},
+                    "LEASING": {"real": 3.0, "target": 4.0},
+                    "INSURANCE": {"real": 0.5, "target": 1.0},
+                },
+            ),
+            ExportPeriod(
+                2026,
+                2,
+                "2026-02",
+                {
+                    "FACTORING": {"real": 2.0, "target": 1.0},
+                    "LEASING": {"real": 1.0, "target": 1.0},
+                    "INSURANCE": {"real": 0.5, "target": 0.5},
+                },
+            ),
+        ]
+        labels, real_y, target_y = build_income_series(
+            periods, ("FACTORING", "LEASING", "INSURANCE")
+        )
+        self.assertEqual(labels, ["2026-01", "2026-02"])
+        self.assertEqual(real_y, [4.5, 8.5])
+        self.assertEqual(target_y, [7.0, 9.5])

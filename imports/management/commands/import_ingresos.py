@@ -429,3 +429,12 @@ class Command(BaseCommand):
             self.stdout.write(
                 self.style.WARNING(f"Auto-recalcular no completó: {exc}")
             )
+
+        try:
+            from pgc.tv_charts_generate import schedule_tv_charts_refresh
+
+            schedule_tv_charts_refresh(reason="import_ingresos")
+        except Exception as exc:
+            self.stdout.write(
+                self.style.WARNING(f"Refresh charts TV no programado: {exc}")
+            )
