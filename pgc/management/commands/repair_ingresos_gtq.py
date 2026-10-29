@@ -42,3 +42,6 @@ class Command(BaseCommand):
                 f"sin_fx={stats['skipped_no_fx']}"
             )
         )
+        self.stdout.write(
+            "Railway shell: use /app/.venv/bin/python manage.py … (no hay python3 en PATH)."
+        )
