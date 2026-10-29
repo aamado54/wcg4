@@ -53,7 +53,12 @@ def _source_stored_as_gtq_over_fx(
         USD_STORE_PLACES, rounding=ROUND_HALF_UP
     )
     expected = gtq_comisiones_to_usd_miles(canonical_gtq, fx)
-    return abs(expected - semi_legacy_miles) <= LEGACY_INGRESOS_MILES_TOLERANCE
+    if abs(expected - semi_legacy_miles) > LEGACY_INGRESOS_MILES_TOLERANCE:
+        return False
+    # GTQ canónico mensual (factoraje) en source_value supera esto; no es GTQ/FX.
+    if source_stored >= Decimal("250000"):
+        return False
+    return True
 
 
 def ingresos_has_extra_fx_on_gtq_over_fx_source(
