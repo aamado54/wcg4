@@ -98,6 +98,8 @@ def ingresos_has_extra_fx_on_gtq_over_fx_source(
     """Repair previo dejó source=GTQ/FX y measured=(GTQ/FX)/1000/FX (÷FX de más)."""
     if measured_miles is None or not source_stored or not fx or fx <= 0:
         return False
+    if measured_matches_gtq_comisiones(source_stored, measured_miles, fx):
+        return False
     wrong_miles = gtq_comisiones_to_usd_miles(source_stored, fx)
     correct_miles = (source_stored / Decimal("1000")).quantize(
         USD_STORE_PLACES, rounding=ROUND_HALF_UP
@@ -491,3 +493,130 @@ def count_stale_ingresos(year: int, month: int) -> int:
         metric=metric,
         conversion_status=MonthlyMetricResult.CONVERSION_STALE_FX,
     ).count()
+
+
+def audit_ingresos_fx_findings(
+    *,
+    year: int | None = None,
+    month: int | None = None,
+    sample_limit: int = 15,
+) -> dict:
+    """
+    Detecta filas INGRESOS GTQ con doble FX, miles incoherentes o TC STALE.
+
+    Usar en cierre mensual / certificación (exit code ≠ 0 si ``pass`` es False).
+    """
+    from pgc.models import MonthlyMetricResult
+
+    metric = MetricDefinition.objects.filter(code=MetricDefinition.CODE_INGRESOS).first()
+    if not metric:
+        return {
+            "pass": True,
+            "counts": {},
+            "samples": [],
+            "repair_dry_run": {},
+            "message": "Sin métrica INGRESOS.",
+        }
+
+    qs = MonthlyMetricResult.objects.filter(metric=metric).select_related("une", "plan")
+    if year is not None:
+        qs = qs.filter(year=year)
+    if month is not None:
+        qs = qs.filter(month=month)
+
+    counts = {
+        "scanned": 0,
+        "ok": 0,
+        "usd_native": 0,
+        "no_fx": 0,
+        "stale_fx": 0,
+        "legacy_double_fx": 0,
+        "extra_fx_division": 0,
+        "semi_legacy_source": 0,
+        "measured_mismatch": 0,
+    }
+    samples: list[dict] = []
+
+    def _sample(issue: str, row, **extra):
+        if len(samples) >= sample_limit:
+            return
+        samples.append(
+            {
+                "issue": issue,
+                "period": f"{row.year}-{row.month:02d}",
+                "une": row.une.code,
+                "measured": row.measured_value,
+                "source": row.source_value,
+                "fx": row.exchange_rate_used,
+                **extra,
+            }
+        )
+
+    for row in qs.iterator():
+        counts["scanned"] += 1
+        if row.conversion_status == MonthlyMetricResult.CONVERSION_STALE_FX:
+            counts["stale_fx"] += 1
+            _sample("stale_fx", row)
+
+        if row.source_currency == MonthlyMetricResult.CURRENCY_USD:
+            counts["usd_native"] += 1
+            continue
+        if row.source_currency != MonthlyMetricResult.CURRENCY_GTQ or row.source_value is None:
+            counts["ok"] += 1
+            continue
+
+        fx = row.exchange_rate_used or get_fx_rate(row.year, row.month)
+        if fx is None or fx <= 0:
+            counts["no_fx"] += 1
+            _sample("no_fx", row)
+            continue
+
+        source_stored = Decimal(str(row.source_value))
+        measured = row.measured_value
+
+        if ingresos_has_legacy_double_fx_bug(source_stored, measured, fx):
+            counts["legacy_double_fx"] += 1
+            _sample("legacy_double_fx", row)
+            continue
+        if ingresos_has_extra_fx_on_gtq_over_fx_source(source_stored, measured, fx):
+            counts["extra_fx_division"] += 1
+            _sample("extra_fx_division", row)
+            continue
+        if ingresos_has_gtq_over_fx_source_with_correct_miles(source_stored, measured, fx):
+            counts["semi_legacy_source"] += 1
+            _sample("semi_legacy_source", row)
+            continue
+
+        source_gtq = source_stored
+        if measured_matches_gtq_comisiones(source_gtq, measured, fx):
+            counts["ok"] += 1
+            continue
+
+        counts["measured_mismatch"] += 1
+        expected = gtq_comisiones_to_usd_miles(source_gtq, fx)
+        _sample("measured_mismatch", row, expected=expected)
+
+    repair_dry = repair_ingresos_gtq_and_usd_miles(
+        year=year, month=month, dry_run=True
+    )
+    fail_count = (
+        counts["legacy_double_fx"]
+        + counts["extra_fx_division"]
+        + counts["measured_mismatch"]
+        + counts["semi_legacy_source"]
+        + counts["stale_fx"]
+        + counts["no_fx"]
+    )
+    needs_repair = (repair_dry.get("repaired_legacy") or 0) + (
+        repair_dry.get("repaired_measured") or 0
+    )
+    passed = fail_count == 0 and needs_repair == 0
+
+    return {
+        "pass": passed,
+        "counts": counts,
+        "samples": samples,
+        "repair_dry_run": repair_dry,
+        "needs_repair": needs_repair,
+        "fail_count": fail_count,
+    }

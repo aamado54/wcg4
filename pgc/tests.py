@@ -14,6 +14,7 @@ from django.test import RequestFactory, TestCase
 from core.models import MetricDefinition, UNE
 from pgc.admin_manual import save_fx, save_results
 from pgc.income_conversion import (
+    apply_result_achievement,
     gtq_comisiones_to_usd_miles,
     gtq_to_usd,
     ingresos_has_legacy_double_fx_bug,
@@ -65,6 +66,33 @@ class IngresosConversionTests(TestCase):
     def test_gtq_to_usd_math(self):
         usd = gtq_to_usd(Decimal("7850"), Decimal("7.85"))
         self.assertEqual(usd, Decimal("1000.000000"))
+
+    def test_audit_passes_on_clean_gtq_row(self):
+        from pgc.income_conversion import audit_ingresos_fx_findings
+
+        MonthlyExchangeRate.objects.create(
+            year=self.year,
+            month=self.month,
+            usd_to_gtq=Decimal("7.85"),
+        )
+        mmr = MonthlyMetricResult.objects.create(
+            plan=self.plan,
+            une=self.une,
+            metric=self.metric,
+            year=self.year,
+            month=self.month,
+            source_currency=MonthlyMetricResult.CURRENCY_GTQ,
+            source_value=Decimal("7850000"),
+            exchange_rate_used=Decimal("7.85"),
+            measured_value=gtq_comisiones_to_usd_miles(
+                Decimal("7850000"), Decimal("7.85")
+            ),
+            conversion_status=MonthlyMetricResult.CONVERSION_CONVERTED,
+        )
+        apply_result_achievement(mmr)
+        mmr.save()
+        report = audit_ingresos_fx_findings(year=self.year, month=self.month)
+        self.assertTrue(report["pass"], report)
 
     def test_save_ingresos_requires_fx(self):
         with self.assertRaises(ValueError) as ctx:
