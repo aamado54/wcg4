@@ -213,8 +213,9 @@
           </select>
       </div>
   
-      <div>
-        <label for="sort">Sort</label><br>
+      <div id="sort-wrap">
+        <label for="sort">Sort</label>
+        <span id="sort-anual-hint" class="muted" style="display:none; font-weight:400;"> (solo Lista detalle)</span><br>
         <select id="sort">
           <option value="unes"
             {% if report_sort.group_mode == "une" %}selected{% endif %}>
@@ -262,6 +263,9 @@
         <option value="{{ report_settings.currency_usd }}" {% if report_settings.currency == report_settings.currency_usd %}selected{% endif %}>USD (miles, default)</option>
         <option value="{{ report_settings.currency_gtq }}" {% if report_settings.currency == report_settings.currency_gtq %}selected{% endif %}>GTQ (Objetivos)</option>
       </select>
+      <p id="moneda-anual-hint" class="muted" style="margin:4px 0 0; font-size:12px; max-width:280px; {% if report_settings.view != view_anual %}display:none;{% endif %}">
+        En «Anual por UNE» las cifras son miles USD. GTQ (Objetivos) aplica en «Lista (detalle)» para contrastar con la hoja Objetivos.
+      </p>
     </div>
     <div class="setting-check">
       <input type="hidden" name="show_detail_cols" value="0" form="ingresos-filter-form">
@@ -274,8 +278,8 @@
   {% if report_settings.view == view_anual %}
   <div class="ingresos-anual-wrap">
     <p class="muted" style="margin-top:0;">
-      Año {{ annual_year }} completo · metas, ejecutado de ingresos y cumplimiento.
-      Celdas en blanco = aún sin ejecución.
+      Año {{ annual_year }} · miles de US$. Fila Comisiones: meta (TOTAL = suma anual de metas).
+      Ejecutado: real acumulado (TOTAL = YTD, meses con dato). Celdas vacías = sin ejecución aún.
     </p>
     {% for table in annual_tables %}
     <div class="ingresos-anual-block">
@@ -314,7 +318,7 @@
               <td class="total-cell">{% if table.pct_total is not None %}{{ table.pct_total|wcg_num:0 }}%{% endif %}</td>
             </tr>
             <tr class="row-ejecutado">
-              <td class="concept">Ejecutado</td>
+              <td class="concept">Ejecutado (YTD)</td>
               {% for v in table.ejecutado %}
               <td>{% if v is not None %}{{ v|wcg_num:decimals }}{% endif %}</td>
               {% endfor %}
@@ -462,9 +466,20 @@ document.addEventListener("DOMContentLoaded", function () {
     const startYear  = document.getElementById("start_year");
     const startMonth = document.getElementById("start_month");
     const sort       = document.getElementById("sort");
+    const sortWrap   = document.getElementById("sort-wrap");
+    const sortAnualHint = document.getElementById("sort-anual-hint");
+    const viewSelect = document.getElementById("view");
+    const monedaAnualHint = document.getElementById("moneda-anual-hint");
     const dateOrder  = document.getElementById("date_order");
     const groupMode  = document.getElementById("group_mode");
     const btn        = document.getElementById("btn-export-md");
+
+    function syncViewHints() {
+        const isAnual = viewSelect && viewSelect.value === "{{ view_anual }}";
+        if (sort) sort.disabled = !!isAnual;
+        if (sortAnualHint) sortAnualHint.style.display = isAnual ? "inline" : "none";
+        if (monedaAnualHint) monedaAnualHint.style.display = isAnual ? "block" : "none";
+    }
 
     function syncSortFields() {
         if (!sort) return;
@@ -489,6 +504,10 @@ document.addEventListener("DOMContentLoaded", function () {
     if (sort) {
         sort.addEventListener("change", applyFilters);
         syncSortFields();
+    }
+    syncViewHints();
+    if (viewSelect) {
+        viewSelect.addEventListener("change", syncViewHints);
     }
 
     ["month_count", "start_year", "start_month", "decimals", "view", "moneda", "show_detail_cols"].forEach(function (id) {
