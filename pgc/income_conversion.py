@@ -56,6 +56,20 @@ def _source_stored_as_gtq_over_fx(
     return abs(expected - semi_legacy_miles) <= LEGACY_INGRESOS_MILES_TOLERANCE
 
 
+def source_value_is_canonical_gtq_commissions(
+    source_stored: Decimal,
+    measured_miles: Decimal | None,
+    fx: Decimal,
+) -> bool:
+    """source_value ya es comisiones GTQ del mes (no GTQ/FX almacenado)."""
+    if measured_miles is None or not source_stored or not fx or fx <= 0:
+        return False
+    inferred_gtq = (measured_miles * Decimal("1000") * fx).quantize(
+        USD_STORE_PLACES, rounding=ROUND_HALF_UP
+    )
+    return abs(source_stored - inferred_gtq) <= Decimal("1")
+
+
 def ingresos_has_extra_fx_on_gtq_over_fx_source(
     source_stored: Decimal,
     measured_miles: Decimal | None,
@@ -70,6 +84,8 @@ def ingresos_has_extra_fx_on_gtq_over_fx_source(
     if source_stored >= Decimal("400000"):
         return False
     if not measured_matches_gtq_comisiones(source_stored, measured_miles, fx):
+        return False
+    if source_value_is_canonical_gtq_commissions(source_stored, measured_miles, fx):
         return False
     canonical_gtq = (source_stored * fx).quantize(
         USD_STORE_PLACES, rounding=ROUND_HALF_UP
@@ -452,7 +468,9 @@ def repair_ingresos_gtq_and_usd_miles(
                 USD_STORE_PLACES, rounding=ROUND_HALF_UP
             )
         elif measured_matches_gtq_comisiones(source_gtq, row.measured_value, fx):
-            if not extra_fx_source:
+            if not extra_fx_source and source_value_is_canonical_gtq_commissions(
+                source_gtq, row.measured_value, fx
+            ):
                 stats["skipped_ok"] += 1
                 continue
 
