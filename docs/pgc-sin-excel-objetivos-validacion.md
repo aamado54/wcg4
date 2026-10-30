@@ -53,7 +53,7 @@ Detalle fórmulas modo2 ingresos en GTQ: [pgc-puntos-proporcion-objetivos.md](pg
 ### Comisiones Factoraje y Leasing (`import_ingresos`)
 
 1. Un ER `.xlsx` por UNE (`WCF`/`WC` → Factoraje, `WCL` → Leasing, `WCI` → Insurance).
-2. Hoja **Datos**: suma cuentas detalle **4** y **8** del mes, o delta YTD mes actual vs anterior.
+2. Hoja **Datos**: suma cuentas detalle **4** y **8** del mes (columnas ENERO..DICIEMBRE legacy), o **SALDO FINAL** filas resumen 4+8 (ER 2026+: ya es comisión del mes). Delta YTD solo con `--no-er-monthly-saldo`.
 3. GTQ mensual bruto → para F/L/WCI se divide entre **1000** antes de `MonthlyExchangeRate.usd_to_gtq` → **USD miles** en `measured_value`.
 4. `source_value` = GTQ bruto (sin ÷1000); alimenta **2.Proporción** modo2 junto con `presupuesto_gtq`.
 5. Si falta `presupuesto_gtq`, `import_ingresos` puede derivarlo como **meta (miles USD) × 1000**; sustituya en matriz anual si el presupuesto GTQ real difiere.

@@ -6,6 +6,7 @@ from django.test import TestCase
 from imports.ingresos_er_parse import (
     objetivos_style_ingresos_values,
     read_pga_mensuales_comisiones_gtq,
+    read_wc_er_comisiones_gtq,
 )
 
 PGA_PATH = (
@@ -47,3 +48,22 @@ class IngresosErParseTests(TestCase):
             self.skipTest("PGA Mensuales 2026 no disponible en el workspace.")
         gtq = read_pga_mensuales_comisiones_gtq(path, "FACTORING", 9)
         self.assertEqual(gtq, Decimal("1518027.18"))
+
+    def test_read_wcf_er_saldo_fin_mensual_if_file_present(self):
+        path = Path("/home/caa/download/eeff/WCF-ER-2603.xlsx")
+        if not path.is_file():
+            self.skipTest("WCF-ER-2603.xlsx no disponible.")
+        gtq, method = read_wc_er_comisiones_gtq(path, 3, monthly_saldo=True)
+        self.assertEqual(method, "saldo_fin_mensual")
+        self.assertEqual(gtq, Decimal("14307091.55"))
+
+    def test_read_wcf_er_ytd_delta_subtracts_prev_if_files_present(self):
+        path = Path("/home/caa/download/eeff/WCF-ER-2603.xlsx")
+        prev = Path("/home/caa/download/eeff/WCF-ER-2602.xlsx")
+        if not path.is_file() or not prev.is_file():
+            self.skipTest("WCF-ER-2602/2603 no disponibles.")
+        gtq, method = read_wc_er_comisiones_gtq(
+            path, 3, prev_path=prev, monthly_saldo=False
+        )
+        self.assertEqual(method, "ytd_delta")
+        self.assertEqual(gtq, Decimal("13183793.92"))

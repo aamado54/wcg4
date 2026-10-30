@@ -2,70 +2,15 @@
 
 from __future__ import annotations
 
-import csv
-import re
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal
 from pathlib import Path
 
 from django.core.management.base import BaseCommand, CommandError
 
 from core.models import MetricDefinition, UNE
+from imports.ingresos_er_parse import load_comisiones_tsv
 from pgc.income_conversion import get_fx_rate, gtq_comisiones_to_usd_miles
 from pgc.models import MonthlyMetricResult, PGCPlan
-
-UNE_MAP = {
-    "factoring": "FACTORING",
-    "leasing": "LEASING",
-    "insurance": "INSURANCE",
-}
-MONTHS = ("ene", "feb", "mzo", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic")
-MONTH_NUM = {m: i + 1 for i, m in enumerate(MONTHS)}
-
-
-def _parse_gtq_cell(raw: str) -> Decimal | None:
-    text = (raw or "").strip()
-    if not text:
-        return None
-    text = text.replace(",", "").replace(" ", "")
-    try:
-        return Decimal(text)
-    except InvalidOperation:
-        return None
-
-
-def load_comisiones_tsv(path: Path) -> dict[tuple[str, int, int], Decimal]:
-    """(UNE_CODE, year, month) -> comisiones GTQ."""
-    out: dict[tuple[str, int, int], Decimal] = {}
-    year = 2026
-    with path.open(newline="", encoding="utf-8-sig") as f:
-        rows = list(csv.reader(f, delimiter="\t"))
-    if len(rows) < 2:
-        return out
-    header = [c.strip().lower() for c in rows[0]]
-    month_cols: list[tuple[int, int]] = []
-    for idx, cell in enumerate(header):
-        key = cell[:3] if len(cell) >= 3 else cell
-        if key in MONTH_NUM:
-            month_cols.append((idx, MONTH_NUM[key]))
-    for row in rows[1:]:
-        if not row or not row[0].strip():
-            continue
-        label = row[0].strip().lower()
-        une = None
-        for k, code in UNE_MAP.items():
-            if k in label:
-                une = code
-                break
-        if not une:
-            continue
-        for col_idx, month in month_cols:
-            if col_idx >= len(row):
-                continue
-            gtq = _parse_gtq_cell(row[col_idx])
-            if gtq is None:
-                continue
-            out[(une, year, month)] = gtq
-    return out
 
 
 class Command(BaseCommand):

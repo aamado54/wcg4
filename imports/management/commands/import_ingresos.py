@@ -1,18 +1,19 @@
 # imports/management/commands/import_ingresos.py
 
-import re
+import argparse
 from decimal import Decimal
 from pathlib import Path
 
-import openpyxl
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
 from core.models import UNE, MetricDefinition
 from imports.ingresos_er_parse import (
+    infer_prev_er_path,
     is_pga_mensuales_workbook,
     objetivos_style_ingresos_values,
     read_pga_mensuales_comisiones_gtq,
+    read_wc_er_comisiones_gtq,
 )
 from pgc.income_conversion import apply_result_achievement
 from pgc.models import PGCPlan, MonthlyTarget, MonthlyMetricResult, MonthlyExchangeRate
@@ -55,6 +56,15 @@ class Command(BaseCommand):
             default="",
             help="UNE explícita (FACTORING/LEASING/INSURANCE) para PGA Mensuales u otros xlsx sin prefijo WCF/WCL/WCI.",
         )
+        parser.add_argument(
+            "--er-monthly-saldo",
+            action=argparse.BooleanOptionalAction,
+            default=True,
+            help=(
+                "ER WC*: SALDO FINAL de cuentas 4+8 es comisión del mes (default). "
+                "Use --no-er-monthly-saldo para delta YTD legacy."
+            ),
+        )
 
     def _infer_une_from_filename(self, path: Path) -> UNE:
         name = path.name.upper().strip()
@@ -77,191 +87,6 @@ class Command(BaseCommand):
             return UNE.objects.get(code=code)
         except UNE.DoesNotExist:
             raise CommandError(f"UNE con code={code} no existe en la base de datos.")
-
-    def _to_decimal(self, raw_value, context: str) -> Decimal:
-        if raw_value in (None, ""):
-            return Decimal("0")
-
-        text = str(raw_value).strip().replace(",", "")
-        try:
-            return Decimal(text)
-        except Exception:
-            raise CommandError(
-                f"No se pudo convertir a decimal ({context}). Valor bruto={raw_value!r}"
-            )
-
-    def _saldo_fin_col(self, ws) -> int | None:
-        for col_idx, cell in enumerate(ws[1], start=1):
-            if cell.value is None:
-                continue
-            header = str(cell.value).strip().upper().replace(" ", "")
-            if header in ("SALDOFIN", "SALDOFINAL"):
-                return col_idx
-        return None
-
-    def _month_col(self, ws, month: int) -> int | None:
-        month_names = {
-            1: "ENERO",
-            2: "FEBRERO",
-            3: "MARZO",
-            4: "ABRIL",
-            5: "MAYO",
-            6: "JUNIO",
-            7: "JULIO",
-            8: "AGOSTO",
-            9: "SEPTIEMBRE",
-            10: "OCTUBRE",
-            11: "NOVIEMBRE",
-            12: "DICIEMBRE",
-        }
-        month_name = month_names.get(month)
-        if not month_name:
-            return None
-        for col_idx, cell in enumerate(ws[1], start=1):
-            if cell.value is None:
-                continue
-            if str(cell.value).strip().upper() == month_name:
-                return col_idx
-        return None
-
-    def _ytd_from_summary_rows(self, ws, prefix: str) -> Decimal | None:
-        """Suma YTD de filas resumen NUMERO CUENTA == 4 u 8."""
-        saldo_fin_col = self._saldo_fin_col(ws)
-        if saldo_fin_col is None:
-            return None
-
-        for row in ws.iter_rows(min_row=2):
-            for cell in row[:4]:
-                if cell.value is None:
-                    continue
-                if str(cell.value).strip() == prefix:
-                    saldo_value = row[saldo_fin_col - 1].value
-                    return self._to_decimal(
-                        saldo_value,
-                        f"hoja Datos fila CUENTA={prefix} SALDOFIN",
-                    )
-        return None
-
-    def _sum_detail_month_column(self, ws, month: int, prefix: str) -> Decimal | None:
-        """Suma cuentas detalle (9 dígitos) en columna mensual ENERO..DICIEMBRE."""
-        month_col = self._month_col(ws, month)
-        if month_col is None:
-            return None
-
-        total = Decimal("0")
-        found = False
-        for row in ws.iter_rows(min_row=2):
-            cuenta = row[1].value if len(row) > 1 else None
-            if cuenta is None:
-                continue
-            cuenta_str = str(cuenta).strip()
-            cuenta_digits = "".join(ch for ch in cuenta_str if ch.isdigit())
-            if not (cuenta_digits.startswith(prefix) and len(cuenta_digits) == 9):
-                continue
-            tipo = row[3].value if len(row) > 3 else None
-            if tipo != "D":
-                continue
-            month_value = row[month_col - 1].value
-            if month_value in (None, ""):
-                continue
-            total += self._to_decimal(
-                month_value,
-                f"cuenta {cuenta_str} columna mes {month}",
-            )
-            found = True
-        return total if found else None
-
-    def _ytd_total(self, ws) -> Decimal:
-        y4 = self._ytd_from_summary_rows(ws, "4")
-        y8 = self._ytd_from_summary_rows(ws, "8")
-        if y4 is not None or y8 is not None:
-            return (y4 or Decimal("0")) + (y8 or Decimal("0"))
-
-        # Sin filas resumen: sumar detalle en SALDO FINAL (poco común).
-        saldo_fin_col = self._saldo_fin_col(ws)
-        if saldo_fin_col is None:
-            return Decimal("0")
-        total = Decimal("0")
-        for row in ws.iter_rows(min_row=2):
-            cuenta = row[1].value if len(row) > 1 else None
-            if cuenta is None:
-                continue
-            digits = "".join(ch for ch in str(cuenta).strip() if ch.isdigit())
-            if len(digits) != 9:
-                continue
-            if not (digits.startswith("4") or digits.startswith("8")):
-                continue
-            if (row[3].value if len(row) > 3 else None) != "D":
-                continue
-            total += self._to_decimal(
-                row[saldo_fin_col - 1].value,
-                f"detalle {cuenta}",
-            )
-        return total
-
-    def _infer_prev_path(self, path: Path, year: int, month: int) -> Path | None:
-        if month <= 1:
-            return None
-        m = re.search(r"(\d{4})\.xlsx$", path.name, re.I)
-        if not m:
-            return None
-        yymm = int(m.group(1))
-        prev_yymm = yymm - 1
-        if prev_yymm % 100 == 0:
-            prev_yymm = (yymm // 100 - 1) * 100 + 12
-        candidate = path.with_name(path.name.replace(f"{yymm:04d}", f"{prev_yymm:04d}"))
-        return candidate if candidate.is_file() else None
-
-    def _read_ingreso_from_excel(
-        self,
-        path: Path,
-        month: int,
-        *,
-        prev_path: Path | None,
-    ) -> tuple[Decimal, str]:
-        """
-        Lee ingreso mensual GTQ (cuentas 4+8).
-
-        Prioridad:
-        1) Columna mensual (ENERO..DICIEMBRE) en cuentas detalle.
-        2) Delta YTD (SALDO FINAL mes actual − mes anterior).
-        """
-        try:
-            wb = openpyxl.load_workbook(path, data_only=True)
-        except Exception as e:
-            raise CommandError(f"No se pudo abrir el archivo Excel: {e}")
-
-        if "Datos" not in wb.sheetnames:
-            raise CommandError(
-                f"El archivo {path.name} no contiene hoja 'Datos'. "
-                f"Hojas disponibles: {', '.join(wb.sheetnames)}"
-            )
-
-        ws = wb["Datos"]
-        monthly_4 = self._sum_detail_month_column(ws, month, "4")
-        monthly_8 = self._sum_detail_month_column(ws, month, "8")
-        if monthly_4 is not None or monthly_8 is not None:
-            total = (monthly_4 or Decimal("0")) + (monthly_8 or Decimal("0"))
-            wb.close()
-            return total, "columna_mensual"
-
-        ytd_current = self._ytd_total(ws)
-        wb.close()
-
-        ytd_prev = Decimal("0")
-        method = "ytd_sin_previo"
-        if prev_path and prev_path.is_file():
-            try:
-                wb_prev = openpyxl.load_workbook(prev_path, data_only=True)
-                if "Datos" in wb_prev.sheetnames:
-                    ytd_prev = self._ytd_total(wb_prev["Datos"])
-                    method = "ytd_delta"
-                wb_prev.close()
-            except Exception:
-                method = "ytd_sin_previo"
-
-        monthly = ytd_current - ytd_prev
-        return monthly, method
 
     def _get_exchange_rate(self, year: int, month: int) -> Decimal:
         try:
@@ -291,7 +116,7 @@ class Command(BaseCommand):
         prev_path = (
             Path(options["prev_path"]).expanduser()
             if options.get("prev_path")
-            else self._infer_prev_path(path, year, month)
+            else infer_prev_er_path(path, month)
         )
 
         self.stdout.write(
@@ -313,6 +138,7 @@ class Command(BaseCommand):
             raise CommandError("No existe MetricDefinition para CODE_INGRESOS")
 
         une_code_opt = (options.get("une_code") or "").strip().upper()
+        monthly_saldo = options.get("er_monthly_saldo", True)
         if is_pga_mensuales_workbook(path):
             if not une_code_opt:
                 raise CommandError(
@@ -333,8 +159,11 @@ class Command(BaseCommand):
                 if une_code_opt
                 else self._infer_une_from_filename(path)
             )
-            ingreso_mensual_gtq, method = self._read_ingreso_from_excel(
-                path, month, prev_path=prev_path
+            ingreso_mensual_gtq, method = read_wc_er_comisiones_gtq(
+                path,
+                month,
+                prev_path=prev_path,
+                monthly_saldo=monthly_saldo,
             )
 
         if une.code == "INVESTMENT":
