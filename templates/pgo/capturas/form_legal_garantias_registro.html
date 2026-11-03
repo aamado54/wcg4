@@ -1,0 +1,15 @@
+{% extends "pgo/capturas/_form_layout.html" %}
+{% block captura_fields %}
+<div class="row g-2">
+  <div class="col-md-4">{{ form.une.label_tag }} {{ form.une }}</div>
+  <div class="col-md-4">{{ form.operation_id.label_tag }} {{ form.operation_id }}</div>
+  <div class="col-md-4">{{ form.client_name.label_tag }} {{ form.client_name }}</div>
+  <div class="col-md-3">{{ form.fecha_formalizacion.label_tag }} {{ form.fecha_formalizacion }}</div>
+  <div class="col-md-3">{{ form.hora_formalizacion.label_tag }} {{ form.hora_formalizacion }}</div>
+  <div class="col-md-3">{{ form.fecha_registro_garantia.label_tag }} {{ form.fecha_registro_garantia }}</div>
+  <div class="col-md-3">{{ form.hora_registro_garantia.label_tag }} {{ form.hora_registro_garantia }}</div>
+  <div class="col-12">{{ form.observaciones.label_tag }} {{ form.observaciones }}</div>
+  <div class="col-md-4"><label class="form-check">{{ form.reviewed }} {{ form.reviewed.label }}</label></div>
+  <div class="col-md-8">{{ form.attachment.label_tag }} {{ form.attachment }}</div>
+</div>
+{% endblock %}

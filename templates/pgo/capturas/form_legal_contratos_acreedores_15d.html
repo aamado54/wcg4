@@ -1,0 +1,10 @@
+{% extends "pgo/capturas/_form_layout.html" %}
+{% block captura_fields %}
+<div class="row g-2">
+  <div class="col-md-6">{{ form.creditor_name.label_tag }} {{ form.creditor_name }}</div>
+  <div class="col-md-3">{{ form.due_date.label_tag }} {{ form.due_date }}</div>
+  <div class="col-md-3">{{ form.formalized.label_tag }} {{ form.formalized }}</div>
+  <div class="col-md-3">{{ form.date_done.label_tag }} {{ form.date_done }}</div>
+  <div class="col-12">{{ form.notes.label_tag }} {{ form.notes }}</div>
+</div>
+{% endblock %}

@@ -1,0 +1,20 @@
+{% extends "base_wcg.html" %}
+{% block title %}PGO — Versión captura{% endblock %}
+{% block content %}
+<div class="mb-3 mt-2">
+  <h1 class="h4 fw-semibold">{{ ctype.title }}</h1>
+  <p class="text-muted small mb-0">
+    {{ version.created_at|date:"d/m/Y H:i" }} — {{ version.user.username }}
+    · Período {{ version.period_month|stringformat:"02d" }}/{{ version.period_year }}
+    {% if version.is_out_of_period %}<span class="badge text-bg-warning ms-1">Fuera de período</span>{% endif %}
+  </p>
+</div>
+{% if version.change_note %}
+<p class="small"><strong>Nota:</strong> {{ version.change_note }}</p>
+{% endif %}
+{% if version.attachment %}
+<p class="small"><a href="{{ version.attachment.url }}" target="_blank" rel="noopener">Descargar evidencia</a></p>
+{% endif %}
+<pre class="small bg-light p-3 rounded border">{{ version.payload }}</pre>
+<a href="{% url 'pgo:capturas_history' ctype.slug %}" class="btn btn-sm btn-outline-secondary">Volver al historial</a>
+{% endblock %}

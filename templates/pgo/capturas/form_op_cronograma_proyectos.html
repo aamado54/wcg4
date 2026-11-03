@@ -1,0 +1,11 @@
+{% extends "pgo/capturas/_form_layout.html" %}
+{% block captura_fields %}
+<p class="small text-muted">Indique si cada UNE cumple el cronograma de proyectos estratégicos del mes.</p>
+<div class="row g-2">
+  {% for field in form %}
+    {% if field.name != 'period_year' and field.name != 'period_month' and field.name != 'change_note' %}
+    <div class="col-md-6 col-lg-3">{{ field.label_tag }} {{ field }}</div>
+    {% endif %}
+  {% endfor %}
+</div>
+{% endblock %}

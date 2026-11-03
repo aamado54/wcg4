@@ -236,3 +236,11 @@ WCG_SUPERUSER_USERNAMES = [
 ]
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Capturas manuales PGO (horario America/Guatemala, append-only).
+PGO_CAPTURAS_TIMEZONE = TIME_ZONE
+PGO_CAPTURAS_BUSINESS_HOURS = (9, 18)  # hora local [inicio, fin); configurable
+PGO_CAPTURAS_OPERATION_ID_MIN = 5
+PGO_CAPTURAS_OPERATION_ID_MAX = 20
+PGO_CAPTURAS_LEGAL_GARANTIAS_USERNAMES = ("Erick", "Celeste")
+PGO_CAPTURAS_LEGAL_GARANTIAS_GROUP = ""  # opcional: nombre de grupo Django

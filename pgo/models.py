@@ -228,3 +228,44 @@ class PgoScorecardCell(models.Model):
 
     def __str__(self):
         return f"{self.year}-{self.month:02d} {self.une} {self.concept_id}"
+
+
+def pgo_manual_capture_upload_to(instance, filename: str) -> str:
+    return f"pgo/capturas/{instance.period_year}/{instance.period_month:02d}/{filename}"
+
+
+class PgoManualCaptureVersion(models.Model):
+    """
+    Versión append-only de captura manual PGO.
+    No eliminar filas desde la aplicación (auditoría).
+    """
+
+    capture_type = models.CharField(max_length=80, db_index=True)
+    period_year = models.PositiveSmallIntegerField(db_index=True)
+    period_month = models.PositiveSmallIntegerField(db_index=True)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="pgo_manual_captures",
+    )
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    payload = models.JSONField(default=dict)
+    change_note = models.CharField(max_length=800, blank=True)
+    is_out_of_period = models.BooleanField(default=False)
+    attachment = models.FileField(
+        upload_to=pgo_manual_capture_upload_to,
+        blank=True,
+        null=True,
+        help_text="PDF o JPG (garantías mobiliarias)",
+    )
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "Captura manual PGO (versión)"
+        verbose_name_plural = "Capturas manuales PGO (versiones)"
+        indexes = [
+            models.Index(fields=["capture_type", "period_year", "period_month"]),
+        ]
+
+    def __str__(self):
+        return f"{self.capture_type} {self.period_year}-{self.period_month:02d} v@{self.created_at:%Y-%m-%d %H:%M}"

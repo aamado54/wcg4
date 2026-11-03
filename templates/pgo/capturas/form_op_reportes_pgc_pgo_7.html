@@ -1,0 +1,20 @@
+{% extends "pgo/capturas/_form_layout.html" %}
+{% block captura_fields %}
+<div class="table-responsive">
+  <table class="table table-sm table-bordered small align-middle">
+    <thead class="table-light">
+      <tr><th>Reporte</th><th>Sugerido (import)</th><th>Fecha cumplimiento</th><th>Notas</th></tr>
+    </thead>
+    <tbody>
+      {% for row in report_table %}
+      <tr>
+        <td>{{ row.label }}</td>
+        <td class="text-muted">{% if row.suggested %}{{ row.suggested }}{% else %}—{% endif %}</td>
+        <td>{{ row.completion }}</td>
+        <td>{{ row.notes }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

@@ -1,0 +1,51 @@
+{% extends "base_wcg.html" %}
+{% block title %}PGO — Capturas manuales{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2 mt-2">
+  <div class="wcg-report-head">
+    <h1 class="h4 fw-semibold mb-0">PGO — Capturas manuales</h1>
+    {% include "includes/module_mark.html" with module="pgo" %}
+    <p class="text-muted small mb-0">
+      Registro versionado (sin eliminar). Período por defecto: {{ default_month }}/{{ default_year }}.
+      Horario hábil configurable en ajustes del sistema.
+    </p>
+  </div>
+  <div class="d-flex gap-1 flex-wrap">
+    <a href="{% url 'pgo:tablero_puntos' %}" class="btn btn-sm btn-outline-primary">Tablero por puntos</a>
+    <a href="{% url 'pgo:dashboard' %}" class="btn btn-sm btn-outline-secondary">Operación / tickets</a>
+  </div>
+</div>
+
+{% for area_id, area_label, items in areas %}
+<section class="mb-4">
+  <h2 class="h6 fw-semibold border-bottom pb-1">{{ area_label }}</h2>
+  <div class="row g-2">
+    {% for c, concept_line in items %}
+    <div class="col-md-6 col-xl-4">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body small">
+          <div class="d-flex justify-content-between align-items-start gap-2 mb-1">
+            <a href="{% url 'pgo:capturas_page' c.slug %}" class="fw-semibold text-decoration-none">{{ c.title }}</a>
+            {% if not c.implemented %}
+            <a href="#pendiente-{{ c.pending_note|default:'otros'|slugify }}" class="badge text-bg-warning text-decoration-none">Pendiente</a>
+            {% endif %}
+          </div>
+          <p class="text-muted mb-1">{{ c.description }}</p>
+          <p class="mb-0"><span class="text-muted">Concepto PGO:</span> {{ concept_line }}</p>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% endfor %}
+
+<div class="card border-0 shadow-sm mb-4" id="notas-pendientes">
+  <div class="card-header bg-white fw-semibold small">Notas — capturas pendientes</div>
+  <div class="card-body small">
+    {% for key, text in pending_footnotes.items %}
+    <p class="mb-2" id="pendiente-{{ key|slugify }}"><span class="badge text-bg-warning">{{ key }}</span> — {{ text }}</p>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

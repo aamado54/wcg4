@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import PgoResultadoPeriodo, Ticket, TicketEvento
+from .models import PgoManualCaptureVersion, PgoResultadoPeriodo, Ticket, TicketEvento
 
 
 class TicketEventoInline(admin.TabularInline):
@@ -47,3 +47,22 @@ class PgoResultadoPeriodoAdmin(admin.ModelAdmin):
     list_filter = ("periodo", "unidad_negocio")
     search_fields = ("periodo", "unidad_negocio__code", "unidad_negocio__nombre")
     ordering = ("-periodo",)
+
+
+@admin.register(PgoManualCaptureVersion)
+class PgoManualCaptureVersionAdmin(admin.ModelAdmin):
+    list_display = (
+        "capture_type",
+        "period_year",
+        "period_month",
+        "user",
+        "created_at",
+        "is_out_of_period",
+    )
+    list_filter = ("capture_type", "period_year", "is_out_of_period")
+    search_fields = ("capture_type", "change_note", "user__username")
+    readonly_fields = ("created_at", "payload", "user", "capture_type", "period_year", "period_month")
+    ordering = ("-created_at",)
+
+    def has_delete_permission(self, request, obj=None):
+        return False

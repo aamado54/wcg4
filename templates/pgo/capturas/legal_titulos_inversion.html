@@ -1,0 +1,21 @@
+{% extends "base_wcg.html" %}
+{% block title %}PGO — {{ ctype.title }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2 mt-2">
+  <div>
+    <h1 class="h4 fw-semibold mb-0">{{ ctype.title }}</h1>
+    <p class="text-muted small mb-0">{{ concept_labels }}</p>
+  </div>
+  <div class="d-flex gap-1 flex-wrap">
+    <a href="{% url 'pgo:capturas_index' %}" class="btn btn-sm btn-outline-secondary">Índice capturas</a>
+    <a href="{% url 'pgo:capturas_history' ctype.slug %}" class="btn btn-sm btn-outline-primary">Historial</a>
+  </div>
+</div>
+
+<div class="alert alert-info small">
+  Este indicador se calcula automáticamente al <strong>100%</strong> desde los sistemas de origen (emisión de títulos y contratos).
+  No requiere captura manual en esta pantalla; use el tablero por puntos para ver el puntaje importado o calculado.
+</div>
+
+<a href="{% url 'pgo:tablero_puntos' %}" class="btn btn-sm btn-primary">Ir al tablero por puntos</a>
+{% endblock %}
