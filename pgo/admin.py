@@ -1,6 +1,12 @@
 from django.contrib import admin
 
-from .models import PgoManualCaptureVersion, PgoResultadoPeriodo, Ticket, TicketEvento
+from .models import (
+    PgoManualCaptureVersion,
+    PgoResultadoPeriodo,
+    PgoStaffMember,
+    Ticket,
+    TicketEvento,
+)
 
 
 class TicketEventoInline(admin.TabularInline):
@@ -66,3 +72,20 @@ class PgoManualCaptureVersionAdmin(admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return False
+
+
+@admin.register(PgoStaffMember)
+class PgoStaffMemberAdmin(admin.ModelAdmin):
+    list_display = (
+        "full_name",
+        "email",
+        "department",
+        "wcg_username",
+        "user",
+        "is_active",
+        "is_authorized",
+    )
+    list_filter = ("is_active", "is_authorized", "department")
+    search_fields = ("full_name", "email", "wcg_username", "role_notes", "user__username")
+    ordering = ("full_name",)
+    raw_id_fields = ("user",)

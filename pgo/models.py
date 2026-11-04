@@ -269,3 +269,64 @@ class PgoManualCaptureVersion(models.Model):
 
     def __str__(self):
         return f"{self.capture_type} {self.period_year}-{self.period_month:02d} v@{self.created_at:%Y-%m-%d %H:%M}"
+
+
+class PgoStaffMember(TimeStampedModel):
+    """
+    Directorio de contactos internos PGO (capturas, operaciones, TI).
+    Fuente de verdad para activar/desactivar y autorizar por slug de captura (futuro).
+    """
+
+    DEPT_TI = "TI"
+    DEPT_LEGAL = "LEGAL"
+    DEPT_FINANZAS = "FINANZAS"
+    DEPT_OPERACIONES = "OPERACIONES"
+    DEPT_DIRECCION = "DIRECCION"
+    DEPT_PENDIENTE = "PENDIENTE"
+    DEPARTMENT_CHOICES = [
+        (DEPT_TI, "TI"),
+        (DEPT_LEGAL, "Legal"),
+        (DEPT_FINANZAS, "Finanzas"),
+        (DEPT_OPERACIONES, "Operaciones"),
+        (DEPT_DIRECCION, "Dirección"),
+        (DEPT_PENDIENTE, "Pendiente"),
+    ]
+
+    full_name = models.CharField(max_length=200)
+    email = models.EmailField(unique=True)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="pgo_staff_profiles",
+    )
+    department = models.CharField(
+        max_length=20,
+        choices=DEPARTMENT_CHOICES,
+        default=DEPT_PENDIENTE,
+        blank=True,
+    )
+    role_notes = models.CharField(max_length=500, blank=True)
+    wcg_username = models.CharField(
+        max_length=150,
+        blank=True,
+        db_index=True,
+        help_text="Usuario wcg.lol / Django; alinea con PGO_CAPTURAS_* y permisos por captura.",
+    )
+    is_active = models.BooleanField(
+        default=True,
+        help_text="Contacto vigente en el directorio (no implica usuario Django activo).",
+    )
+    is_authorized = models.BooleanField(
+        default=False,
+        help_text="Autorizado para capturas manuales PGO (base para reglas por slug).",
+    )
+
+    class Meta:
+        ordering = ["full_name"]
+        verbose_name = "Contacto staff PGO"
+        verbose_name_plural = "Contactos staff PGO"
+
+    def __str__(self):
+        return f"{self.full_name} ({self.email})"
