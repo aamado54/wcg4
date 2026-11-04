@@ -26,7 +26,7 @@
 
     <div class="adm-route">
         {% for block in snapshot.blocks %}
-        <a href="?year={{ year }}&month_from={{ month_from }}&month_to={{ month_to }}&month={{ month }}&block={{ block.id }}"
+        <a href="?year={{ year|unlocalize }}&month_from={{ month_from }}&month_to={{ month_to }}&month={{ month }}&block={{ block.id }}"
            class="adm-block-card {% if block.id == selected_block %}active{% endif %}">
             <div class="adm-block-step">Paso {{ block.step }}</div>
             <div class="adm-block-title">{{ block.label }}</div>
@@ -55,7 +55,7 @@
 
                 {% if selected_block == "targets" %}
                 <p class="muted">Ajuste metas del plan en la pantalla de edición manual.</p>
-                <a href="{% url 'pgc:admin_manual_edit' %}?year={{ year }}&month={{ month }}&tab=targets"
+                <a href="{% url 'pgc:admin_manual_edit' %}?year={{ year|unlocalize }}&month={{ month }}&tab=targets"
                    class="adm-btn adm-btn-primary">Editar metas del período</a>
 
                 {% elif selected_block == "manual_requirements" %}
@@ -67,17 +67,17 @@
 
                 {% elif selected_block == "review" %}
                 <p class="muted">Revise el tablero después de cargar y recalcular.</p>
-                <a href="{% url 'pgc:dashboard' %}?year={{ year }}&month={{ month }}" class="adm-btn adm-btn-primary">Abrir tablero</a>
-                <a href="{% url 'pgc:admin_ingresos_year' %}?year={{ year }}&month_from={{ month_from }}&month_to={{ month_to }}&month={{ month }}"
+                <a href="{% url 'pgc:dashboard' %}?year={{ year|unlocalize }}&month={{ month }}" class="adm-btn adm-btn-primary">Abrir tablero</a>
+                <a href="{% url 'pgc:admin_ingresos_year' %}?year={{ year|unlocalize }}&month_from={{ month_from }}&month_to={{ month_to }}&month={{ month }}"
                    class="adm-btn adm-btn-secondary">Captura ingresos (año)</a>
-                <a href="{% url 'pgc:ingresos' %}?year={{ year }}&month={{ month }}" class="adm-btn adm-btn-secondary">Ingresos vs meta</a>
+                <a href="{% url 'pgc:ingresos' %}?year={{ year|unlocalize }}&month={{ month }}" class="adm-btn adm-btn-secondary">Ingresos vs meta</a>
 
                 {% else %}
                 <form method="post" enctype="multipart/form-data" style="margin-bottom:16px;">
                     {% csrf_token %}
                     <input type="hidden" name="action" value="upload">
                     <input type="hidden" name="block" value="{{ selected_block }}">
-                    <input type="hidden" name="year" value="{{ year }}">
+                    <input type="hidden" name="year" value="{{ year|unlocalize }}">
                     <input type="hidden" name="month" value="{{ month }}">
                     <input type="hidden" name="month_from" value="{{ month_from }}">
                     <input type="hidden" name="month_to" value="{{ month_to }}">
@@ -99,7 +99,7 @@
                             <input type="hidden" name="action" value="process">
                             <input type="hidden" name="block" value="{{ selected_block }}">
                             <input type="hidden" name="file_id" value="{{ u.id }}">
-                            <input type="hidden" name="year" value="{{ year }}">
+                            <input type="hidden" name="year" value="{{ year|unlocalize }}">
                             <input type="hidden" name="month" value="{{ month }}">
                             <input type="hidden" name="month_from" value="{{ month_from }}">
                             <input type="hidden" name="month_to" value="{{ month_to }}">
@@ -116,7 +116,7 @@
                             <input type="hidden" name="action" value="discard_pending">
                             <input type="hidden" name="block" value="{{ selected_block }}">
                             <input type="hidden" name="file_id" value="{{ u.id }}">
-                            <input type="hidden" name="year" value="{{ year }}">
+                            <input type="hidden" name="year" value="{{ year|unlocalize }}">
                             <input type="hidden" name="month" value="{{ month }}">
                             <input type="hidden" name="month_from" value="{{ month_from }}">
                             <input type="hidden" name="month_to" value="{{ month_to }}">
@@ -136,7 +136,7 @@
                           onsubmit="return confirm('¿Eliminar {{ block_detail.stats.duplicate_rows }} registro(s) duplicado(s)? Se conservará una copia de cada cliente.');">
                         {% csrf_token %}
                         <input type="hidden" name="action" value="dedup_new_clients">
-                        <input type="hidden" name="year" value="{{ year }}">
+                        <input type="hidden" name="year" value="{{ year|unlocalize }}">
                         <input type="hidden" name="month" value="{{ month }}">
                     <input type="hidden" name="month_from" value="{{ month_from }}">
                     <input type="hidden" name="month_to" value="{{ month_to }}">
@@ -147,23 +147,23 @@
 
                 {% if selected_block == "financial" %}
                 <p class="muted" style="margin-top:12px;">
-                    Confirme el <a href="{% url 'pgc:admin_manual_edit' %}?year={{ year }}&month={{ month }}&tab=fx">tipo de cambio</a> antes de importar WC*.
+                    Confirme el <a href="{% url 'pgc:admin_manual_edit' %}?year={{ year|unlocalize }}&month={{ month }}&tab=fx">tipo de cambio</a> antes de importar WC*.
                 </p>
                 {% elif selected_block == "new_clients" %}
                 <p class="muted" style="margin-top:12px;">
                     Edite filas en
-                    <a href="{% url 'pgc:admin_new_clients_browse' %}?year={{ year }}&month={{ month }}">Clientes (browse)</a>,
+                    <a href="{% url 'pgc:admin_new_clients_browse' %}?year={{ year|unlocalize }}&month={{ month }}">Clientes (browse)</a>,
                     reasigne UNE en
-                    <a href="{% url 'pgc:admin_new_clients_une' %}?year={{ year }}&month={{ month }}">Clientes (UNE)</a>,
+                    <a href="{% url 'pgc:admin_new_clients_une' %}?year={{ year|unlocalize }}&month={{ month }}">Clientes (UNE)</a>,
                     o use
-                    <a href="{% url 'pgc:admin_manual_edit' %}?year={{ year }}&month={{ month }}&tab=imports">registros importados</a>
+                    <a href="{% url 'pgc:admin_manual_edit' %}?year={{ year|unlocalize }}&month={{ month }}&tab=imports">registros importados</a>
                     /
-                    <a href="{% url 'pgc:admin_manual_edit' %}?year={{ year }}&month={{ month }}&tab=aliases">alias UNE</a>.
+                    <a href="{% url 'pgc:admin_manual_edit' %}?year={{ year|unlocalize }}&month={{ month }}&tab=aliases">alias UNE</a>.
                 </p>
                 {% elif selected_block == "cross_sale" %}
                 <p class="muted" style="margin-top:12px;">
-                    Corrija filas en <a href="{% url 'pgc:admin_manual_edit' %}?year={{ year }}&month={{ month }}&tab=imports">registros importados</a>
-                    o <a href="{% url 'pgc:admin_manual_edit' %}?year={{ year }}&month={{ month }}&tab=aliases">alias UNE</a>.
+                    Corrija filas en <a href="{% url 'pgc:admin_manual_edit' %}?year={{ year|unlocalize }}&month={{ month }}&tab=imports">registros importados</a>
+                    o <a href="{% url 'pgc:admin_manual_edit' %}?year={{ year|unlocalize }}&month={{ month }}&tab=aliases">alias UNE</a>.
                 </p>
                 {% endif %}
                 {% endif %}
@@ -202,7 +202,7 @@
                 {% empty %}
                 <p class="muted">Sin actividad.</p>
                 {% endfor %}
-                <a href="{% url 'pgc:admin_monthly_log' %}?year={{ year }}&month={{ month }}"
+                <a href="{% url 'pgc:admin_monthly_log' %}?year={{ year|unlocalize }}&month={{ month }}"
                    class="adm-btn adm-btn-ghost" style="margin-top:10px; width:100%; text-align:center;">Ver bitácora completa</a>
             </div>
         </div>

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load l10n %}
 
 {% block title %}Tablero principal PGC{% endblock %}
 
@@ -183,22 +184,32 @@
         Resumen mensual de puntos por UNE y periodo.
     </p>
 
+    <div class="tablero-settings">
+      <div>
+        <label for="view">Formato del reporte</label><br>
+        <select name="view" id="view" form="tablero-filter-form">
+          <option value="{{ view_lista }}" {% if board_view == view_lista %}selected{% endif %}>Lista (detalle)</option>
+          <option value="{{ view_anual }}" {% if board_view == view_anual %}selected{% endif %}>Anual por UNE</option>
+        </select>
+      </div>
+    </div>
+
     <form method="get" class="filters" id="tablero-filter-form">
         <div>
             <label for="start_period">Desde</label><br>
             <select id="start_period">
                 {% for p in available_periods %}
                     <option
-                        value="{{ p.year }}-{{ p.month|stringformat:'02d' }}"
-                        data-year="{{ p.year }}"
+                        value="{{ p.year|unlocalize }}-{{ p.month|stringformat:'02d' }}"
+                        data-year="{{ p.year|unlocalize }}"
                         data-month="{{ p.month }}"
                         {% if report_filter.start_year == p.year and report_filter.start_month == p.month %}selected{% endif %}
                     >
-                        {{ p.year }}-{{ p.month|stringformat:"02d" }}
+                        {{ p.year|unlocalize }}-{{ p.month|stringformat:"02d" }}
                     </option>
                 {% endfor %}
             </select>
-            <input type="hidden" name="start_year" id="start_year" value="{{ report_filter.start_year }}">
+            <input type="hidden" name="start_year" id="start_year" value="{{ report_filter.start_year|unlocalize }}">
             <input type="hidden" name="start_month" id="start_month" value="{{ report_filter.start_month }}">
         </div>
 
@@ -262,20 +273,10 @@
       {{ insurance_reqs_grace_note }}
     </div>
 
-    <div class="tablero-settings">
-      <div>
-        <label for="view">Formato del reporte</label><br>
-        <select name="view" id="view" form="tablero-filter-form">
-          <option value="{{ view_lista }}" {% if board_view == view_lista %}selected{% endif %}>Lista (detalle)</option>
-          <option value="{{ view_anual }}" {% if board_view == view_anual %}selected{% endif %}>Anual por UNE</option>
-        </select>
-      </div>
-    </div>
-
     {% if board_view == view_anual %}
     <div class="tablero-anual-wrap">
       <p class="muted" style="margin-top:0;">
-        Año {{ annual_year }} · puntos por métrica y clasificación mensual
+        Año {{ annual_year|unlocalize }} · puntos por métrica y clasificación mensual
         ({{ selected_mode_label|default:selected_mode }}).
         Celdas en blanco = falta TC del mes o ingresos de la UNE (ambos deben ser ≠ 0).
       </p>
@@ -347,7 +348,7 @@
         </div>
       </div>
       {% empty %}
-      <p class="muted">No hay datos anuales de puntos para {{ annual_year }}.</p>
+      <p class="muted">No hay datos anuales de puntos para {{ annual_year|unlocalize }}.</p>
       {% endfor %}
     </div>
     {% else %}
@@ -373,7 +374,7 @@
             {% else %}
               <tr class="{% if row.scorecard.is_month_qualified %}row-clasifica-si{% else %}row-clasifica-no{% endif %}">
                 <td>{{ row.scorecard.une.name_es }}</td>
-                <td>{{ row.scorecard.year }}-{{ row.scorecard.month|stringformat:"02d" }}</td>
+                <td>{{ row.scorecard.year|unlocalize }}-{{ row.scorecard.month|stringformat:"02d" }}</td>
                 
                 <td>{{ row.p_ingresos|floatformat:1 }}</td>
                 <td>{{ row.p_clientes|floatformat:1 }}</td>

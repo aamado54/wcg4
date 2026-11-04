@@ -28,7 +28,7 @@
 
         <form method="post">
             {% csrf_token %}
-            <input type="hidden" name="year" value="{{ year }}">
+            <input type="hidden" name="year" value="{{ year|unlocalize }}">
             <input type="hidden" name="month" value="{{ month }}">
             <input type="hidden" name="month_from" value="{{ month_from }}">
             <input type="hidden" name="month_to" value="{{ month_to }}">

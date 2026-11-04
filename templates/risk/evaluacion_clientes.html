@@ -1,5 +1,5 @@
 {% extends "base_wcg.html" %}
-{% load wcg_format %}
+{% load wcg_format l10n %}
 {% block title %}Evaluación financiera — Balón de Riesgo{% endblock %}
 {% block extra_head %}
 <style>
@@ -325,7 +325,7 @@
               <a class="ev-client" href="?cliente={{ r.name|urlencode }}">{{ r.name }}</a>
               {% if r.status %}<div class="ev-note">{{ r.status }}{% if r.currency_unit %} · {{ r.currency_unit }}{% endif %}</div>{% endif %}
             </td>
-            <td>{{ r.year|default:"—" }}</td>
+            <td>{{ r.year|default:"—"|unlocalize }}</td>
             <td><span class="ev-zone ev-zone-{{ r.zone }}">{{ r.zone_label }}</span></td>
             <td class="text-end fw-semibold">{% if r.z != None %}{{ r.z|floatformat:2 }}{% else %}—{% endif %}</td>
             <td class="text-end">
@@ -373,7 +373,7 @@
         <tbody>
           {% for h in selected.history %}
           <tr>
-            <td>{{ h.year }}</td>
+            <td>{{ h.year|unlocalize }}</td>
             <td>{{ h.status|default:"—" }}</td>
             <td><span class="ev-zone ev-zone-{{ h.zone }}">{{ h.zone_label }}</span></td>
             <td class="text-end">{% if h.z != None %}{{ h.z|floatformat:2 }}{% else %}—{% endif %}</td>

@@ -1,10 +1,11 @@
 {# expects year, month_from, month_to, month_choices, year_choices; optional: tab, selected_block #}
+{% load l10n %}
 <form method="get" class="adm-period-select" id="adm-period-form">
     <div>
         <label for="year">Año</label><br>
         <select id="year" name="year" onchange="this.form.requestSubmit()">
             {% for y in year_choices %}
-            <option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}</option>
+            <option value="{{ y|unlocalize }}" {% if y == year %}selected{% endif %}>{{ y|unlocalize }}</option>
             {% endfor %}
         </select>
     </div>

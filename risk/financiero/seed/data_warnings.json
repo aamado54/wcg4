@@ -1,6 +1,6 @@
 {
-  "generated": "2026-07-29T14:22:10",
-  "count": 195,
+  "generated": "2026-10-29T16:47:02",
+  "count": 201,
   "warnings": [
     {
       "severity": "kpi_gap",
@@ -689,11 +689,25 @@
       "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
     },
     {
+      "severity": "kpi_map",
+      "bu": "L",
+      "period": "2025-04",
+      "metric": "cartera",
+      "detail": "Sin mapeo de cartera para esta BU (códigos F-only 10103*)"
+    },
+    {
       "severity": "kpi_gap",
       "bu": "L",
       "period": "2025-05",
       "metric": "activo",
       "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_map",
+      "bu": "L",
+      "period": "2025-05",
+      "metric": "cartera",
+      "detail": "Sin mapeo de cartera para esta BU (códigos F-only 10103*)"
     },
     {
       "severity": "kpi_gap",
@@ -783,6 +797,27 @@
       "severity": "kpi_map",
       "bu": "L",
       "period": "2026-06",
+      "metric": "cartera",
+      "detail": "Sin mapeo de cartera para esta BU (códigos F-only 10103*)"
+    },
+    {
+      "severity": "kpi_map",
+      "bu": "L",
+      "period": "2026-07",
+      "metric": "cartera",
+      "detail": "Sin mapeo de cartera para esta BU (códigos F-only 10103*)"
+    },
+    {
+      "severity": "kpi_map",
+      "bu": "L",
+      "period": "2026-08",
+      "metric": "cartera",
+      "detail": "Sin mapeo de cartera para esta BU (códigos F-only 10103*)"
+    },
+    {
+      "severity": "kpi_map",
+      "bu": "L",
+      "period": "2026-09",
       "metric": "cartera",
       "detail": "Sin mapeo de cartera para esta BU (códigos F-only 10103*)"
     },
@@ -983,11 +1018,25 @@
       "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
     },
     {
+      "severity": "kpi_map",
+      "bu": "I",
+      "period": "2025-04",
+      "metric": "cartera",
+      "detail": "Sin mapeo de cartera para esta BU (códigos F-only 10103*)"
+    },
+    {
       "severity": "kpi_gap",
       "bu": "I",
       "period": "2025-05",
       "metric": "activo",
       "detail": "KPI activo (cuenta 1) ausente; sí hay 101/102 — el gráfico muestra 0"
+    },
+    {
+      "severity": "kpi_map",
+      "bu": "I",
+      "period": "2025-05",
+      "metric": "cartera",
+      "detail": "Sin mapeo de cartera para esta BU (códigos F-only 10103*)"
     },
     {
       "severity": "kpi_gap",
@@ -1077,6 +1126,27 @@
       "severity": "kpi_map",
       "bu": "I",
       "period": "2026-06",
+      "metric": "cartera",
+      "detail": "Sin mapeo de cartera para esta BU (códigos F-only 10103*)"
+    },
+    {
+      "severity": "kpi_map",
+      "bu": "I",
+      "period": "2026-07",
+      "metric": "cartera",
+      "detail": "Sin mapeo de cartera para esta BU (códigos F-only 10103*)"
+    },
+    {
+      "severity": "kpi_map",
+      "bu": "I",
+      "period": "2026-08",
+      "metric": "cartera",
+      "detail": "Sin mapeo de cartera para esta BU (códigos F-only 10103*)"
+    },
+    {
+      "severity": "kpi_map",
+      "bu": "I",
+      "period": "2026-09",
       "metric": "cartera",
       "detail": "Sin mapeo de cartera para esta BU (códigos F-only 10103*)"
     },
@@ -1334,38 +1404,10 @@
     },
     {
       "severity": "missing_periods",
-      "bu": "F",
-      "period": "2025-06,2025-07,2025-08,2025-09,2025-10,2025-11,2025-12",
-      "metric": "1",
-      "detail": "ACTIVO — faltan 7 períodos desde 2025-06"
-    },
-    {
-      "severity": "missing_periods",
       "bu": "L",
-      "period": "2025-06,2025-07,2025-08,2025-09,2025-10,2025-11,2025-12",
-      "metric": "1",
-      "detail": "ACTIVO — faltan 7 períodos desde 2025-06"
-    },
-    {
-      "severity": "missing_periods",
-      "bu": "L",
-      "period": "2026-01,2026-03,2026-04,2026-05,2026-06",
+      "period": "2026-01,2026-03,2026-04,2026-05,2026-06,2026-07,2026-08,2026-09",
       "metric": "202",
-      "detail": "PASIVO NO CORRIENTE — faltan 5 períodos desde 2025-06"
-    },
-    {
-      "severity": "missing_periods",
-      "bu": "I",
-      "period": "2025-06,2025-07,2025-08,2025-09,2025-10,2025-11,2025-12",
-      "metric": "1",
-      "detail": "ACTIVO — faltan 7 períodos desde 2025-06"
-    },
-    {
-      "severity": "missing_periods",
-      "bu": "S",
-      "period": "2025-06,2025-07,2025-08,2025-09,2025-10,2025-11,2025-12",
-      "metric": "1",
-      "detail": "ACTIVO — faltan 7 períodos desde 2025-06"
+      "detail": "PASIVO NO CORRIENTE — faltan 8 períodos desde 2026-01"
     }
   ]
 }

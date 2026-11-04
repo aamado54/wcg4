@@ -13,7 +13,7 @@
         <div class="adm-header-top">
             <div>
                 {% include "pgc/admin/_page_header.html" with ops_section="PGC · Cierre mensual" ops_page_title="Respuesta a requerimientos (año completo)" ops_page_lead="Matriz enero–diciembre por UNE; alinea puntos del tablero PGC." %}
-                <div class="adm-period-label">{{ year }}</div>
+                <div class="adm-period-label">{{ year|unlocalize }}</div>
                 {% if not plan %}<p class="muted" style="color:#b45309;">No hay plan PGC para este año.</p>{% endif %}
             </div>
             {% include "pgc/admin/_period_select.html" %}

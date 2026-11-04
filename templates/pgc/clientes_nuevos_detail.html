@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load wcg_format %}
+{% load wcg_format l10n %}
 
 {% block title %}Detalle clientes nuevos{% endblock %}
 
@@ -42,7 +42,7 @@
   <h2 style="margin-top:0;">Detalle de clientes</h2>
   <p class="muted">
     UNE: <strong>{{ une.name_es }}</strong> |
-    Periodo: <strong>{{ year }}-{{ month|stringformat:"02d" }}</strong>
+    Periodo: <strong>{{ year|unlocalize }}-{{ month|stringformat:"02d" }}</strong>
   </p>
   <p class="amount-hint">Montos en miles de dólares o quetzales (según la moneda indicada).</p>
 

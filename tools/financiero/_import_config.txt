@@ -1,0 +1,3 @@
+/home/caa/download/wcg4/lectura_de_datos_al_modelo/wcsource2512a.xlsx
+/home/caa/wc/wcg4/data/tmp/eeff-source-2026
+/home/caa/wc/wcg4/dashboard/data/wcg/financiero/wcout2d_new.xlsx

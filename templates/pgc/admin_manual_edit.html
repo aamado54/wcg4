@@ -28,7 +28,7 @@
 
     <div class="adm-tabs">
         {% for tab_id, tab_label in tabs %}
-        <a href="?year={{ year }}&month_from={{ month_from }}&month_to={{ month_to }}&month={{ month }}&tab={{ tab_id }}"
+        <a href="?year={{ year|unlocalize }}&month_from={{ month_from }}&month_to={{ month_to }}&month={{ month }}&tab={{ tab_id }}"
            class="{% if tab == tab_id %}active{% endif %}">{{ tab_label }}</a>
         {% endfor %}
     </div>
@@ -96,7 +96,7 @@
                 <div class="adm-banner adm-banner-warn">
                     <strong>Falta tipo de cambio para {{ focus_label }}.</strong>
                     Sin TC no se pueden guardar ingresos en quetzales (Q). Sí se puede capturar en dólares ($).
-                    <a href="?year={{ year }}&month_from={{ month_from }}&month_to={{ month_to }}&month={{ month }}&tab=fx"
+                    <a href="?year={{ year|unlocalize }}&month_from={{ month_from }}&month_to={{ month_to }}&month={{ month }}&tab=fx"
                        class="adm-btn adm-btn-secondary" style="margin-left:8px;">Ir a tipos de cambio</a>
                 </div>
                 {% else %}

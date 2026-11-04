@@ -184,8 +184,8 @@
           <label for="start_year">Año inicial</label><br>
           <select name="start_year" id="start_year">
               {% for p in available_periods %}
-                  <option value="{{ p.year }}" {% if report_filter.start_year == p.year and report_filter.start_month == p.month %}selected{% endif %}>
-                      {{ p.year }}
+                  <option value="{{ p.year|unlocalize }}" {% if report_filter.start_year == p.year and report_filter.start_month == p.month %}selected{% endif %}>
+                      {{ p.year|unlocalize }}
                   </option>
               {% endfor %}
           </select>
@@ -278,7 +278,7 @@
   {% if report_settings.view == view_anual %}
   <div class="ingresos-anual-wrap">
     <p class="muted" style="margin-top:0;">
-      Año {{ annual_year }} · miles de US$. Fila Comisiones: meta (TOTAL = suma anual de metas).
+      Año {{ annual_year|unlocalize }} · miles de US$. Fila Comisiones: meta (TOTAL = suma anual de metas).
       Ejecutado: real acumulado (TOTAL = YTD, meses con dato). Celdas vacías = sin ejecución aún.
     </p>
     {% for table in annual_tables %}
@@ -342,7 +342,7 @@
       </div>
     </div>
     {% empty %}
-    <p class="muted">No hay datos anuales para {{ annual_year }}.</p>
+    <p class="muted">No hay datos anuales para {{ annual_year|unlocalize }}.</p>
     {% endfor %}
   </div>
   {% else %}
@@ -379,7 +379,7 @@
             {% else %}
                 <tr>
                     <td style="text-align:left;">{{ row.target.une.name_es|default:row.target.une.name_es }}</td>
-                    <td class="col-periodo">{{ row.target.year }}-{{ row.target.month|stringformat:"02d" }}</td>
+                    <td class="col-periodo">{{ row.target.year|unlocalize }}-{{ row.target.month|stringformat:"02d" }}</td>
                     {% if report_settings.currency == report_settings.currency_gtq %}
                     <td class="usd-official">
                         {% if row.meta_gtq is not None %}Q{{ row.meta_gtq|wcg_num:0 }}{% else %}-{% endif %}

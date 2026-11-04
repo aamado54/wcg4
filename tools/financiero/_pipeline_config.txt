@@ -1,0 +1,3 @@
+/home/caa/wc/wcg4/integracion-eeff/activo/plan-cuentas/wcsource2512a.xlsx
+/tmp/eeff_wcup_bs9dzfc5
+/home/caa/wc/wcg4/dashboard/data/wcg/financiero/wcout2d_new.xlsx

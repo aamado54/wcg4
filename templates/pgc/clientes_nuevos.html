@@ -22,9 +22,9 @@
             <label for="start_year">Año inicial</label><br>
             <select name="start_year" id="start_year">
                 {% for p in available_periods %}
-                    <option value="{{ p.year }}"
+                    <option value="{{ p.year|unlocalize }}"
                         {% if report_filter.start_year == p.year and report_filter.start_month == p.month %}selected{% endif %}>
-                        {{ p.year }}
+                        {{ p.year|unlocalize }}
                     </option>
                 {% endfor %}
             </select>
@@ -144,7 +144,7 @@
                 {% else %}
                     <tr>
                         <td>{{ row.target.une.name_es }}</td>
-                        <td>{{ row.target.year }}-{{ row.target.month|stringformat:"02d" }}</td>
+                        <td>{{ row.target.year|unlocalize }}-{{ row.target.month|stringformat:"02d" }}</td>
                         <td>
                             {% if row.target.target_value %}
                                 {{ row.target.target_value|floatformat:0|unlocalize }}

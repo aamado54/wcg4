@@ -14,19 +14,17 @@ ROOT = Path(settings.BASE_DIR)
 TOOLS = ROOT / "tools" / "financiero"
 DATA_FIN = ROOT / "data" / "wcg" / "financiero"
 SEED = ROOT / "risk" / "financiero" / "seed"
-DEFAULT_SOURCE = ROOT.parent / "data" / "now" / "estados-financieros"
-DEFAULT_STRUCTURE = Path(
-    "/home/caa/download/wcg4/lectura_de_datos_al_modelo/wcsource2512a.xlsx"
-)
-DEFAULT_MERGE_BASE = Path(
-    "/home/caa/download/wcg4/lectura_de_datos_al_modelo/wcout2d.xlsx"
-)
+WCG4 = ROOT.parent
+HUB = WCG4 / "integracion-eeff"
+DEFAULT_SOURCE = Path.home() / "download" / "eeff"
+DEFAULT_STRUCTURE = HUB / "activo" / "plan-cuentas" / "wcsource2512a.xlsx"
+DEFAULT_MERGE_BASE = HUB / "activo" / "consolidado" / "wcout2d-merge-base.xlsx"
 
 
 class Command(BaseCommand):
     help = (
-        "Consolida archivos WC* (BG/ER) con wcup2, fusiona con wcout2d previo, "
-        "regenera combined_series/full, sincroniza seed y exporta Excel de revisión."
+        "LEGACY: consolida TODO source-dir con wcup2 (sin filtro yyMM). "
+        "Preferir: manage.py refresh_estados_financieros (ver integracion-eeff/README.md)."
     )
 
     def add_arguments(self, parser):
@@ -126,9 +124,27 @@ class Command(BaseCommand):
             shutil.copy2(src, dst)
             self.stdout.write(f"   seed ← {name}")
 
-        from tools.financiero.export_tabla import export_financiero_tabla
+        from tools.financiero.export_tabla import (
+            export_financiero_tabla,
+            export_financiero_tabla_revision,
+        )
 
-        info = export_financiero_tabla(SEED / "combined_full.json", export_xlsx)
+        full = SEED / "combined_full.json"
+        warn_path = SEED / "data_warnings.json"
+        import json
+
+        from tools.financiero.export_tabla import audit_data_warnings
+
+        data = json.loads(full.read_text(encoding="utf-8"))
+        warn = audit_data_warnings(data)
+        warn_path.write_text(json.dumps(warn, ensure_ascii=False, indent=2), encoding="utf-8")
+        info = export_financiero_tabla_revision(
+            full,
+            export_xlsx,
+            structure_path=structure,
+            wcout_path=wcout_final,
+            warnings=warn,
+        )
         self.stdout.write(
             self.style.SUCCESS(
                 f"4/4 Excel revisión: {info['output']} "

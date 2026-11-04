@@ -13,7 +13,7 @@
         <div class="adm-header-top">
             <div>
                 {% include "pgc/admin/_page_header.html" with ops_section="PGC · Cierre mensual" ops_page_title="Captura de ingresos (año completo)" ops_page_lead="Matriz enero–diciembre por UNE; complementa el tablero mensual." %}
-                <div class="adm-period-label">{{ year }}</div>
+                <div class="adm-period-label">{{ year|unlocalize }}</div>
                 {% if not plan %}<p class="muted" style="color:#b45309;">No hay plan PGC para este año.</p>{% endif %}
             </div>
             {% include "pgc/admin/_period_select.html" %}
@@ -36,7 +36,7 @@
         </p>
 
         <form method="get" class="adm-currency-bar" style="margin-bottom:14px;">
-            <input type="hidden" name="year" value="{{ year }}">
+            <input type="hidden" name="year" value="{{ year|unlocalize }}">
             <input type="hidden" name="month_from" value="{{ month_from }}">
             <input type="hidden" name="month_to" value="{{ month_to }}">
             <input type="hidden" name="month" value="{{ month }}">
@@ -68,7 +68,7 @@
         <form method="post">
             {% csrf_token %}
             <input type="hidden" name="action" value="save_ingresos_year">
-            <input type="hidden" name="year" value="{{ year }}">
+            <input type="hidden" name="year" value="{{ year|unlocalize }}">
             <input type="hidden" name="month" value="{{ month }}">
             <input type="hidden" name="month_from" value="{{ month_from }}">
             <input type="hidden" name="month_to" value="{{ month_to }}">
@@ -113,7 +113,7 @@
                         <tr>
                             <td style="text-align:left; white-space:nowrap;">
                                 <strong>{{ row.label }}</strong>
-                                <span class="muted"> {{ year }}-{{ row.month|stringformat:"02d" }}</span>
+                                <span class="muted"> {{ year|unlocalize }}-{{ row.month|stringformat:"02d" }}</span>
                             </td>
                             {% for cell in row.cells %}
                             {% if cell.is_investment and cell.investment_audit %}

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load l10n %}
 
 {% block title %}Bitácora del período — Centro de operaciones{% endblock %}
 
@@ -17,7 +18,7 @@
             </div>
             <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:end;">
                 {% include "pgc/admin/_period_select.html" %}
-                <a href="{% url 'pgc:admin_monthly' %}?year={{ year }}&month_from={{ month_from }}&month_to={{ month_to }}&month={{ month }}" class="adm-btn adm-btn-secondary">Volver al tablero</a>
+                <a href="{% url 'pgc:admin_monthly' %}?year={{ year|unlocalize }}&month_from={{ month_from|unlocalize }}&month_to={{ month_to|unlocalize }}&month={{ month|unlocalize }}" class="adm-btn adm-btn-secondary">Volver al tablero</a>
             </div>
         </div>
     </div>
