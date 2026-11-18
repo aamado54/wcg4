@@ -178,24 +178,32 @@ def _dispatch_pgc_uploaded_file(
             "importer": IMPORTER_LABELS.get(tipo),
         },
     )
+    from imports.audit import suppress_import_audit
+
     path = Path(tmp.stored_file.path)
     try:
         if tipo == TYPE_NEW_CLIENTS:
-            call_command("import_clientes_nuevos", path=str(path), file_upload_id=tmp.id)
+            with suppress_import_audit():
+                call_command(
+                    "import_clientes_nuevos", path=str(path), file_upload_id=tmp.id
+                )
         elif tipo == TYPE_CROSS_SALE:
-            call_command("import_venta_cruzada", path=str(path))
+            with suppress_import_audit():
+                call_command("import_venta_cruzada", path=str(path))
         elif tipo == TYPE_INVESTMENT_GROWTH:
-            call_command(
-                "import_inversiones_crecimiento",
-                path=str(path),
-                file_upload_id=tmp.id,
-            )
+            with suppress_import_audit():
+                call_command(
+                    "import_inversiones_crecimiento",
+                    path=str(path),
+                    file_upload_id=tmp.id,
+                )
         elif tipo == TYPE_BANK_LOANS:
-            call_command(
-                "import_bancos_fin_mes",
-                path=str(path),
-                file_upload_id=tmp.id,
-            )
+            with suppress_import_audit():
+                call_command(
+                    "import_bancos_fin_mes",
+                    path=str(path),
+                    file_upload_id=tmp.id,
+                )
         else:
             tmp.status = FileUpload.STATUS_UPLOADED
             tmp.parsing_notes = (
@@ -295,17 +303,22 @@ def _audit_after_dispatch(
     from imports.audit import record_import_audit_event, resolve_path_key_from_upload
     from imports.models import ImportAuditEvent
 
+    from imports.models import FileUpload
+
     key = path_key or resolve_path_key_from_upload(uploaded_file, result.batch)
     if not key:
         return
     batch = result.batch
-    file_upload = batch if hasattr(batch, "stored_file") else None
+    file_upload = batch if isinstance(batch, FileUpload) else None
     src = (
         ImportAuditEvent.SOURCE_MANUAL
         if source == "manual"
         else ImportAuditEvent.SOURCE_OPS
     )
     err = "" if result.ok else (result.message or "")[:4000]
+    detail = {"label": result.label, "forced": result.forced}
+    if batch is not None and hasattr(batch, "status"):
+        detail["batch_status"] = getattr(batch, "status", "")
     try:
         record_import_audit_event(
             user=user,
@@ -315,7 +328,7 @@ def _audit_after_dispatch(
             error_message=err,
             import_tipo=result.tipo,
             file_upload=file_upload,
-            detail={"label": result.label, "forced": result.forced},
+            detail=detail,
         )
     except Exception:
         pass

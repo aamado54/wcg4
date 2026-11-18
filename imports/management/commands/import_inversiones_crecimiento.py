@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from django.core.management.base import BaseCommand, CommandError
+from imports.management.import_audit_mixin import ImportAuditCommandMixin
 from django.db import transaction
 
 from imports.investment_growth_parse import parse_inversiones_crecimiento_csv
@@ -11,7 +12,8 @@ from imports.new_client_rules import (
 )
 
 
-class Command(BaseCommand):
+class Command(ImportAuditCommandMixin, BaseCommand):
+    import_audit_tipo = "investment_growth"
     help = (
         "Importa Inversiones_crecimiento (CSV). Puede traer varios meses; "
         "reemplaza los saldos AP/PG de cada período incluido."

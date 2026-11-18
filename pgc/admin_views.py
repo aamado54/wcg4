@@ -18,6 +18,8 @@ from django.urls import reverse
 
 logger = logging.getLogger("pgc.admin_ingresos")
 
+from imports.audit import record_import_audit_for_path, suppress_import_audit
+from imports.detection import TYPE_CROSS_SALE, TYPE_FINANCIAL, TYPE_NEW_CLIENTS
 from imports.forms import FileUploadForm
 from imports.models import FileUpload, guess_file_type_and_period
 
@@ -118,12 +120,32 @@ def _save_upload(request, year: int, month: int, expected_type: str | None = Non
     return obj
 
 
+def _block_import_tipo(block: str) -> str:
+    return {
+        BLOCK_NEW_CLIENTS: TYPE_NEW_CLIENTS,
+        BLOCK_CROSS_SALE: TYPE_CROSS_SALE,
+        BLOCK_FINANCIAL: TYPE_FINANCIAL,
+    }.get(block, block)
+
+
 def _process_upload(request, upload: FileUpload, year: int, month: int, block: str) -> None:
     path = Path(upload.stored_file.path)
     if not path.exists():
         messages.error(request, "El archivo físico no existe en el servidor.")
+        record_import_audit_for_path(
+            user=request.user,
+            path=str(path),
+            success=False,
+            import_tipo=_block_import_tipo(block),
+            error_message="Archivo físico no existe en el servidor.",
+            file_upload=upload,
+            detail={"block": block, "year": year, "month": month},
+        )
         return
 
+    import_tipo = _block_import_tipo(block)
+    success = False
+    error_message = ""
     try:
         if block == BLOCK_NEW_CLIENTS:
             if upload.status == FileUpload.STATUS_PARSED_OK:
@@ -133,14 +155,16 @@ def _process_upload(request, upload: FileUpload, year: int, month: int, block: s
                     "Si necesita reprocesar, suba el archivo otra vez.",
                 )
                 return
-            call_command(
-                "import_clientes_nuevos",
-                path=str(path),
-                file_upload_id=upload.id,
-            )
+            with suppress_import_audit():
+                call_command(
+                    "import_clientes_nuevos",
+                    path=str(path),
+                    file_upload_id=upload.id,
+                )
             upload.status = FileUpload.STATUS_PARSED_OK
             upload.save(update_fields=["status"])
             messages.success(request, "Clientes nuevos procesados correctamente.")
+            success = True
             _trigger_auto_recalc(request, source="import_clientes")
         elif block == BLOCK_CROSS_SALE:
             if upload.status == FileUpload.STATUS_PARSED_OK:
@@ -150,24 +174,50 @@ def _process_upload(request, upload: FileUpload, year: int, month: int, block: s
                     "Si necesita reprocesar, suba el archivo otra vez.",
                 )
                 return
-            call_command("import_venta_cruzada", path=str(path))
+            with suppress_import_audit():
+                call_command("import_venta_cruzada", path=str(path))
             upload.status = FileUpload.STATUS_PARSED_OK
             upload.save(update_fields=["status"])
             messages.success(request, "Venta cruzada procesada correctamente.")
+            success = True
             _trigger_auto_recalc(request, source="import_venta_cruzada")
         elif block == BLOCK_FINANCIAL:
-            call_command("import_ingresos", path=str(path), year=year, month=month)
+            with suppress_import_audit():
+                call_command("import_ingresos", path=str(path), year=year, month=month)
             upload.status = FileUpload.STATUS_PARSED_OK
             upload.save(update_fields=["status"])
             messages.success(request, "Estado de resultados importado correctamente.")
+            success = True
             _trigger_auto_recalc(request, source="import_ingresos")
         else:
             messages.error(request, "Este bloque no admite procesamiento de archivo.")
+            error_message = "Bloque no admite procesamiento de archivo."
     except Exception as exc:
         upload.status = FileUpload.STATUS_PARSED_ERROR
         upload.error_summary = str(exc)[:500]
         upload.save(update_fields=["status", "error_summary"])
         messages.error(request, f"Error al procesar: {exc}")
+        error_message = str(exc)
+    else:
+        if success:
+            record_import_audit_for_path(
+                user=request.user,
+                path=str(path),
+                success=True,
+                import_tipo=import_tipo,
+                file_upload=upload,
+                detail={"block": block, "year": year, "month": month, "admin_monthly": True},
+            )
+    if error_message:
+        record_import_audit_for_path(
+            user=request.user,
+            path=str(path),
+            success=False,
+            import_tipo=import_tipo,
+            error_message=error_message,
+            file_upload=upload,
+            detail={"block": block, "year": year, "month": month, "admin_monthly": True},
+        )
 
 
 def _admin_period_context(year: int, month: int) -> dict:

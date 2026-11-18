@@ -21,6 +21,12 @@ Mapa completo métrica → comando: [pgc-sin-excel-objetivos-validacion.md#mapa-
 
 El centro de operaciones muestra **banderas** (`pgc/ops_flags.py`) con mensajes en español y pasos de corrección.
 
+### Auditoría de importaciones (pre-reload)
+
+Cada carga PGC vía hub, admin mensual o CLI `import_* --path` deja un **`ImportAuditEvent`** (migración `imports` 0011): usuario, `file_path_key`, éxito/error, `import_tipo`, fuente (`manual` / `ops`). Los comandos `import_clientes_nuevos`, `import_venta_cruzada`, `import_ingresos`, `import_inversiones_crecimiento` y `import_bancos_fin_mes` usan `ImportAuditCommandMixin`; el despacho del hub suprime auditoría CLI duplicada y registra un solo evento al final.
+
+Checklist rápido: `python manage.py audit_import_status --detailed` y revisar fallos en Django Admin → **Import audit events**.
+
 ## Política operativa (2026 en adelante)
 
 | Dato | Fuente oficial | Libro Objetivos |

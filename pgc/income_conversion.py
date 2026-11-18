@@ -6,12 +6,16 @@ from decimal import Decimal, ROUND_HALF_UP
 
 from django.db import transaction
 
+from core.money_precision import (
+    INGRESOS_MILES_STORE_PLACES,
+    LEGACY_INGRESOS_MILES_TOLERANCE,
+)
 from core.models import MetricDefinition
 from pgc.models import AdminManualEditLog, MonthlyExchangeRate, MonthlyMetricResult
 
 
 USD_DISPLAY_PLACES = Decimal("0.001")
-USD_STORE_PLACES = Decimal("0.000001")
+USD_STORE_PLACES = INGRESOS_MILES_STORE_PLACES
 
 
 def get_fx_rate(year: int, month: int) -> Decimal | None:
@@ -37,9 +41,6 @@ def gtq_comisiones_to_usd_miles(gtq: Decimal, usd_to_gtq: Decimal) -> Decimal:
     )
 
 
-LEGACY_INGRESOS_MILES_TOLERANCE = Decimal("0.05")
-
-
 def _source_stored_as_gtq_over_fx(
     source_stored: Decimal, measured_miles: Decimal | None, fx: Decimal
 ) -> bool:
@@ -63,6 +64,9 @@ def source_value_is_canonical_gtq_commissions(
 ) -> bool:
     """source_value ya es comisiones GTQ del mes (no GTQ/FX almacenado)."""
     if measured_miles is None or not source_stored or not fx or fx <= 0:
+        return False
+    # Comisiones mensuales en Q suelen ser ≫400k; GTQ/FX almacenado queda ~2 ordenes menor.
+    if source_stored < Decimal("400000"):
         return False
     inferred_gtq = (measured_miles * Decimal("1000") * fx).quantize(
         USD_STORE_PLACES, rounding=ROUND_HALF_UP

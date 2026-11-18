@@ -2,6 +2,7 @@ from decimal import Decimal
 from pathlib import Path
 
 from django.core.management.base import BaseCommand, CommandError
+from imports.management.import_audit_mixin import ImportAuditCommandMixin
 from django.db import transaction
 
 from imports.investment_growth_parse import (
@@ -12,7 +13,8 @@ from imports.models import BankLoanMonthSnapshot, FileUpload
 from pgc.models import MonthlyExchangeRate
 
 
-class Command(BaseCommand):
+class Command(ImportAuditCommandMixin, BaseCommand):
+    import_audit_tipo = "bank_loans"
     help = (
         "Importa préstamos bancarios al cierre: Bancos_Fin_de_mes.xlsx o Capital_Bancos_*.csv."
     )

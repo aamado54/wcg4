@@ -3,6 +3,7 @@ from core.services.une_resolve import resolve_une_from_text
 from datetime import datetime
 from decimal import Decimal
 from django.core.management.base import BaseCommand, CommandError
+from imports.management.import_audit_mixin import ImportAuditCommandMixin
 from django.db import transaction
 from imports.currency_normalize import normalize_currency_code
 from imports.models import CrossSaleImportHeader, CrossSaleImportRow
@@ -11,7 +12,8 @@ from pgc.models import PGCPlan, MonthlyTarget, MonthlyMetricResult
 import csv
 
 
-class Command(BaseCommand):
+class Command(ImportAuditCommandMixin, BaseCommand):
+    import_audit_tipo = "cross_sale"
     help = "Importa archivo de Venta Cruzada y actualiza métricas de VENTA_CRUZADA"
 
     def add_arguments(self, parser):

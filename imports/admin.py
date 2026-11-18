@@ -3,12 +3,43 @@ from .models import (
     FileUpload,
     FileImportLog,
     FinancialStatementImportHeader,
+    ImportAuditEvent,
     NewClientImportHeader,
     CrossSaleImportHeader,
     StationTimeImportHeader,
     NewClientImportRow,
     CrossSaleImportRow,
 )
+
+
+@admin.register(ImportAuditEvent)
+class ImportAuditEventAdmin(admin.ModelAdmin):
+    list_display = (
+        "loaded_at",
+        "success",
+        "import_tipo",
+        "source",
+        "file_path_key",
+        "file_available",
+        "user",
+    )
+    list_filter = ("success", "source", "import_tipo", "file_available")
+    search_fields = ("file_path_key", "error_message", "user__username", "import_tipo")
+    readonly_fields = (
+        "loaded_at",
+        "created_at",
+        "updated_at",
+        "file_path_key",
+        "file_available",
+        "success",
+        "error_message",
+        "source",
+        "import_tipo",
+        "detail_json",
+        "user",
+        "file_upload",
+    )
+    date_hierarchy = "loaded_at"
 
 
 @admin.register(FileUpload)

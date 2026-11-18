@@ -93,6 +93,42 @@ class InvestmentGrowthParseTests(TestCase):
         self.assertIn("CHN", snap.bank_amounts)
 
 
+class InvestmentGrowthPrecisionStorageTests(TestCase):
+    def test_growth_miles_not_rounded_to_cents_in_code(self):
+        from pgc.investment_ingresos import investment_net_growth_miles
+
+        InvestmentGrowthRow.objects.create(
+            year=2026,
+            month=1,
+            instrument="AP",
+            operation_code="A",
+            amount_usd=Decimal("1000"),
+        )
+        InvestmentGrowthRow.objects.create(
+            year=2026,
+            month=2,
+            instrument="AP",
+            operation_code="A",
+            amount_usd=Decimal("1001.234000"),
+        )
+        BankLoanMonthSnapshot.objects.create(
+            year=2026,
+            month=1,
+            exchange_rate=Decimal("7.6"),
+            total_gtq=Decimal("0"),
+            total_usd=Decimal("0"),
+        )
+        BankLoanMonthSnapshot.objects.create(
+            year=2026,
+            month=2,
+            exchange_rate=Decimal("7.6"),
+            total_gtq=Decimal("0"),
+            total_usd=Decimal("0"),
+        )
+        miles = investment_net_growth_miles(2026, 2)
+        self.assertEqual(miles, Decimal("0.001234"))
+
+
 class InvestmentGrowthCalcTests(TestCase):
     def test_net_growth_requires_previous_month(self):
         InvestmentGrowthRow.objects.create(

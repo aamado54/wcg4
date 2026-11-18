@@ -6,6 +6,7 @@ from core.models import UNE, UNEAlias, MetricDefinition, Currency
 from core.services.une_resolve import resolve_une_from_text
 from decimal import Decimal
 from django.core.management.base import BaseCommand, CommandError
+from imports.management.import_audit_mixin import ImportAuditCommandMixin
 from django.core.management import call_command
 from django.db import transaction
 from django.db.models import Q
@@ -69,7 +70,8 @@ def _ensure_header(year: int, month: int, upload: FileUpload | None) -> NewClien
     return header
 
 
-class Command(BaseCommand):
+class Command(ImportAuditCommandMixin, BaseCommand):
+    import_audit_tipo = "new_clients"
     help = (
         "Importa ClientesNuevos (csv/tsv). Cada fila se guarda en su AnioMes; "
         "un solo archivo puede contener varios meses."

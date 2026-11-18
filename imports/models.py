@@ -449,7 +449,7 @@ class InvestmentGrowthRow(TimeStampedModel):
     company = models.CharField(max_length=255, blank=True)
     operation_code = models.CharField(max_length=100)
     currency_code = models.CharField(max_length=10, blank=True)
-    amount_original = models.DecimalField(max_digits=18, decimal_places=2, default=0)
+    amount_original = models.DecimalField(max_digits=18, decimal_places=6, default=0)
     start_date = models.DateField(null=True, blank=True)
     maturity_date = models.DateField(null=True, blank=True)
     exchange_rate = models.DecimalField(max_digits=12, decimal_places=6, null=True, blank=True)

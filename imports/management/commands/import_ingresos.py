@@ -5,6 +5,7 @@ from decimal import Decimal
 from pathlib import Path
 
 from django.core.management.base import BaseCommand, CommandError
+from imports.management.import_audit_mixin import ImportAuditCommandMixin
 from django.db import transaction
 
 from core.models import UNE, MetricDefinition
@@ -19,7 +20,8 @@ from pgc.income_conversion import apply_result_achievement
 from pgc.models import PGCPlan, MonthlyTarget, MonthlyMetricResult, MonthlyExchangeRate
 
 
-class Command(BaseCommand):
+class Command(ImportAuditCommandMixin, BaseCommand):
+    import_audit_tipo = "financial"
     help = (
         "Importa ingresos mensuales desde archivo de estado de resultados "
         "(xlsx) y actualiza la métrica INGRESOS por UNE (no incluye INVESTMENT)."

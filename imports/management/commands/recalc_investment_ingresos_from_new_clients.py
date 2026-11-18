@@ -5,6 +5,7 @@ from decimal import Decimal
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
+from core.money_precision import quantize_store
 from core.models import MetricDefinition
 from pgc.investment_ingresos import get_investment_une, sum_investment_ingresos_usd
 from pgc.models import (
@@ -78,7 +79,7 @@ class Command(BaseCommand):
                     f"No existe MonthlyExchangeRate válido para {year}-{month:02d}."
                 )
 
-        total_usd = summary["total_usd"]
+        total_usd = quantize_store(summary["total_usd"])
         used_rows = summary["used_rows"]
         source = summary.get("source", "new_clients")
         gross = summary.get("gross") or {}

@@ -7,6 +7,8 @@ import re
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
+
+from core.money_precision import MONEY_STORE_PLACES, quantize_store
 from pathlib import Path
 
 from core.models import MetricDefinition, UNE
@@ -178,7 +180,7 @@ def default_row_specs(year: int) -> list[VerificaRowSpec]:
 def _fmt_num(val: Decimal | None) -> str:
     if val is None:
         return ""
-    q = val.quantize(Decimal("0.01"))
+    q = quantize_store(val, places=MONEY_STORE_PLACES) or Decimal("0")
     if q == q.to_integral_value():
         return str(int(q))
     return format(q, "f").rstrip("0").rstrip(".")
@@ -187,7 +189,7 @@ def _fmt_num(val: Decimal | None) -> str:
 def _usd_miles_to_gtq_full(usd_miles: Decimal | None, fx: Decimal | None) -> Decimal | None:
     if usd_miles is None or fx is None or fx == 0:
         return None
-    return (usd_miles * Decimal("1000") * fx).quantize(Decimal("0.01"))
+    return quantize_store(usd_miles * Decimal("1000") * fx, places=MONEY_STORE_PLACES)
 
 
 def _investment_exec_display(usd_miles: Decimal | None) -> str:

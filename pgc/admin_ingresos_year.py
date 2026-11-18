@@ -19,6 +19,7 @@ from pgc.income_conversion import (
     get_fx_rate,
     gtq_comisiones_to_usd_miles,
 )
+from core.money_precision import money_equal
 from pgc.investment_ingresos import (
     MILES_DIVISOR,
     _ap_pg_total_usd,
@@ -128,25 +129,20 @@ def _build_investment_audit(
     if cap_usd is not None and prev_cap_usd is not None:
         delta_from_levels = cap_usd - prev_cap_usd
 
-    cent = Decimal("0.01")
     official = official_investment_growth_usd(year, month)
-    if (
-        official is not None
-        and growth_usd is not None
-        and growth_usd.quantize(cent) == official.quantize(cent)
+    if official is not None and growth_usd is not None and money_equal(
+        growth_usd, official
     ):
         growth_matches_levels = True
     else:
         growth_matches_levels = (
             growth_usd is not None
             and delta_from_levels is not None
-            and growth_usd.quantize(cent) == delta_from_levels.quantize(cent)
+            and money_equal(growth_usd, delta_from_levels)
         )
     stored_matches_growth = False
     if growth_usd is not None and stored_growth_usd is not None:
-        stored_matches_growth = (
-            growth_usd.quantize(cent) == stored_growth_usd.quantize(cent)
-        )
+        stored_matches_growth = money_equal(growth_usd, stored_growth_usd)
 
     inv_miles = _usd_full_to_miles(inv_usd)
     loans_miles = _usd_full_to_miles(loans_usd)

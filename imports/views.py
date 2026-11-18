@@ -12,7 +12,15 @@ from core.access import can_access_ops
 from core.wcg_models import DataImportBatch
 from pgc.admin_utils import parse_period
 
-from .detection import ALL_IMPORTABLE, TYPE_LABELS, TYPE_UNKNOWN, detect_file
+from imports.audit import record_import_audit_for_path, suppress_import_audit
+from imports.detection import (
+    ALL_IMPORTABLE,
+    TYPE_CROSS_SALE,
+    TYPE_LABELS,
+    TYPE_NEW_CLIENTS,
+    TYPE_UNKNOWN,
+    detect_file,
+)
 from .dispatch import run_import
 from .duplicates import MODULE_SCANNERS, delete_duplicate_ids, scan_all_duplicates, summarize_duplicates
 from .forms import GeneralImportForm
@@ -193,22 +201,40 @@ def process_new_clients(request, file_id):
             return _redirect_imports_to_admin(request, "new_clients")
 
         try:
-            call_command(
-                "import_clientes_nuevos",
-                path=str(file_path),
-                file_upload_id=upload.id,
-            )
+            with suppress_import_audit():
+                call_command(
+                    "import_clientes_nuevos",
+                    path=str(file_path),
+                    file_upload_id=upload.id,
+                )
             messages.success(
                 request,
                 f"Clientes nuevos procesados correctamente desde {upload.original_filename}.",
             )
             upload.status = FileUpload.STATUS_PARSED_OK
             upload.save(update_fields=["status"])
+            record_import_audit_for_path(
+                user=request.user,
+                path=str(file_path),
+                success=True,
+                import_tipo=TYPE_NEW_CLIENTS,
+                file_upload=upload,
+                detail={"legacy_view": "process_new_clients"},
+            )
         except Exception as exc:
             messages.error(request, f"Error al procesar clientes nuevos: {exc}")
             upload.status = FileUpload.STATUS_PARSED_ERROR
             upload.error_summary = str(exc)[:500]
             upload.save(update_fields=["status", "error_summary"])
+            record_import_audit_for_path(
+                user=request.user,
+                path=str(file_path),
+                success=False,
+                import_tipo=TYPE_NEW_CLIENTS,
+                error_message=str(exc),
+                file_upload=upload,
+                detail={"legacy_view": "process_new_clients"},
+            )
 
     return _redirect_imports_to_admin(request, "new_clients")
 
@@ -229,18 +255,36 @@ def process_cross_sale(request, file_id):
             return _redirect_imports_to_admin(request, "cross_sale")
 
         try:
-            call_command("import_venta_cruzada", path=str(file_path))
+            with suppress_import_audit():
+                call_command("import_venta_cruzada", path=str(file_path))
             messages.success(
                 request,
                 f"Venta cruzada procesada correctamente desde {upload.original_filename}.",
             )
             upload.status = FileUpload.STATUS_PARSED_OK
             upload.save(update_fields=["status"])
+            record_import_audit_for_path(
+                user=request.user,
+                path=str(file_path),
+                success=True,
+                import_tipo=TYPE_CROSS_SALE,
+                file_upload=upload,
+                detail={"legacy_view": "process_cross_sale"},
+            )
         except Exception as exc:
             messages.error(request, f"Error al procesar venta cruzada: {exc}")
             upload.status = FileUpload.STATUS_PARSED_ERROR
             upload.error_summary = str(exc)[:500]
             upload.save(update_fields=["status", "error_summary"])
+            record_import_audit_for_path(
+                user=request.user,
+                path=str(file_path),
+                success=False,
+                import_tipo=TYPE_CROSS_SALE,
+                error_message=str(exc),
+                file_upload=upload,
+                detail={"legacy_view": "process_cross_sale"},
+            )
 
     return _redirect_imports_to_admin(request, "cross_sale")
 

@@ -1455,5 +1455,113 @@ class TvChartsSeriesTests(TestCase):
             periods, ("FACTORING", "LEASING", "INSURANCE")
         )
         self.assertEqual(labels, ["2026-01", "2026-02"])
-        self.assertEqual(real_y, [4.5, 8.5])
+        self.assertEqual(real_y, [4.5, 8.0])
         self.assertEqual(target_y, [7.0, 9.5])
+
+
+class PrecisionRolloutTests(TestCase):
+    def test_monthly_target_stores_six_decimal_miles(self):
+        plan = PGCPlan.objects.create(year=2026, name="Precision")
+        une = UNE.objects.create(code="FACTORING", name="F", name_es="F", sort_order=1)
+        metric = MetricDefinition.objects.create(code=MetricDefinition.CODE_INGRESOS, name="Ing")
+        precise = Decimal("770.123456")
+        tgt = MonthlyTarget.objects.create(
+            plan=plan,
+            une=une,
+            metric=metric,
+            year=2026,
+            month=1,
+            target_value=precise,
+        )
+        tgt.refresh_from_db()
+        self.assertEqual(tgt.target_value, precise)
+
+    def test_ingresos_investment_min_display_decimals(self):
+        from pgc.views import (
+            INGRESOS_INVESTMENT_MIN_DECIMALS,
+            _build_ingresos_annual_tables,
+        )
+
+        year = 2026
+        plan = PGCPlan.objects.create(year=year, name="Precision")
+        inv = UNE.objects.create(
+            code="INVESTMENT", name="Inv", name_es="Inversiones", sort_order=9
+        )
+        metric = MetricDefinition.objects.create(
+            code=MetricDefinition.CODE_INGRESOS, name="Ing"
+        )
+        MonthlyTarget.objects.create(
+            plan=plan,
+            une=inv,
+            metric=metric,
+            year=year,
+            month=1,
+            target_value=Decimal("1"),
+        )
+        MonthlyMetricResult.objects.create(
+            plan=plan,
+            une=inv,
+            metric=metric,
+            year=year,
+            month=1,
+            measured_value=Decimal("1.2345"),
+        )
+        tables = _build_ingresos_annual_tables(year, decimals=1)
+        inv_table = next(t for t in tables if t["une"].id == inv.id)
+        self.assertGreaterEqual(
+            inv_table["income_decimals"], INGRESOS_INVESTMENT_MIN_DECIMALS
+        )
+
+    def test_recalc_investment_preserves_sub_cent_miles(self):
+        from imports.models import InvestmentGrowthRow
+
+        year, month = 2026, 2
+        plan = PGCPlan.objects.create(year=year, name="Inv")
+        inv = UNE.objects.create(
+            code="INVESTMENT", name="Inv", name_es="Inversiones", sort_order=9
+        )
+        metric = MetricDefinition.objects.create(
+            code=MetricDefinition.CODE_INGRESOS, name="Ing"
+        )
+        MonthlyExchangeRate.objects.create(
+            year=year, month=1, usd_to_gtq=Decimal("7.638560")
+        )
+        MonthlyExchangeRate.objects.create(
+            year=year, month=2, usd_to_gtq=Decimal("7.638560")
+        )
+        MonthlyTarget.objects.create(
+            plan=plan,
+            une=inv,
+            metric=metric,
+            year=year,
+            month=month,
+            target_value=Decimal("0"),
+        )
+        gtq = Decimal("100000.00")
+        tc = Decimal("7.638560")
+        usd_jan = gtq / tc
+        InvestmentGrowthRow.objects.create(
+            year=year,
+            month=1,
+            instrument="AP",
+            operation_code="P",
+            amount_usd=usd_jan,
+            amount_gtq=gtq,
+            exchange_rate=tc,
+        )
+        InvestmentGrowthRow.objects.create(
+            year=year,
+            month=2,
+            instrument="AP",
+            operation_code="P",
+            amount_usd=usd_jan + Decimal("1.234"),
+            amount_gtq=gtq,
+            exchange_rate=tc,
+        )
+        call_command(
+            "recalc_investment_ingresos_from_new_clients", year=year, month=month
+        )
+        row = MonthlyMetricResult.objects.get(
+            plan=plan, une=inv, metric=metric, year=year, month=month
+        )
+        self.assertEqual(row.measured_value, Decimal("0.001234"))

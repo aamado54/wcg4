@@ -128,11 +128,11 @@ class MonthlyTarget(TimeStampedModel):
     )
     year = models.PositiveIntegerField()
     month = models.PositiveIntegerField()
-    target_value = models.DecimalField(max_digits=18, decimal_places=2, null=True, blank=True)
+    target_value = models.DecimalField(max_digits=20, decimal_places=6, null=True, blank=True)
     points_if_achieved = models.PositiveIntegerField(default=0)
     reference_annual_value = models.DecimalField(
-        max_digits=18,
-        decimal_places=2,
+        max_digits=20,
+        decimal_places=6,
         null=True,
         blank=True,
         help_text="Solo referencia; no asigna puntos por sí misma.",
@@ -191,7 +191,7 @@ class MonthlyMetricResult(TimeStampedModel):
     month = models.PositiveIntegerField()
     # Canonical value for scoring/reporting: always USD for INGRESOS.
     measured_value = models.DecimalField(max_digits=20, decimal_places=6, null=True, blank=True)
-    target_value = models.DecimalField(max_digits=18, decimal_places=2, null=True, blank=True)
+    target_value = models.DecimalField(max_digits=20, decimal_places=6, null=True, blank=True)
     is_achieved = models.BooleanField(default=False)
     points_awarded = models.PositiveIntegerField(default=0)
     calculation_note = models.TextField(blank=True)

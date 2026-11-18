@@ -50,7 +50,9 @@ La UI marca advertencias si el valor guardado en PGC no coincide con el recálcu
 
 ### Precisión (cálculo vs presentación)
 
-- **Guardado:** `amount_usd`, `amount_gtq`, `total_usd` y `total_gtq` usan **6 decimales**; el import calcula USD como `Quetzalizado/TC` (sin `quantize` en Python). La columna «Dolarizado» del Excel solo se usa si no hay TC.
+- **Módulo común:** `core.money_precision` (`quantize_store`, `money_equal`, tolerancia legado ingresos) — usarlo en comparaciones y escrituras, no redondear en agregaciones.
+- **Guardado:** `amount_usd`, `amount_gtq`, `total_usd`, `total_gtq` y `InvestmentGrowthRow.amount_original` usan **6 decimales** (migración `imports` 0012); el import calcula USD como `Quetzalizado/TC` (sin `quantize` en Python). La columna «Dolarizado» del Excel solo se usa si no hay TC.
+- **Metas ingresos:** `MonthlyTarget.target_value` y `MonthlyMetricResult.target_value` alineados a **6 decimales** (migración `pgc` 0009).
 - **Agregación:** `Sum(amount_usd)` y deltas en `investment_ingresos.py` sin redondeo intermedio. `MonthlyMetricResult.measured_value` sigue en **6 decimales** (miles USD).
 - **Presentación:** el reporte *Ingresos vs meta* redondea solo al renderizar (`wcg_num` / `format_wcg_amount`). Con `INGRESOS_DEFAULT_DECIMALS=1` las demás UNE muestran un decimal; **Inversiones** usa mínimo **3 decimales** en filas Capital/Ejecutado para evitar el patrón `.X0` cuando el dato interno es más fino.
 - **Producción (wcg.lol):** tras deploy hay que **migrar**, **reimportar** `Inversiones_crecimiento` y bancos, y **recalcular** PGC; un solo `recalc` sin reimport no recupera centavos ya truncados en filas históricas.
