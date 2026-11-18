@@ -4,12 +4,14 @@ from pathlib import Path
 from django.test import TestCase
 
 from imports.investment_growth_parse import (
+    _usd_from_row,
     parse_bancos_fin_mes_xlsx,
     parse_capital_bancos_csv,
     parse_inversiones_crecimiento_csv,
 )
 from imports.models import BankLoanMonthSnapshot, InvestmentGrowthRow
 from pgc.investment_ingresos import (
+    banks_count_in_investment_growth,
     investment_gross_usd,
     investment_net_growth_usd,
     investment_periods_with_data,
@@ -21,6 +23,14 @@ NOW_DATA = Path("/home/caa/wc/wcg4/data/now")
 
 
 class InvestmentGrowthParseTests(TestCase):
+    def test_usd_from_row_prefers_gtq_over_dolarizado_column(self):
+        """Quetzalizado/TC gana sobre Dolarizado (2 dec) del CSV."""
+        gtq = Decimal("100000.00")
+        tc = Decimal("7.638560")
+        dolarizado = Decimal("13091.11")  # valor redondeado típico del Excel
+        usd = _usd_from_row("GTQ", Decimal("0"), gtq, tc, dolarizado)
+        self.assertEqual(usd, gtq / tc)
+        self.assertNotEqual(usd.quantize(Decimal("0.01")), dolarizado)
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
@@ -123,3 +133,61 @@ class InvestmentGrowthCalcTests(TestCase):
 
         gross = investment_gross_usd(2026, 1)
         self.assertEqual(gross["total_usd"], Decimal("250"))
+
+    def test_2026_sep_growth_excludes_bank_loans(self):
+        self.assertFalse(banks_count_in_investment_growth(2026, 9))
+        self.assertFalse(banks_count_in_investment_growth(2026, 10))
+        self.assertTrue(banks_count_in_investment_growth(2026, 8))
+
+        InvestmentGrowthRow.objects.create(
+            year=2026,
+            month=8,
+            instrument="AP",
+            operation_code="AP8",
+            amount_usd=Decimal("1000"),
+        )
+        InvestmentGrowthRow.objects.create(
+            year=2026,
+            month=9,
+            instrument="AP",
+            operation_code="AP9",
+            amount_usd=Decimal("1500"),
+        )
+        BankLoanMonthSnapshot.objects.create(
+            year=2026,
+            month=7,
+            exchange_rate=Decimal("7.6"),
+            total_gtq=Decimal("7600"),
+            total_usd=Decimal("1000"),
+        )
+        BankLoanMonthSnapshot.objects.create(
+            year=2026,
+            month=8,
+            exchange_rate=Decimal("7.6"),
+            total_gtq=Decimal("15200"),
+            total_usd=Decimal("2000"),
+        )
+        BankLoanMonthSnapshot.objects.create(
+            year=2026,
+            month=9,
+            exchange_rate=Decimal("7.6"),
+            total_gtq=Decimal("15200"),
+            total_usd=Decimal("2000"),
+        )
+        InvestmentGrowthRow.objects.create(
+            year=2026,
+            month=10,
+            instrument="AP",
+            operation_code="AP10",
+            amount_usd=Decimal("1600"),
+        )
+
+        growth_sep = investment_net_growth_usd(2026, 9)
+        # Δ AP+PG (500) + puente bancario jul→ago (2000 − 1000)
+        self.assertEqual(growth_sep, Decimal("1500"))
+
+        growth_oct = investment_net_growth_usd(2026, 10)
+        self.assertEqual(growth_oct, Decimal("100"))
+
+        gross_sep = investment_gross_usd(2026, 9)
+        self.assertEqual(gross_sep["total_usd"], Decimal("1500"))

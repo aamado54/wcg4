@@ -284,7 +284,44 @@ def _dispatch_pgc_uploaded_file(
         )
 
 
-def run_import(user, uploaded_file: UploadedFile, tipo_forzado: str | None = None) -> DispatchResult:
+def _audit_after_dispatch(
+    user,
+    uploaded_file: UploadedFile | None,
+    path_key: str,
+    result: DispatchResult,
+    *,
+    source: str = "manual",
+) -> None:
+    from imports.audit import record_import_audit_event, resolve_path_key_from_upload
+    from imports.models import ImportAuditEvent
+
+    key = path_key or resolve_path_key_from_upload(uploaded_file, result.batch)
+    if not key:
+        return
+    batch = result.batch
+    file_upload = batch if hasattr(batch, "stored_file") else None
+    src = (
+        ImportAuditEvent.SOURCE_MANUAL
+        if source == "manual"
+        else ImportAuditEvent.SOURCE_OPS
+    )
+    err = "" if result.ok else (result.message or "")[:4000]
+    try:
+        record_import_audit_event(
+            user=user,
+            file_path_key=key,
+            success=result.ok,
+            source=src,
+            error_message=err,
+            import_tipo=result.tipo,
+            file_upload=file_upload,
+            detail={"label": result.label, "forced": result.forced},
+        )
+    except Exception:
+        pass
+
+
+def _run_import_core(user, uploaded_file: UploadedFile, tipo_forzado: str | None = None) -> DispatchResult:
     detection = detect_file(uploaded_file)
     uploaded_file.seek(0)
     forced = bool(tipo_forzado)
@@ -461,7 +498,15 @@ def run_import(user, uploaded_file: UploadedFile, tipo_forzado: str | None = Non
     )
 
 
+def run_import(user, uploaded_file: UploadedFile, tipo_forzado: str | None = None) -> DispatchResult:
+    result = _run_import_core(user, uploaded_file, tipo_forzado=tipo_forzado)
+    _audit_after_dispatch(user, uploaded_file, "", result, source="manual")
+    return result
+
+
 def run_import_path(user, path: str, tipo_forzado: str | None = None) -> DispatchResult:
     p = Path(path)
     f = SimpleUploadedFile(p.name, p.read_bytes())
-    return run_import(user, f, tipo_forzado=tipo_forzado)
+    result = _run_import_core(user, f, tipo_forzado=tipo_forzado)
+    _audit_after_dispatch(user, f, str(p.expanduser()), result, source="ops")
+    return result

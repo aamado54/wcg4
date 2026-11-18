@@ -1,12 +1,12 @@
 """
-Puntos PGC modo 2.Proporción alineados a la hoja Objetivos (autor).
+Puntos PGC modo 2.Proporción — ingresos alineados al reporte Ingresos vs meta (miles USD).
 
-Ver docs/pgc-puntos-proporcion-objetivos.md
+Ver docs/pgc-puntos-proporcion-objetivos.md (histórico GTQ obsoleto para scoring).
 """
 
 from __future__ import annotations
 
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import Decimal, ROUND_DOWN, ROUND_HALF_UP
 
 from core.models import MetricDefinition, UNE
 
@@ -86,54 +86,72 @@ def clientes_points_objetivos(
     )
 
 
+def _ingresos_max_points(une_code: str, points_if_achieved) -> Decimal:
+    """Factoraje, Leasing e Insurance: tope 70 pt en Proporción (ingresos vs meta)."""
+    full = Decimal(str(points_if_achieved or 0))
+    if (une_code or "").upper() in (
+        UNE.CODE_FACTORING,
+        UNE.CODE_LEASING,
+        UNE.CODE_INSURANCE,
+    ):
+        return min(full, Decimal("70"))
+    return full
+
+
+def _ingresos_vs_meta_inputs(
+    measured, target, *, une_code: str
+) -> tuple[Decimal | None, Decimal | None]:
+    """
+    Mismas magnitudes que el reporte Ingresos vs meta (miles USD).
+    Insurance trunca meta y ejecutado a 3 decimales (ROUND_DOWN), como en la vista.
+    """
+    if measured is None or target is None:
+        return None, None
+    try:
+        m = Decimal(str(measured))
+        t = Decimal(str(target))
+    except Exception:
+        return None, None
+    if (une_code or "").upper() == UNE.CODE_INSURANCE:
+        q = Decimal("0.001")
+        m = m.quantize(q, rounding=ROUND_DOWN)
+        t = t.quantize(q, rounding=ROUND_DOWN)
+    return m, t
+
+
 def ingresos_points_objetivos(
     target,
     source_result,
     *,
     une_code: str,
+    year: int | None = None,
+    month: int | None = None,
 ) -> tuple[Decimal, bool, str]:
     """
-    Ingresos: proporción en GTQ (excepción documentada) si hay presupuesto_gtq
-    y source_value GTQ; si no, fallback miles USD medido/meta.
+    Ingresos (Proporción): mismos valores que el reporte Ingresos vs meta — ejecutado y meta
+    en miles US$, proporcional con tope 70 en F/L/I.
     """
-    full = Decimal(str(target.points_if_achieved or 0))
+    from pgc.investment_ingresos import investment_net_growth_miles
+
+    full = _ingresos_max_points(une_code, target.points_if_achieved)
     target_value = getattr(target, "target_value", None)
-    pres_gtq = getattr(target, "presupuesto_gtq", None)
-    exec_gtq = None
-    if source_result and getattr(source_result, "source_currency", "") == "GTQ":
-        exec_gtq = source_result.source_value
-
-    # Convención hoja Objetivos: presupuesto GTQ ≈ meta (miles) × 1000 cuando no hay campo explícito.
-    if (pres_gtq is None or pres_gtq <= 0) and target_value is not None:
-        try:
-            tv = Decimal(str(target_value))
-            if tv > 0:
-                pres_gtq = tv * Decimal("1000")
-        except Exception:
-            pass
-
-    if pres_gtq and exec_gtq is not None and pres_gtq > 0:
-        if exec_gtq < 0:
-            return (
-                Decimal("0"),
-                False,
-                "Objetivos ingresos (GTQ): ejecución negativa → 0 puntos.",
-            )
-        ratio = _cap_ratio(Decimal(str(exec_gtq)), Decimal(str(pres_gtq)))
-        pts = (full * ratio).quantize(POINTS_QUANTIZE, rounding=ROUND_HALF_UP)
-        achieved = ratio >= Decimal("1")
-        return (
-            pts,
-            achieved,
-            f"Objetivos ingresos (GTQ): {full}×min(1,{exec_gtq}/{pres_gtq})={pts}.",
-        )
 
     measured = source_result.measured_value if source_result else None
+    if (une_code or "").upper() in {UNE.CODE_INVESTMENT, "INVESTMENTS", "INVERSIONES"}:
+        if year is not None and month is not None:
+            growth = investment_net_growth_miles(year, month)
+            if growth is not None:
+                measured = growth
+
+    measured, target_value = _ingresos_vs_meta_inputs(
+        measured, target_value, une_code=une_code
+    )
+
     pts, achieved, note = proportional_points(
         full,
         measured,
         target_value,
-        note_prefix="Objetivos ingresos (USD miles fallback)",
+        note_prefix="Ingresos vs meta (miles USD)",
     )
     return pts, achieved, note
 
@@ -145,7 +163,49 @@ INSURANCE_REQS_GRACE_NOTE = (
 )
 
 
+def insurance_reqs_grace_applies(une_code: str) -> bool:
+    """Insurance: siempre cumple reqs con puntos provisionales (hoja marca NO APLICA)."""
+    return (une_code or "").upper() == UNE.CODE_INSURANCE
+
+
 def insurance_reqs_uses_grace_points(une_code: str, points_awarded) -> bool:
-    return (une_code or "").upper() == UNE.CODE_INSURANCE and Decimal(
+    return insurance_reqs_grace_applies(une_code) and Decimal(
         str(points_awarded or 0)
     ) > 0
+
+
+def resolve_respuesta_reqs_compliance(une_code: str, manual=None) -> tuple[bool, str]:
+    """
+    Fuente única para scoring y reporte «Respuesta reqs real» (meta binaria 1).
+    - Insurance: grace (cumple aunque Excel/MRC diga no).
+    - Sin ManualRequirementsCompliance: asume cumple.
+    - Con registro manual: respeta is_compliant.
+    """
+    if insurance_reqs_grace_applies(une_code):
+        return True, "insurance_grace"
+    if manual is None:
+        return True, "default_sin_registro"
+    if manual.is_compliant:
+        return True, "manual_compliant"
+    return False, "manual_non_compliant"
+
+
+def respuesta_reqs_points_awarded(une_code, year, month, points_if, is_compliant) -> Decimal:
+    """
+    Puntos de respuesta a reqs.
+    Insurance: 5 en todos los meses. Investment oct-2026: igual (5), aunque la meta diga 0.
+    """
+    if not is_compliant:
+        return Decimal("0")
+    pts = Decimal(str(points_if or 0))
+    code = (une_code or "").upper()
+    if code == UNE.CODE_INSURANCE and pts < Decimal("5"):
+        pts = Decimal("5")
+    if (
+        code in {UNE.CODE_INVESTMENT, "INVESTMENTS", "INVERSIONES"}
+        and int(year or 0) == 2026
+        and int(month or 0) == 10
+        and pts < Decimal("5")
+    ):
+        pts = Decimal("5")
+    return pts

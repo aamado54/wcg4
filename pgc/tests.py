@@ -568,6 +568,62 @@ class SmartRecalcTests(TestCase):
         )
 
 
+class RespuestaReqsComplianceTests(TestCase):
+    def setUp(self):
+        self.plan = PGCPlan.objects.create(year=2026, name="Plan reqs rules")
+        self.insurance = UNE.objects.create(
+            code=UNE.CODE_INSURANCE,
+            name="Insurance",
+            name_es="Seguros",
+            sort_order=4,
+        )
+        self.investment = UNE.objects.create(
+            code=UNE.CODE_INVESTMENT,
+            name="Investment",
+            name_es="Inversiones",
+            sort_order=5,
+        )
+        self.metric, _ = MetricDefinition.objects.get_or_create(
+            code=MetricDefinition.CODE_RESPUESTA_REQS,
+            defaults={"name": "Reqs", "is_scored": True},
+        )
+        for une, month in ((self.investment, 10), (self.insurance, 3)):
+            MonthlyTarget.objects.create(
+                plan=self.plan,
+                une=une,
+                metric=self.metric,
+                year=2026,
+                month=month,
+                target_value=Decimal("1"),
+                points_if_achieved=Decimal("5"),
+            )
+
+    def test_insurance_grace_overrides_manual_no_cumple(self):
+        from pgc.views import _get_respuesta_reqs_rows
+
+        ManualRequirementsCompliance.objects.create(
+            plan=self.plan,
+            une=self.insurance,
+            year=2026,
+            month=3,
+            is_compliant=False,
+            incident_note="Excel NO APLICA",
+        )
+        _, rows = _get_respuesta_reqs_rows(periods=[(2026, 3)])
+        row = next(r for r in rows if r["target"].une_id == self.insurance.id)
+        self.assertEqual(row["measured_value"], Decimal("1"))
+        self.assertEqual(row["points_awarded"], Decimal("5"))
+        self.assertTrue(row["is_achieved"])
+
+    def test_sin_registro_asume_cumple_octubre_inversiones(self):
+        from pgc.views import _get_respuesta_reqs_rows
+
+        _, rows = _get_respuesta_reqs_rows(periods=[(2026, 10)])
+        row = next(r for r in rows if r["target"].une_id == self.investment.id)
+        self.assertEqual(row["measured_value"], Decimal("1"))
+        self.assertEqual(row["points_awarded"], Decimal("5"))
+
+
 class RequirementsReportTests(TestCase):
     def setUp(self):
         self.plan = PGCPlan.objects.create(year=2026, name="Plan reqs")
@@ -907,22 +963,43 @@ class ImportPgcObjetivosTests(TestCase):
 
 
 class ObjetivosScoringTests(TestCase):
-    def test_factoraje_ago_ingresos_gtq_proportion(self):
+    def test_factoraje_ago_ingresos_usd_proportion(self):
         from decimal import Decimal
         from pgc.objetivos_scoring import ingresos_points_objetivos
 
         class T:
             points_if_achieved = 70
-            presupuesto_gtq = Decimal("770000")
             target_value = Decimal("770")
 
         class R:
-            source_currency = "GTQ"
-            source_value = Decimal("460285")
-            measured_value = Decimal("60.29")
+            measured_value = Decimal("460.285345")
 
         pts, achieved, _note = ingresos_points_objetivos(T(), R(), une_code="FACTORING")
-        self.assertAlmostEqual(float(pts), 41.84, places=1)
+        self.assertAlmostEqual(float(pts), 41.84, places=2)
+        self.assertFalse(achieved)
+
+    def test_insurance_ene_ingresos_usd_proportion_not_gtq(self):
+        """Proporción en miles USD (como Ingresos vs meta), no presupuesto_gtq."""
+        from decimal import Decimal
+
+        from pgc.objetivos_scoring import ingresos_points_objetivos
+
+        class T:
+            points_if_achieved = 75
+            target_value = Decimal("6.75")
+            presupuesto_gtq = Decimal("6613")
+
+        class R:
+            measured_value = Decimal("1.622068")
+            source_value = Decimal("12435")
+
+        pts, achieved, note = ingresos_points_objetivos(
+            T(), R(), une_code="INSURANCE", year=2026, month=1
+        )
+        # GTQ ratio 12435/6613 daría ~70; USD 1.622/6.75 ≈ 16.82
+        self.assertAlmostEqual(float(pts), 16.82, places=2)
+        self.assertLess(float(pts), 25.0)
+        self.assertIn("miles USD", note)
         self.assertFalse(achieved)
 
     def test_insurance_sep_clientes_presupuesto_12(self):

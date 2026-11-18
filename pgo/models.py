@@ -231,6 +231,7 @@ class PgoScorecardCell(models.Model):
 
 
 def pgo_manual_capture_upload_to(instance, filename: str) -> str:
+    """Solo referenciado por migración 0005 (campo attachment eliminado en 0007)."""
     return f"pgo/capturas/{instance.period_year}/{instance.period_month:02d}/{filename}"
 
 
@@ -250,14 +251,9 @@ class PgoManualCaptureVersion(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     payload = models.JSONField(default=dict)
+    # change_note: conservado para versiones antiguas; los formularios actuales no lo piden (siempre "").
     change_note = models.CharField(max_length=800, blank=True)
     is_out_of_period = models.BooleanField(default=False)
-    attachment = models.FileField(
-        upload_to=pgo_manual_capture_upload_to,
-        blank=True,
-        null=True,
-        help_text="PDF o JPG (garantías mobiliarias)",
-    )
 
     class Meta:
         ordering = ["-created_at"]

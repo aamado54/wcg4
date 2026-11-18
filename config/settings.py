@@ -244,3 +244,8 @@ PGO_CAPTURAS_OPERATION_ID_MIN = 5
 PGO_CAPTURAS_OPERATION_ID_MAX = 20
 PGO_CAPTURAS_LEGAL_GARANTIAS_USERNAMES = ("Erick", "Celeste")
 PGO_CAPTURAS_LEGAL_GARANTIAS_GROUP = ""  # opcional: nombre de grupo Django
+
+# Inversiones PGC 2026: meses que incluyen Δ bancario en captaciones (1–8); desde 9 solo AP+PG (+ puente sep si aplica).
+INVESTMENT_BANKS_UNTIL_MONTH_2026 = int(
+    os.environ.get("INVESTMENT_BANKS_UNTIL_MONTH", "8")
+)

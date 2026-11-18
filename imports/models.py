@@ -453,8 +453,8 @@ class InvestmentGrowthRow(TimeStampedModel):
     start_date = models.DateField(null=True, blank=True)
     maturity_date = models.DateField(null=True, blank=True)
     exchange_rate = models.DecimalField(max_digits=12, decimal_places=6, null=True, blank=True)
-    amount_gtq = models.DecimalField(max_digits=18, decimal_places=2, default=0)
-    amount_usd = models.DecimalField(max_digits=18, decimal_places=2, default=0)
+    amount_gtq = models.DecimalField(max_digits=18, decimal_places=6, default=0)
+    amount_usd = models.DecimalField(max_digits=18, decimal_places=6, default=0)
     source_row_number = models.PositiveIntegerField(null=True, blank=True)
 
     class Meta:
@@ -484,8 +484,8 @@ class BankLoanMonthSnapshot(TimeStampedModel):
     year = models.PositiveIntegerField()
     month = models.PositiveIntegerField()
     exchange_rate = models.DecimalField(max_digits=12, decimal_places=6)
-    total_gtq = models.DecimalField(max_digits=18, decimal_places=2)
-    total_usd = models.DecimalField(max_digits=18, decimal_places=2)
+    total_gtq = models.DecimalField(max_digits=18, decimal_places=6)
+    total_usd = models.DecimalField(max_digits=18, decimal_places=6)
     bank_amounts_json = models.JSONField(default=dict, blank=True)
 
     class Meta:
@@ -497,4 +497,62 @@ class BankLoanMonthSnapshot(TimeStampedModel):
     def __str__(self):
         return f"{self.year}-{self.month:02d} bancos USD {self.total_usd}"
 
-  
+
+class ImportAuditEvent(TimeStampedModel):
+    """Traza minimal por despacho de importación (dispatch / CLI futuro)."""
+
+    SOURCE_MANUAL = "manual"
+    SOURCE_OPS = "ops"
+    SOURCE_IA = "IA"
+
+    SOURCE_CHOICES = [
+        (SOURCE_MANUAL, "Manual (usuario UI)"),
+        (SOURCE_OPS, "Operaciones / CLI"),
+        (SOURCE_IA, "Automatización / IA"),
+    ]
+
+    file_path_key = models.CharField(
+        max_length=512,
+        help_text="Ruta absoluta, ruta relativa o nombre original del archivo.",
+    )
+    file_available = models.BooleanField(
+        default=False,
+        help_text="True si el archivo existía en disco al momento del evento.",
+    )
+    loaded_at = models.DateTimeField(auto_now_add=True)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="import_audit_events",
+    )
+    success = models.BooleanField(default=False)
+    error_message = models.TextField(blank=True)
+    source = models.CharField(
+        max_length=20,
+        choices=SOURCE_CHOICES,
+        default=SOURCE_OPS,
+    )
+    import_tipo = models.CharField(max_length=50, blank=True)
+    file_upload = models.ForeignKey(
+        FileUpload,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="audit_events",
+    )
+    detail_json = models.JSONField(default=dict, blank=True)
+
+    class Meta:
+        ordering = ["-loaded_at"]
+        verbose_name = "Evento de auditoría de importación"
+        verbose_name_plural = "Eventos de auditoría de importación"
+        indexes = [
+            models.Index(fields=["file_path_key", "loaded_at"]),
+            models.Index(fields=["success", "loaded_at"]),
+        ]
+
+    def __str__(self):
+        ok = "OK" if self.success else "FAIL"
+        return f"{self.loaded_at:%Y-%m-%d %H:%M} {ok} {self.file_path_key[:60]}"

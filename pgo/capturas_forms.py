@@ -10,6 +10,8 @@ from pgo.scorecard_catalog import UNE_CODES, UNE_LABELS
 
 UNE_CHOICES = [(c, UNE_LABELS.get(c, c)) for c in UNE_CODES if c != "INSURANCE"]
 
+LEGAL_GARANTIAS_UNE_CHOICES = [(c, UNE_LABELS.get(c, c)) for c in ("FACTORING", "LEASING")]
+
 PERCENT_CHOICES = [
     ("0", "0%"),
     ("25", "25%"),
@@ -19,6 +21,11 @@ PERCENT_CHOICES = [
 ]
 
 QUARTER_CHOICES = [("1", "Q1 (ene–mar)"), ("2", "Q2 (abr–jun)"), ("3", "Q3 (jul–sep)"), ("4", "Q4 (oct–dic)")]
+
+OPTIONAL_YES_NO_CHOICES = (("", "—"), ("yes", "Sí"), ("no", "No"))
+
+_SM_SELECT = {"class": "form-select form-select-sm"}
+_SM_INPUT = {"class": "form-control form-control-sm"}
 
 
 class PeriodFieldsMixin(forms.Form):
@@ -34,55 +41,43 @@ class PeriodFieldsMixin(forms.Form):
         label="Mes",
         widget=forms.NumberInput(attrs={"class": "form-control form-control-sm"}),
     )
-    change_note = forms.CharField(
-        required=False,
-        max_length=800,
-        label="Nota de cambio",
-        widget=forms.TextInput(attrs={"class": "form-control form-control-sm"}),
-    )
 
 
 class LegalGarantiasRegistroForm(PeriodFieldsMixin):
-    une = forms.ChoiceField(choices=UNE_CHOICES, label="UNE")
+    une = forms.ChoiceField(choices=LEGAL_GARANTIAS_UNE_CHOICES, label="UNE")
     operation_id = forms.CharField(
         max_length=20,
         label="ID operación",
         widget=forms.TextInput(attrs={"class": "form-control form-control-sm", "style": "text-transform:uppercase"}),
     )
-    client_name = forms.CharField(
-        max_length=200,
-        label="Nombre cliente",
-        widget=forms.TextInput(attrs={"class": "form-control form-control-sm"}),
-    )
     fecha_formalizacion = forms.DateField(
         label="Fecha formalización",
         widget=forms.DateInput(attrs={"type": "date", "class": "form-control form-control-sm"}),
-    )
-    hora_formalizacion = forms.TimeField(
-        required=False,
-        label="Hora formalización (opc.)",
-        widget=forms.TimeInput(attrs={"type": "time", "class": "form-control form-control-sm"}),
     )
     fecha_registro_garantia = forms.DateField(
         label="Fecha registro garantía",
         widget=forms.DateInput(attrs={"type": "date", "class": "form-control form-control-sm"}),
     )
-    hora_registro_garantia = forms.TimeField(
+    planner_ref = forms.CharField(
         required=False,
-        label="Hora registro (opc.)",
-        widget=forms.TimeInput(attrs={"type": "time", "class": "form-control form-control-sm"}),
+        max_length=80,
+        label="Opcional — sustituto: referencia planner / ID alterno",
+        help_text="No sustituye el ID operación. Solo ayuda si el caso también vive en WCG Créditos.",
+        widget=forms.TextInput(attrs={**_SM_INPUT, "style": "text-transform:uppercase"}),
     )
-    observaciones = forms.CharField(
+    registro_mismo_dia_firma = forms.ChoiceField(
         required=False,
-        max_length=800,
-        label="Observaciones",
-        widget=forms.Textarea(attrs={"class": "form-control form-control-sm", "rows": 3}),
+        choices=OPTIONAL_YES_NO_CHOICES,
+        label="Opcional — sustituto: ¿registro el mismo día de firma?",
+        help_text="Referencia PGO Legal; el dato primario siguen siendo las dos fechas.",
+        widget=forms.Select(attrs=_SM_SELECT),
     )
-    reviewed = forms.BooleanField(required=False, label="Revisado")
-    attachment = forms.FileField(
+    caso_en_planner_wcg = forms.ChoiceField(
         required=False,
-        label="Evidencia PDF/JPG",
-        widget=forms.ClearableFileInput(attrs={"class": "form-control form-control-sm", "accept": ".pdf,.jpg,.jpeg"}),
+        choices=OPTIONAL_YES_NO_CHOICES,
+        label="Opcional — sustituto: ¿caso registrado en planner WCG Créditos?",
+        help_text="Para la regla de 3 días hábiles solo cuentan casos en planner; campo opcional.",
+        widget=forms.Select(attrs=_SM_SELECT),
     )
 
     def clean_operation_id(self):
@@ -92,47 +87,25 @@ class LegalGarantiasRegistroForm(PeriodFieldsMixin):
             raise ValidationError(err)
         return raw.strip().upper()
 
-    def clean_attachment(self):
-        f = self.cleaned_data.get("attachment")
-        if not f:
-            return f
-        name = (f.name or "").lower()
-        if not (name.endswith(".pdf") or name.endswith(".jpg") or name.endswith(".jpeg")):
-            raise ValidationError("Solo PDF o JPG.")
-        if f.size > 15 * 1024 * 1024:
-            raise ValidationError("Archivo máximo 15 MB.")
-        return f
+    def clean_planner_ref(self):
+        raw = (self.cleaned_data.get("planner_ref") or "").strip()
+        return raw.upper() if raw else ""
 
     def to_payload(self) -> dict:
         cd = self.cleaned_data
-        return {
+        payload = {
             "une": cd["une"],
             "operation_id": cd["operation_id"],
-            "client_name": cd["client_name"],
             "fecha_formalizacion": cd["fecha_formalizacion"].isoformat(),
-            "hora_formalizacion": cd["hora_formalizacion"].isoformat() if cd.get("hora_formalizacion") else None,
             "fecha_registro_garantia": cd["fecha_registro_garantia"].isoformat(),
-            "hora_registro_garantia": cd["hora_registro_garantia"].isoformat()
-            if cd.get("hora_registro_garantia")
-            else None,
-            "observaciones": cd.get("observaciones") or "",
-            "reviewed": bool(cd.get("reviewed")),
         }
-
-
-class CreditorLineForm(forms.Form):
-    creditor_name = forms.CharField(max_length=200, label="Acreedor / línea")
-    due_date = forms.DateField(label="Vencimiento", widget=forms.DateInput(attrs={"type": "date"}))
-    formalized = forms.ChoiceField(
-        choices=(("yes", "Sí"), ("no", "No")),
-        label="¿Formalizado?",
-    )
-    date_done = forms.DateField(
-        required=False,
-        label="Fecha hecho",
-        widget=forms.DateInput(attrs={"type": "date"}),
-    )
-    notes = forms.CharField(required=False, max_length=500, label="Notas", widget=forms.Textarea(attrs={"rows": 2}))
+        if cd.get("planner_ref"):
+            payload["planner_ref"] = cd["planner_ref"]
+        for key in ("registro_mismo_dia_firma", "caso_en_planner_wcg"):
+            val = cd.get(key)
+            if val:
+                payload[key] = val
+        return payload
 
 
 class LegalContratosAcreedoresForm(PeriodFieldsMixin):
@@ -148,29 +121,31 @@ class LegalContratosAcreedoresForm(PeriodFieldsMixin):
     )
     date_done = forms.DateField(
         required=False,
-        label="Fecha realizado",
+        label="Fecha formalización (realizado)",
         widget=forms.DateInput(attrs={"type": "date", "class": "form-control form-control-sm"}),
     )
-    notes = forms.CharField(
+    dias_anticipacion_calendario = forms.IntegerField(
         required=False,
-        max_length=500,
-        label="Notas",
-        widget=forms.Textarea(attrs={"class": "form-control form-control-sm", "rows": 2}),
+        min_value=0,
+        label="Opcional — referencia derivada: días anticipación (calendario)",
+        help_text="Ayuda opcional. Si la deja vacía y hay fechas, el sistema puede guardar un cálculo auxiliar.",
+        widget=forms.NumberInput(attrs=_SM_INPUT),
     )
 
     def to_payload(self) -> dict:
         cd = self.cleaned_data
-        return {
-            "lines": [
-                {
-                    "creditor_name": cd["creditor_name"],
-                    "due_date": cd["due_date"].isoformat(),
-                    "formalized": cd["formalized"],
-                    "date_done": cd["date_done"].isoformat() if cd.get("date_done") else None,
-                    "notes": cd.get("notes") or "",
-                }
-            ]
+        line = {
+            "creditor_name": cd["creditor_name"],
+            "due_date": cd["due_date"].isoformat(),
+            "formalized": cd["formalized"],
+            "date_done": cd["date_done"].isoformat() if cd.get("date_done") else None,
         }
+        dias_manual = cd.get("dias_anticipacion_calendario")
+        if dias_manual is not None:
+            line["dias_anticipacion_calendario"] = dias_manual
+        elif cd.get("date_done") and cd.get("due_date"):
+            line["dias_anticipacion_calendario_calculado"] = (cd["due_date"] - cd["date_done"]).days
+        return {"lines": [line]}
 
 
 class OpCronogramaProyectosForm(PeriodFieldsMixin):
@@ -219,12 +194,6 @@ class TiBackupNasForm(PeriodFieldsMixin):
         label="Backup NAS realizado",
         widget=forms.Select(attrs={"class": "form-select form-select-sm"}),
     )
-    notes = forms.CharField(
-        required=False,
-        max_length=500,
-        label="Notas",
-        widget=forms.Textarea(attrs={"class": "form-control form-control-sm", "rows": 2}),
-    )
 
     def to_payload(self) -> dict:
         cd = self.cleaned_data
@@ -232,12 +201,11 @@ class TiBackupNasForm(PeriodFieldsMixin):
             "quarter": cd["quarter"],
             "areas_implemented": cd["areas_implemented"],
             "backup_nas_done": cd["backup_nas_done"],
-            "notes": cd.get("notes") or "",
         }
 
 
 class OpReportesPgcPgo7Form(PeriodFieldsMixin):
-    """Campos dinámicos completion_* y notes_* por reporte."""
+    """Campos dinámicos completion_* por reporte (día 7 PGC/PGO)."""
 
     def __init__(self, suggested: dict[str, str | None], initial_rows: dict | None = None, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -250,20 +218,14 @@ class OpReportesPgcPgo7Form(PeriodFieldsMixin):
                 label=f"Fecha cumplimiento — {label}",
                 widget=forms.DateInput(attrs={"type": "date", "class": "form-control form-control-sm"}),
             )
-            self.fields[f"notes_{key}"] = forms.CharField(
-                required=False,
-                max_length=300,
-                label="Notas",
-                widget=forms.TextInput(attrs={"class": "form-control form-control-sm"}),
-            )
             if initial_rows.get(key):
                 row = initial_rows[key]
                 if row.get("completion_date"):
                     self.fields[f"completion_{key}"].initial = row["completion_date"]
-                if row.get("notes"):
-                    self.fields[f"notes_{key}"].initial = row["notes"]
             elif sug:
-                self.fields[f"completion_{key}"].help_text = f"Sugerido import: {sug}"
+                self.fields[f"completion_{key}"].help_text = (
+                    f"Opcional — referencia derivada (import ArchivosPGO): {sug}"
+                )
 
     def to_payload(self, suggested: dict[str, str | None]) -> dict:
         reports = []
@@ -275,7 +237,6 @@ class OpReportesPgcPgo7Form(PeriodFieldsMixin):
                     "label": label,
                     "suggested_date": suggested.get(key),
                     "completion_date": comp.isoformat() if comp else None,
-                    "notes": self.cleaned_data.get(f"notes_{key}") or "",
                 }
             )
         return {"reports": reports}

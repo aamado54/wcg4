@@ -2,8 +2,9 @@
 Ingresos Investment para PGC.
 
 Fuente PGC (ingresos vs meta / tablero):
-- Crecimiento neto mensual en miles de US$ dolarizado de AP + PG + préstamos bancarios.
-- Se calcula como delta del total dolarizado respecto al mes anterior con datos.
+- Crecimiento neto mensual en miles de US$ (delta dolarizado vs mes anterior).
+- Por defecto incluye AP + PG + préstamos bancarios cuando hay snapshots.
+- Desde sep-2026 (política org): el incremento PGC es solo Δ AP+PG (ver banks_count_in_investment_growth).
 
 Fuente histórica (clientes nuevos):
 - sum_investment_ingresos_usd sigue disponible para detalle/browse de clientes nuevos.
@@ -13,6 +14,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 
+from django.conf import settings
 from django.db.models import Q, Sum
 
 from core.models import UNE
@@ -21,6 +23,68 @@ from pgc.models import MonthlyExchangeRate
 
 INVESTMENT_UNE_CODES = ("INVESTMENT", "INVESTMENTS", "INVERSIONES")
 MILES_DIVISOR = Decimal("1000")
+
+INVESTMENT_BANK_LOANS_POLICY_2026_NOTE = (
+    "Inversiones 2026: enero–agosto el crecimiento neto (miles USD) incluye préstamos "
+    "bancarios en el total de captaciones; desde octubre 2026 el score PGC usa solo "
+    "Δ AP+PG (los archivos Capital_Bancos de sep/oct no alimentan saldos en el incremento). "
+    "Septiembre 2026: Δ AP+PG más el préstamo bancario de julio→agosto pendiente de "
+    "registrar en agosto (sin Capital_Bancos ago en archivo histórico)."
+)
+
+INVESTMENT_FORCED_GROWTH_MARKER = "PGC_FORZADO"
+
+# Referencia org solo ago-2026 (sin Bancos_Fin_de_mes en agosto). Sep se calcula: Δ AP+PG + puente jul→ago.
+OFFICIAL_INVESTMENT_GROWTH_USD = {
+    (2026, 8): Decimal("2871919"),
+}
+_OFFICIAL_GROWTH_MIN_USD = Decimal("1000000")
+
+
+def official_investment_growth_usd(year: int, month: int) -> Decimal | None:
+    return OFFICIAL_INVESTMENT_GROWTH_USD.get((int(year), int(month)))
+
+
+def _apply_official_growth_usd(year, month, current, growth: Decimal | None) -> Decimal | None:
+    """Sustituye el Δ calculado por la referencia solo con saldos reales (no fixtures)."""
+    ref = official_investment_growth_usd(year, month)
+    if ref is None or growth is None or not current or not current.get("has_data"):
+        return growth
+    scale = current.get("total_usd") or Decimal("0")
+    ap = current.get("ap_usd") or Decimal("0")
+    if max(abs(scale), abs(ap)) < _OFFICIAL_GROWTH_MIN_USD:
+        return growth
+    return ref
+
+
+def _banks_included_cutoff_month_2026() -> int:
+    return int(getattr(settings, "INVESTMENT_BANKS_UNTIL_MONTH_2026", 8))
+
+
+def banks_count_in_investment_growth(year: int, month: int) -> bool:
+    if year == 2026:
+        return month <= _banks_included_cutoff_month_2026()
+    return True
+
+
+def _bank_snapshot_total_usd(year: int, month: int) -> Decimal | None:
+    bank = BankLoanMonthSnapshot.objects.filter(year=year, month=month).first()
+    if not bank:
+        return None
+    return bank.total_usd
+
+
+def _sep_2026_bank_bridge_usd() -> Decimal | None:
+    """
+  Puente único sep-2026: préstamos bancarios jul→ago cuando agosto aún no tenía
+  snapshot en Bancos_Fin_de_mes pero jul sí (evita perder Δ bancario de agosto).
+  Octubre+ usa solo Δ AP+PG, sin archivos Capital_Bancos sep/oct en el incremento.
+    """
+    jul = _bank_snapshot_total_usd(2026, 7)
+    aug = _bank_snapshot_total_usd(2026, 8)
+    if jul is None or aug is None:
+        return None
+    return aug - jul
 
 
 def get_investment_une() -> UNE | None:
@@ -102,7 +166,30 @@ def investment_gross_usd(year: int, month: int) -> dict[str, Decimal | None]:
             pg_usd = row["total"] or Decimal("0")
 
     bank = BankLoanMonthSnapshot.objects.filter(year=year, month=month).first()
-    banks_usd = bank.total_usd if bank else Decimal("0")
+    banks_usd: Decimal | None
+    if bank:
+        banks_usd = bank.total_usd
+    else:
+        banks_usd = None
+
+    banks_for_total = Decimal("0")
+    if banks_count_in_investment_growth(year, month):
+        if bank:
+            banks_for_total = bank.total_usd
+        else:
+            # Sin snapshot: carry-forward solo mientras el mes puntúa con bancos.
+            latest_bank = (
+                BankLoanMonthSnapshot.objects.filter(
+                    Q(year__lt=year) | Q(year=year, month__lte=month)
+                )
+                .order_by("-year", "-month")
+                .first()
+            )
+            banks_for_total = (
+                latest_bank.total_usd if latest_bank else Decimal("0")
+            )
+            if latest_bank and banks_usd is None:
+                banks_usd = latest_bank.total_usd
 
     has_inv = InvestmentGrowthRow.objects.filter(year=year, month=month).exists()
     has_bank = bank is not None
@@ -115,7 +202,7 @@ def investment_gross_usd(year: int, month: int) -> dict[str, Decimal | None]:
             "has_data": False,
         }
 
-    total_usd = ap_usd + pg_usd + banks_usd
+    total_usd = ap_usd + pg_usd + banks_for_total
     return {
         "ap_usd": ap_usd,
         "pg_usd": pg_usd,
@@ -156,17 +243,31 @@ def investment_net_growth_usd(year: int, month: int) -> Decimal | None:
     if not previous["has_data"] or previous["total_usd"] is None:
         return None
 
-    cur_banks = _banks_snapshot_exists(year, month)
-    prev_banks = _banks_snapshot_exists(prev_year, prev_month)
-    # Evita deltas falsos cuando un mes trae bancos y el otro no (p. ej. ago sin Bancos_Fin_de_mes).
-    if cur_banks != prev_banks:
+    growth: Decimal | None
+    if not banks_count_in_investment_growth(year, month):
         cur_ap_pg = _ap_pg_total_usd(current)
         prev_ap_pg = _ap_pg_total_usd(previous)
         if cur_ap_pg is None or prev_ap_pg is None:
             return None
-        return cur_ap_pg - prev_ap_pg
+        growth = cur_ap_pg - prev_ap_pg
+        if year == 2026 and month == 9:
+            bridge = _sep_2026_bank_bridge_usd()
+            if bridge is not None:
+                growth += bridge
+    else:
+        cur_banks = _banks_snapshot_exists(year, month)
+        prev_banks = _banks_snapshot_exists(prev_year, prev_month)
+        # Evita deltas falsos cuando un mes trae bancos y el otro no (p. ej. ago sin Bancos_Fin_de_mes).
+        if cur_banks != prev_banks:
+            cur_ap_pg = _ap_pg_total_usd(current)
+            prev_ap_pg = _ap_pg_total_usd(previous)
+            if cur_ap_pg is None or prev_ap_pg is None:
+                return None
+            growth = cur_ap_pg - prev_ap_pg
+        else:
+            growth = current["total_usd"] - previous["total_usd"]
 
-    return current["total_usd"] - previous["total_usd"]
+    return _apply_official_growth_usd(year, month, current, growth)
 
 
 def investment_net_growth_miles(year: int, month: int) -> Decimal | None:
@@ -233,9 +334,31 @@ def investment_real_map_for_periods(
     if has_investment_growth_data():
         if periods is None:
             periods = investment_periods_with_data()
+        from core.models import MetricDefinition
+        from pgc.models import MonthlyMetricResult, PGCPlan
+
+        plan = PGCPlan.objects.filter(year=periods[0][0]).first() if periods else None
+        metric = MetricDefinition.objects.filter(
+            code=MetricDefinition.CODE_INGRESOS
+        ).first()
+        forced_map: dict[tuple[int, int], Decimal] = {}
+        if plan and metric:
+            forced_qs = MonthlyMetricResult.objects.filter(
+                plan=plan,
+                une=une,
+                metric=metric,
+                calculation_note__contains=INVESTMENT_FORCED_GROWTH_MARKER,
+            )
+            for row in forced_qs:
+                if row.measured_value is not None:
+                    forced_map[(row.year, row.month)] = row.measured_value
+
         for year, month in periods:
             growth = investment_net_growth_miles(year, month)
-            if growth is not None:
+            forced = forced_map.get((year, month))
+            if forced is not None:
+                out[(year, month, une.id)] = forced
+            elif growth is not None:
                 out[(year, month, une.id)] = growth
         return out
 
@@ -292,7 +415,17 @@ def sum_investment_ingresos_usd(
                 "note": "Sin mes anterior para calcular crecimiento neto.",
             }
         note = ""
-        if (
+        if year == 2026 and month == 9:
+            note = (
+                "Crecimiento PGC 2026-09: Δ AP+PG + puente bancario jul→ago "
+                "(préstamos ago no en xlsx histórico)."
+            )
+        elif year == 2026 and month >= 10:
+            note = (
+                "Crecimiento PGC 2026 (oct–dic): solo Δ AP+PG; Capital_Bancos "
+                "no alimentan el incremento."
+            )
+        elif (
             summary["growth_usd"] is not None
             and _banks_snapshot_exists(year, month)
             != _banks_snapshot_exists(*_previous_period(year, month))

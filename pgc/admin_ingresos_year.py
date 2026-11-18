@@ -26,7 +26,12 @@ from pgc.investment_ingresos import (
     get_investment_une,
     investment_gross_usd,
     investment_net_growth_usd,
+    official_investment_growth_usd,
 )
+
+# GTQ comisiones ← miles USD × 1000 × TC (inverso de gtq_comisiones_to_usd_miles)
+def _usd_miles_to_gtq_comisiones(usd_miles: Decimal, fx: Decimal) -> Decimal:
+    return usd_miles * MILES_DIVISOR * fx
 from pgc.models import (
     AdminManualEditLog,
     MonthlyExchangeRate,
@@ -123,16 +128,24 @@ def _build_investment_audit(
     if cap_usd is not None and prev_cap_usd is not None:
         delta_from_levels = cap_usd - prev_cap_usd
 
-    growth_matches_levels = (
-        growth_usd is not None
-        and delta_from_levels is not None
-        and growth_usd == delta_from_levels
-    )
+    cent = Decimal("0.01")
+    official = official_investment_growth_usd(year, month)
+    if (
+        official is not None
+        and growth_usd is not None
+        and growth_usd.quantize(cent) == official.quantize(cent)
+    ):
+        growth_matches_levels = True
+    else:
+        growth_matches_levels = (
+            growth_usd is not None
+            and delta_from_levels is not None
+            and growth_usd.quantize(cent) == delta_from_levels.quantize(cent)
+        )
     stored_matches_growth = False
-    if growth_miles is not None and stored_miles is not None:
+    if growth_usd is not None and stored_growth_usd is not None:
         stored_matches_growth = (
-            growth_miles.quantize(Decimal("0.001"))
-            == stored_miles.quantize(Decimal("0.001"))
+            growth_usd.quantize(cent) == stored_growth_usd.quantize(cent)
         )
 
     inv_miles = _usd_full_to_miles(inv_usd)
@@ -224,22 +237,31 @@ def get_ingresos_year_context(year: int, capture_currency: str = "GTQ") -> dict:
             measured_usd = getattr(obj, "measured_value", None) if obj else None
             source_curr = (getattr(obj, "source_currency", "") or "") if obj else ""
             source_value = getattr(obj, "source_value", None) if obj else None
+            is_investment = (
+                investment_une is not None and une.id == investment_une.id
+            )
 
             if currency == MonthlyMetricResult.CURRENCY_GTQ:
                 if source_curr == MonthlyMetricResult.CURRENCY_GTQ:
                     input_value = source_value
+                elif (
+                    not is_investment
+                    and measured_usd is not None
+                    and fx_value
+                    and source_curr != MonthlyMetricResult.CURRENCY_GTQ
+                ):
+                    # Legado / USD nativo: mostrar Q equivalente en matriz (no borra captura USD).
+                    input_value = _usd_miles_to_gtq_comisiones(measured_usd, fx_value)
                 else:
                     input_value = None
             else:
                 input_value = measured_usd
 
-            is_investment = (
-                investment_une is not None and une.id == investment_une.id
-            )
             cell = {
                 "une": une,
                 "obj": obj,
                 "is_investment": is_investment,
+                "input_raw": input_value,
                 "value": (
                     format_currency_display(input_value)
                     if input_value is not None
@@ -266,8 +288,11 @@ def get_ingresos_year_context(year: int, capture_currency: str = "GTQ") -> dict:
         month_rows.append({
             "month": month,
             "label": label,
+            "fx_input": fx_value,
             "fx_value": (
-                format_currency_display(fx_value) if fx_value is not None else None
+                format_currency_display(fx_value, max_decimal_places=5)
+                if fx_value is not None
+                else None
             ),
             "has_fx": has_fx,
             "cells": cells,

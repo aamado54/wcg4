@@ -73,8 +73,13 @@ DASHBOARD_ANUAL_UNE_ORDER = (
 
 
 from pgc.income_conversion import evaluate_result_achievement
-from pgc.objetivos_scoring import INSURANCE_REQS_GRACE_NOTE
+from pgc.objetivos_scoring import (
+    INSURANCE_REQS_GRACE_NOTE,
+    resolve_respuesta_reqs_compliance,
+    respuesta_reqs_points_awarded,
+)
 from pgc.investment_ingresos import (
+    INVESTMENT_BANK_LOANS_POLICY_2026_NOTE,
     build_fx_map,
     convert_row_amount_to_usd,
     get_investment_une,
@@ -1533,54 +1538,18 @@ def _get_respuesta_reqs_rows(periods=None):
         key = (m.plan_id, m.une_id, m.year, m.month)
         manual_map[key] = m
 
-    # Preferir puntos del score modo1 cuando exista (tablero).
-    mode_score_map = {}
-    if metric:
-        for s in (
-            MonthlyMetricScore.objects.select_related("une", "plan")
-            .filter(metric=metric, mode="modo1")
-        ):
-            if periods:
-                # filtrado abajo por key membership
-                pass
-            key = (s.plan_id, s.une_id, s.year, s.month)
-            mode_score_map[key] = s
-        if periods:
-            period_set = {(p[0], p[1]) for p in periods}
-            mode_score_map = {
-                k: v
-                for k, v in mode_score_map.items()
-                if (k[2], k[3]) in period_set
-            }
-
     rows = []
     for t in targets.order_by("year", "month", "une__sort_order"):
         key = (t.plan_id, t.une_id, t.year, t.month)
         mr = result_map.get(key)
         sc = score_map.get(key)
         mrc = manual_map.get(key)
-        ms = mode_score_map.get(key)
-        # Manual / resultado sincronizado antes que score desactualizado (p. ej. tras guardar reqs).
-        if mrc is not None:
-            is_achieved = bool(mrc.is_compliant)
-            points = (
-                Decimal(str(t.points_if_achieved or 0))
-                if mrc.is_compliant
-                else Decimal("0")
-            )
-            measured = Decimal("1") if mrc.is_compliant else Decimal("0")
-        elif mr is not None:
-            is_achieved = bool(mr.is_achieved)
-            points = mr.points_awarded if mr.points_awarded is not None else Decimal("0")
-            measured = mr.measured_value
-        elif ms is not None:
-            is_achieved = bool(ms.is_achieved)
-            points = ms.points_awarded if ms.points_awarded is not None else Decimal("0")
-            measured = ms.measured_value
-        else:
-            is_achieved = False
-            points = Decimal("0")
-            measured = None
+        is_compliant, _ = resolve_respuesta_reqs_compliance(t.une.code, mrc)
+        is_achieved = is_compliant
+        points = respuesta_reqs_points_awarded(
+            t.une.code, t.year, t.month, t.points_if_achieved, is_compliant
+        )
+        measured = Decimal("1") if is_compliant else Decimal("0")
         rows.append({
             "target": t,
             "result": mr,
@@ -1715,7 +1684,13 @@ def respuesta_reqs_export_md(request):
 
 
 INGRESOS_DECIMAL_OPTIONS = (1, 2, 3)
+# 1 decimal en vista anual trunca miles con HALF_UP y parece .X0 cuando el dato tiene más precisión.
 INGRESOS_DEFAULT_DECIMALS = 1
+# Inversiones: mínimo de decimales en fila Capital / Ejecutado (no afecta otras UNE).
+INGRESOS_INVESTMENT_MIN_DECIMALS = 3
+INVESTMENT_UNE_CODES_ANUAL = frozenset(
+    {"INVESTMENT", "INVESTMENTS", "INVERSIONES"}
+)
 INGRESOS_CURRENCY_USD = "usd"
 INGRESOS_CURRENCY_GTQ = "gtq"
 INGRESOS_CURRENCY_OPTIONS = (INGRESOS_CURRENCY_USD, INGRESOS_CURRENCY_GTQ)
@@ -1798,7 +1773,7 @@ def _get_ingresos_report_settings(request):
     }
 
 
-def _build_ingresos_annual_tables(year):
+def _build_ingresos_annual_tables(year, *, decimals: int = INGRESOS_DEFAULT_DECIMALS):
     """
     Formato anual horizontal por UNE (estilo PRESUPUESTO de referencia):
     Clientes nuevos / Comisiones|Capital / % + Ejecutado + Cumple.
@@ -1905,10 +1880,15 @@ def _build_ingresos_annual_tables(year):
                 return None
             return sum(present, Decimal("0"))
 
+        income_decimals = decimals
+        if une.code in INVESTMENT_UNE_CODES_ANUAL:
+            income_decimals = max(decimals, INGRESOS_INVESTMENT_MIN_DECIMALS)
+
         tables.append({
             "une": une,
             "title": une.name_es,
             "income_label": INGRESOS_INCOME_LABEL.get(une.code, "Comisiones"),
+            "income_decimals": income_decimals,
             "month_labels": list(MONTH_ABBR_ES),
             "clients_meta": clients_meta,
             "clients_total": _sum_or_none(clients_meta),
@@ -1924,7 +1904,7 @@ def _build_ingresos_annual_tables(year):
     return tables
 
 
-def _get_ingresos_rows(periods=None):
+def _get_ingresos_rows(periods=None, *, display_decimals: int = INGRESOS_DEFAULT_DECIMALS):
 
     investment_une = get_investment_une()
     fx_map = build_fx_map()
@@ -2000,12 +1980,27 @@ def _get_ingresos_rows(periods=None):
             cumple = bool(result.is_achieved) if result else False
 
         if target.une.code in {"INVESTMENT", "INVESTMENTS", "INVERSIONES"}:
-            metodo = "Crecimiento neto mensual (AP + PG + bancos, USD)"
-            observacion = (
-                "En Investment, el ingreso del score mensual es el incremento "
-                "dolarizado del total de acciones preferentes, pagarés y préstamos "
-                "bancarios respecto al mes anterior."
-            )
+            if target.year == 2026 and target.month >= 10:
+                metodo = "Crecimiento neto mensual (solo AP + PG, miles USD)"
+                observacion = INVESTMENT_BANK_LOANS_POLICY_2026_NOTE
+            elif target.year == 2026 and target.month == 9:
+                metodo = (
+                    "Crecimiento neto mensual (AP + PG + puente bancario jul→ago, miles USD)"
+                )
+                observacion = INVESTMENT_BANK_LOANS_POLICY_2026_NOTE
+            elif target.year == 2026:
+                metodo = "Crecimiento neto mensual (AP + PG + bancos, miles USD)"
+                observacion = (
+                    "Inversiones 2026 (ene–ago): incremento del total dolarizado "
+                    "AP + PG + préstamos bancarios respecto al mes anterior."
+                )
+            else:
+                metodo = "Crecimiento neto mensual (AP + PG + bancos, USD)"
+                observacion = (
+                    "En Investment, el ingreso del score mensual es el incremento "
+                    "dolarizado del total de acciones preferentes, pagarés y préstamos "
+                    "bancarios respecto al mes anterior."
+                )
             observacion_base = observacion
             tc_label = ""
         else:
@@ -2024,7 +2019,7 @@ def _get_ingresos_rows(periods=None):
 
                     try:
                         fx_part = note.split("/")[1].split("=")[0].strip()
-                        fx_value = Decimal(fx_part).quantize(Decimal("0.001"), rounding=ROUND_DOWN)
+                        fx_value = Decimal(fx_part).quantize(Decimal("0.00001"), rounding=ROUND_DOWN)
                         tc_text = f"TC {fx_value}"
                     except Exception:
                         tc_text = ""
@@ -2042,7 +2037,7 @@ def _get_ingresos_rows(periods=None):
         # Presentación: TC desde captura manual GTQ→USD si no vino en calculation_note.
         if not tc_label and result and getattr(result, "exchange_rate_used", None):
             try:
-                tc_label = f"TC {Decimal(result.exchange_rate_used).quantize(Decimal('0.001'), rounding=ROUND_DOWN)}"
+                tc_label = f"TC {Decimal(result.exchange_rate_used).quantize(Decimal('0.00001'), rounding=ROUND_DOWN)}"
             except Exception:
                 tc_label = f"TC {result.exchange_rate_used}"
 
@@ -2084,6 +2079,11 @@ def _get_ingresos_rows(periods=None):
             except Exception:
                 meta_gtq = None
 
+        row_decimals = display_decimals
+        is_investment = target.une.code in INVESTMENT_UNE_CODES_ANUAL
+        if is_investment:
+            row_decimals = max(display_decimals, INGRESOS_INVESTMENT_MIN_DECIMALS)
+
         rows.append({
             "target": target,
             "result": result,
@@ -2098,7 +2098,9 @@ def _get_ingresos_rows(periods=None):
             "tc_label": tc_label,
             "source_gtq": source_gtq,
             "meta_gtq": meta_gtq,
-            "is_insurance": target.une.code == "INSURANCE",  # Flag para el template
+            "is_insurance": target.une.code == "INSURANCE",
+            "is_investment": is_investment,
+            "display_decimals": row_decimals,
         })
 
     return metric, rows
@@ -2182,12 +2184,16 @@ def ingresos_report(request):
         report_filter["month_count"],
     )
 
-    metric, rows = _get_ingresos_rows(periods=periods)
+    metric, rows = _get_ingresos_rows(
+        periods=periods, display_decimals=report_settings["decimals"]
+    )
     rows = sort_ingresos_rows(rows, report_sort)
 
     annual_year = report_filter["start_year"]
     annual_tables = (
-        _build_ingresos_annual_tables(annual_year)
+        _build_ingresos_annual_tables(
+            annual_year, decimals=report_settings["decimals"]
+        )
         if report_settings["view"] == INGRESOS_VIEW_ANUAL
         else []
     )
@@ -2206,6 +2212,7 @@ def ingresos_report(request):
         "view_lista": INGRESOS_VIEW_LIST,
         "view_anual": INGRESOS_VIEW_ANUAL,
         "insurance_reqs_grace_note": INSURANCE_REQS_GRACE_NOTE,
+        "investment_bank_loans_policy_2026_note": INVESTMENT_BANK_LOANS_POLICY_2026_NOTE,
     }
 
     return render(request, "pgc/ingresos.html", context)

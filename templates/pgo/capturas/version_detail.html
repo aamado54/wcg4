@@ -10,10 +10,7 @@
   </p>
 </div>
 {% if version.change_note %}
-<p class="small"><strong>Nota:</strong> {{ version.change_note }}</p>
-{% endif %}
-{% if version.attachment %}
-<p class="small"><a href="{{ version.attachment.url }}" target="_blank" rel="noopener">Descargar evidencia</a></p>
+<p class="small"><strong>Nota (versión anterior):</strong> {{ version.change_note }}</p>
 {% endif %}
 <pre class="small bg-light p-3 rounded border">{{ version.payload }}</pre>
 <a href="{% url 'pgo:capturas_history' ctype.slug %}" class="btn btn-sm btn-outline-secondary">Volver al historial</a>

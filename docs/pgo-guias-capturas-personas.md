@@ -4,6 +4,8 @@
 **Capítulo:** **PGO → Capturas manuales** → [https\://wcg.lol/pgo/capturas/](https://wcg.lol/pgo/capturas/)  
 (También: tablero PGO → botón **Capturas manuales**.)
 
+**Principios de datos (primario vs opcional):** ver [`pgo-capturas-principios-datos.md`](pgo-capturas-principios-datos.md).
+
 ---
 
 ## Contactos (referencia)
@@ -60,22 +62,20 @@ Registrar **garantías mobiliarias** y **contratos con bancos acreedores** para 
 
 | Campo | Cómo llenarlo |
 | :---- | :---- |
-| UNE | Factoraje, Leasing o Inversiones. |
-| N.º operación | 5–20 caracteres: letras, números, `-`, `_` (mayúsculas). |
-| Cliente | Texto libre. |
-| Fecha formalización | Día (hora opcional). |
-| Fecha registro garantía | Día (hora opcional). |
-| Revisión | Marcar que el registro del documento fue revisado. |
-| Observaciones | Máx. 800 caracteres. |
-| Adjunto | PDF o JPG (recomendado). |
+| UNE | Factoraje o Leasing (según tabla PGO Legal). |
+| ID operación | 5–20 caracteres: letras, números, `-`, `_` (mayúsculas). **Dato primario.** |
+| Fecha formalización | Día de firma del contrato. |
+| Fecha registro garantía | Día de registro de la garantía mobiliaria. |
+| *Opcional — sustituto* | Referencia planner / ID alterno; ¿mismo día de firma?; ¿caso en planner WCG Créditos? |
 
-**Referencia PGO:** registro el mismo día de la firma; formalización/registro ≤ **3 días hábiles** (casos en planner WCG Créditos cuando aplique).
+**Referencia PGO:** registro el mismo día de la firma; formalización/registro ≤ **3 días hábiles** (casos en planner WCG Créditos cuando aplique). Los campos opcionales **no** reemplazan las fechas.
 
 #### 2\. Contratos con acreedores (−15 días)
 
 **URL:** `/pgo/capturas/legal_contratos_acreedores_15d/`
 
-- Acreedor / línea, vencimiento, ¿formalizado?, fecha de formalización, notas.  
+- Acreedor / línea, vencimiento, ¿formalizado?, fecha de formalización (realizado). **Datos primarios.**  
+- *Opcional — referencia derivada:* días de anticipación en calendario (ayuda; no obligatorio).  
 - Un guardado por línea relevante (calendario acordado con Sergio).
 
 #### 3\. Títulos y contratos inversiones
@@ -125,7 +125,7 @@ Conceptos con badge **Pendiente** (formulario **no** publicado aún):
 ### Qué hacer ahora
 
 1. Mantener archivos fuente (expedientes, fechas, calendario valuación).  
-2. Acordar con Armando campos mínimos por concepto (ID caso, fechas hábiles, UNE, cumple, evidencia).  
+2. Acordar con Armando campos mínimos por concepto (ID caso, fechas hábiles, UNE, cumple).  
 3. Cuando se active cada formulario: **Capturas manuales → Finanzas** → cuadros equivalentes a tus hojas.
 
 ### Rutina (cuando estén activos)
@@ -166,8 +166,9 @@ Declarar **cumplimiento del cronograma de proyectos estratégicos** (CEO / Share
 
 **URL:** `/pgo/capturas/op_reportes_pgc_pgo_7/`
 
-- Tabla de reportes esperados (p. ej. *Reporte Cierre WC*, *VoBo Comisiones Investments*).  
-- El sistema **sugiere fechas** según último **ArchivosPGO** importado; **tú editas** fecha de cierre y notas.  
+- Tabla de **seis** reportes esperados (p. ej. *Reporte Cierre WC*, *VoBo Comisiones Investments*).  
+- **Fecha de cumplimiento** por reporte = dato primario.  
+- El sistema muestra **opcional — referencia derivada** según último **ArchivosPGO** importado; **tú editas** la fecha real de cumplimiento.  
 - Debe cuadrar con lo que Sergio refleje en el **CSV** y con lo entregado en carpetas.
 
 ### Rutina

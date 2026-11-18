@@ -35,8 +35,8 @@ CAPTURA_TYPES: tuple[CapturaType, ...] = (
         area="legal",
         title="Registro Garantías Mobiliarias",
         description=(
-            "Captura por operación: UNE, ID operación, cliente, fechas de formalización "
-            "y registro, observaciones y evidencia PDF/JPG."
+            "Captura por operación (Factoraje/Leasing): UNE, ID operación, "
+            "fechas primarias; campos opcionales planner / mismo día."
         ),
     ),
     CapturaType(
@@ -44,7 +44,7 @@ CAPTURA_TYPES: tuple[CapturaType, ...] = (
         concept_ids=("legal_contratos_acreedores_15d",),
         area="legal",
         title="Contratos con acreedores (−15 días)",
-        description="Líneas de crédito: acreedor, vencimiento, formalización y notas.",
+        description="Líneas de crédito: acreedor, vencimiento, formalización; días anticipación opcional.",
     ),
     CapturaType(
         slug="legal_titulos_inversion",
@@ -102,7 +102,7 @@ CAPTURA_TYPES: tuple[CapturaType, ...] = (
         concept_ids=("op_reportes_pgc_pgo_7",),
         area="operaciones",
         title="Reportes PGC/PGO día 7",
-        description="Tabla de reportes esperados, fechas sugeridas y cierre manual.",
+        description="Seis reportes del día 7: fecha primaria de cumplimiento; sugerencia opcional desde ArchivosPGO.",
     ),
     CapturaType(
         slug="op_pago_freelances_7",

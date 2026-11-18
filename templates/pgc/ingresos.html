@@ -178,6 +178,11 @@
     Montos oficiales en miles de US$ (política PGC). Use «Moneda» para ver quetzales de referencia
     (comisiones Objetivos) al validar contra la hoja del autor.
   </p>
+  {% if annual_year == 2026 %}
+  <div class="adm-units-note" role="note" style="margin:0 0 14px; padding:10px 12px; background:#fffbeb; border:1px solid #fcd34d; border-radius:8px; font-size:0.88rem;">
+    <strong>Inversiones (2026):</strong> {{ investment_bank_loans_policy_2026_note }}
+  </div>
+  {% endif %}
 
   <form method="get" class="filters" id="ingresos-filter-form">
       <div>
@@ -306,9 +311,9 @@
             <tr>
               <td class="concept">{{ table.income_label }}</td>
               {% for v in table.income_meta %}
-              <td>{% if v is not None %}{{ v|wcg_num:decimals }}{% endif %}</td>
+              <td>{% if v is not None %}{{ v|wcg_num:table.income_decimals }}{% endif %}</td>
               {% endfor %}
-              <td class="total-cell">{% if table.income_total is not None %}{{ table.income_total|wcg_num:decimals }}{% endif %}</td>
+              <td class="total-cell">{% if table.income_total is not None %}{{ table.income_total|wcg_num:table.income_decimals }}{% endif %}</td>
             </tr>
             <tr>
               <td class="concept">%</td>
@@ -320,9 +325,9 @@
             <tr class="row-ejecutado">
               <td class="concept">Ejecutado (YTD)</td>
               {% for v in table.ejecutado %}
-              <td>{% if v is not None %}{{ v|wcg_num:decimals }}{% endif %}</td>
+              <td>{% if v is not None %}{{ v|wcg_num:table.income_decimals }}{% endif %}</td>
               {% endfor %}
-              <td class="total-cell">{% if table.ejecutado_total is not None %}{{ table.ejecutado_total|wcg_num:decimals }}{% endif %}</td>
+              <td class="total-cell">{% if table.ejecutado_total is not None %}{{ table.ejecutado_total|wcg_num:table.income_decimals }}{% endif %}</td>
             </tr>
             <tr class="row-cumple">
               <td class="concept">Cumple</td>
@@ -388,21 +393,21 @@
                         {% if row.source_gtq is not None %}Q{{ row.source_gtq|wcg_num:decimals }}{% else %}-{% endif %}
                     </td>
                     <td class="usd-official muted" style="font-size:0.82rem;">
-                        {% if row.meta is not None %}${{ row.meta|wcg_num:decimals }}{% else %}-{% endif %}
+                        {% if row.meta is not None %}${{ row.meta|wcg_num:row.display_decimals }}{% else %}-{% endif %}
                         /
-                        {% if row.real is not None %}{{ row.real|wcg_num:decimals }}{% else %}-{% endif %}
+                        {% if row.real is not None %}{{ row.real|wcg_num:row.display_decimals }}{% else %}-{% endif %}
                     </td>
                     {% else %}
                     <td class="usd-official">
                         {% if row.meta is not None %}
-                            ${{ row.meta|wcg_num:decimals }}
+                            ${{ row.meta|wcg_num:row.display_decimals }}
                         {% else %}
                             -
                         {% endif %}
                     </td>
                     <td class="usd-official">
                         {% if row.real is not None %}
-                            ${{ row.real|wcg_num:decimals }}
+                            ${{ row.real|wcg_num:row.display_decimals }}
                             {% if report_settings.show_detail_cols and row.source_gtq is not None %}
                             <span class="gtq-ref" title="Comisiones GTQ (Objetivos)">
                               ref Q{{ row.source_gtq|wcg_num:decimals }}
@@ -423,7 +428,7 @@
                     {% endif %}
                     <td class="usd-official">
                         {% if row.diferencia is not None %}
-                            ${{ row.diferencia|wcg_num:decimals }}
+                            ${{ row.diferencia|wcg_num:row.display_decimals }}
                         {% else %}
                             -
                         {% endif %}

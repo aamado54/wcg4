@@ -24,7 +24,7 @@
 <div class="alert alert-warning small">{{ business_hours_message }} No podrá guardar hasta estar en horario.</div>
 {% endif %}
 
-<form method="post" enctype="multipart/form-data" class="card border-0 shadow-sm">
+<form method="post" class="card border-0 shadow-sm">
   <div class="card-body">
     {% csrf_token %}
     {% if form.non_field_errors %}<div class="alert alert-danger small">{{ form.non_field_errors }}</div>{% endif %}
@@ -37,10 +37,6 @@
       <div class="col-md-2">
         <label class="form-label small fw-semibold">{{ form.period_year.label }}</label>
         {{ form.period_year }}
-      </div>
-      <div class="col-md-8">
-        <label class="form-label small fw-semibold">{{ form.change_note.label }}</label>
-        {{ form.change_note }}
       </div>
     </div>
 

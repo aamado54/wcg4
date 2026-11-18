@@ -103,8 +103,7 @@ def _usd_from_row(
     exchange_rate: Decimal | None,
     amount_usd: Decimal | None,
 ) -> Decimal:
-    if amount_usd and amount_usd != 0:
-        return amount_usd
+    """USD sin redondear: Quetzalizado/TC primero; Dolarizado del CSV solo si no hay TC."""
     cur = (currency or "").strip().upper()
     if cur == "USD":
         return amount_original
@@ -113,6 +112,8 @@ def _usd_from_row(
             return amount_gtq / exchange_rate
         if amount_original:
             return amount_original / exchange_rate
+    if amount_usd and amount_usd != 0:
+        return amount_usd
     return Decimal("0")
 
 

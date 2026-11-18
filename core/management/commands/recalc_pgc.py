@@ -10,6 +10,8 @@ from pgc.objetivos_scoring import (
     ingresos_points_objetivos,
     insurance_reqs_uses_grace_points,
     proportional_points,
+    resolve_respuesta_reqs_compliance,
+    respuesta_reqs_points_awarded,
 )
 from pgc.models import (
     PGCPlan,
@@ -267,6 +269,8 @@ class Command(BaseCommand):
                 target,
                 source_result,
                 une_code=une.code,
+                year=year,
+                month=month,
             )
             metric_score.points_awarded = pts
             metric_score.is_achieved = achieved
@@ -298,10 +302,8 @@ class Command(BaseCommand):
         self, plan, une, year, month, metric_score, source_result=None, target=None
     ):
         """
-        El cumplimiento manual es la fuente de verdad para RESPUESTA_REQS.
-        - Cumple: measured=1, puntos de la meta, is_achieved=True
-        - No cumple: measured=0, 0 puntos, is_achieved=False
-        Sin registro manual: no altera el cálculo previo.
+        RESPUESTA_REQS (binario): measured=1 → puntos de meta; 0 → sin puntos.
+        Reglas en resolve_respuesta_reqs_compliance (Insurance grace, sin registro = cumple).
         """
         try:
             mrc = ManualRequirementsCompliance.objects.get(
@@ -311,30 +313,49 @@ class Command(BaseCommand):
                 month=month,
             )
         except ManualRequirementsCompliance.DoesNotExist:
-            return
+            mrc = None
+
+        is_compliant, reason = resolve_respuesta_reqs_compliance(une.code, mrc)
 
         points_if = Decimal("0")
         target_value = metric_score.target_value
         if target is not None:
-            points_if = Decimal(str(target.points_if_achieved or 0))
+            points_if = respuesta_reqs_points_awarded(
+                une.code,
+                year,
+                month,
+                target.points_if_achieved,
+                True,
+            )
             if target_value is None:
                 target_value = target.target_value
 
-        if mrc.is_compliant:
+        if is_compliant:
             metric_score.measured_value = Decimal("1")
             metric_score.target_value = target_value if target_value is not None else Decimal("1")
             metric_score.is_achieved = True
             metric_score.points_awarded = points_if
-            note = "Cumplimiento manual: Cumple. Puntos otorgados según meta."
-            if insurance_reqs_uses_grace_points(une.code, points_if):
-                note += f" {INSURANCE_REQS_GRACE_NOTE}"
+            if reason == "insurance_grace":
+                note = (
+                    "Respuesta reqs: puntos provisionales Insurance "
+                    f"(grace). {INSURANCE_REQS_GRACE_NOTE}"
+                )
+            elif reason == "default_sin_registro":
+                note = (
+                    "Respuesta reqs: sin registro manual; se asume cumple "
+                    "(meta binaria 1)."
+                )
+            else:
+                note = "Cumplimiento manual: Cumple. Puntos otorgados según meta."
+                if insurance_reqs_uses_grace_points(une.code, points_if):
+                    note += f" {INSURANCE_REQS_GRACE_NOTE}"
             metric_score.calculation_note = note
         else:
             metric_score.measured_value = Decimal("0")
             metric_score.target_value = target_value if target_value is not None else Decimal("1")
             metric_score.is_achieved = False
             metric_score.points_awarded = Decimal("0")
-            note = (mrc.incident_note or "").strip()
+            note = ((mrc.incident_note or "").strip() if mrc else "")
             metric_score.calculation_note = (
                 "Cumplimiento manual: No cumple; puntos en 0."
                 + (f" Incidencia: {note}" if note else "")

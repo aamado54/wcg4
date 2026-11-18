@@ -65,7 +65,7 @@ def _hydrate_form_from_payload(form_cls, payload: dict, year: int, month: int):
             if k.startswith("pct_"):
                 initial[k] = v
     elif form_cls is TiBackupNasForm:
-        for k in ("quarter", "areas_implemented", "backup_nas_done", "notes"):
+        for k in ("quarter", "areas_implemented", "backup_nas_done"):
             if k in payload:
                 initial[k] = payload[k]
     elif form_cls is LegalGarantiasRegistroForm:
@@ -82,7 +82,7 @@ def _hydrate_form_from_payload(form_cls, payload: dict, year: int, month: int):
                     "due_date": line.get("due_date"),
                     "formalized": line.get("formalized"),
                     "date_done": line.get("date_done"),
-                    "notes": line.get("notes"),
+                    "dias_anticipacion_calendario": line.get("dias_anticipacion_calendario"),
                 }
             )
     return initial
@@ -169,8 +169,6 @@ def capturas_capture(request, slug: str):
             if latest and latest.payload.get("reports"):
                 initial_rows = {r["key"]: r for r in latest.payload["reports"]}
             form = OpReportesPgcPgo7Form(suggested, initial_rows, request.POST)
-        elif slug == "legal_garantias_registro":
-            form = LegalGarantiasRegistroForm(request.POST, request.FILES)
         else:
             form = form_cls(request.POST)
 
@@ -188,11 +186,9 @@ def capturas_capture(request, slug: str):
                 period_month=pm,
                 user=request.user,
                 payload=payload,
-                change_note=form.cleaned_data.get("change_note") or "",
+                change_note="",
                 is_out_of_period=oop,
             )
-            if slug == "legal_garantias_registro":
-                version.attachment = form.cleaned_data.get("attachment")
             version.save()
             if oop:
                 messages.warning(
@@ -222,7 +218,6 @@ def capturas_capture(request, slug: str):
                 "label": label,
                 "suggested": suggested.get(key),
                 "completion": form[f"completion_{key}"],
-                "notes": form[f"notes_{key}"],
             }
             for key, label in form.report_rows
         ]
