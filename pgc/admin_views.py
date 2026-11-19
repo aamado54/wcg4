@@ -6,13 +6,17 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import tempfile
+from datetime import datetime
 from pathlib import Path
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
 
 from core.access import can_access_ops
 from django.core.management import call_command
+from django.http import HttpResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
 
@@ -841,3 +845,52 @@ def redirect_manual_results(request):
 def redirect_manual_fx(request):
     year, month = parse_period(request)
     return redirect_admin_manual(year, month, "fx")
+
+
+def _verifica_template_path() -> Path | None:
+    root = Path(settings.BASE_DIR).parent
+    for rel in ("data/ref/verifica.tsv", "data/now/verifica.tsv"):
+        candidate = root / rel
+        if candidate.is_file():
+            return candidate
+    return None
+
+
+@login_required
+@user_passes_test(can_access_ops)
+def export_verifica_tsv_view(request):
+    """Descarga TSV verifica (filas 62–121) generado desde la BD activa."""
+    from pgc.verifica_export import export_verifica_tsv
+
+    try:
+        year = int(request.GET.get("year", 2026))
+    except (TypeError, ValueError):
+        year = 2026
+    mode = (request.GET.get("mode") or "modo2").strip() or "modo2"
+    template = _verifica_template_path()
+
+    with tempfile.NamedTemporaryFile(suffix=".tsv", delete=False) as tmp:
+        tmp_path = Path(tmp.name)
+
+    try:
+        export_verifica_tsv(
+            tmp_path,
+            year=year,
+            template=template,
+            mode=mode,
+            include_header=True,
+        )
+        content = tmp_path.read_bytes()
+    except ValueError as exc:
+        return HttpResponse(str(exc), status=400, content_type="text/plain; charset=utf-8")
+    finally:
+        tmp_path.unlink(missing_ok=True)
+
+    suffix = datetime.now().strftime("%Y%m%d")
+    filename = f"verifica-export-wcg-lol-{suffix}.tsv"
+    response = HttpResponse(
+        content,
+        content_type="text/tab-separated-values; charset=utf-8",
+    )
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    return response

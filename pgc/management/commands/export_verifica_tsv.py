@@ -55,10 +55,13 @@ class Command(BaseCommand):
         if template and not template.is_absolute():
             template = Path.cwd() / template
         if template and not template.is_file():
-            raise CommandError(
-                f"Plantilla no encontrada: {template}. "
-                "Copie verifica a data/ref/ o pase --template."
+            self.stdout.write(
+                self.style.WARNING(
+                    f"Plantilla no encontrada: {template}; "
+                    "export con filas 12×5 por defecto (mismas columnas A–J)."
+                )
             )
+            template = None
 
         try:
             n = export_verifica_tsv(

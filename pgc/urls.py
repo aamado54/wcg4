@@ -10,6 +10,11 @@ urlpatterns = [
     path("pgc/", views.pgc_home, name="module_home"),
     path("clientes-nuevos/", views.clientes_nuevos_report, name="clientes_nuevos"),
     path("export/dashboard.md", views.pgc_dashboard_export_md, name="dashboard_export_md"),
+    path(
+        "export/verifica.tsv/",
+        admin_views.export_verifica_tsv_view,
+        name="export_verifica_tsv",
+    ),
     path("venta-cruzada/", views.venta_cruzada_report, name="venta_cruzada"),
     path("export/venta-cruzada.md", views.venta_cruzada_export_md, name="venta_cruzada_export_md"),
     path("respuesta-reqs/", views.respuesta_reqs_report, name="respuesta_reqs"),

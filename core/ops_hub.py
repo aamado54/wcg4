@@ -105,6 +105,12 @@ IMPORT_LINKS: tuple[OpsLink, ...] = (
         "imports:import_audit_list",
         path_prefixes=("/importaciones/auditoria",),
     ),
+    OpsLink(
+        "export_verifica",
+        "Exportar verifica.tsv",
+        "pgc:export_verifica_tsv",
+        path_prefixes=("/export/verifica",),
+    ),
 )
 
 SYSTEM_LINKS: tuple[OpsLink, ...] = (
