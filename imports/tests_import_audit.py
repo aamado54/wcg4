@@ -211,6 +211,15 @@ class ImportAuditViewTests(TestCase):
         self.assertContains(resp, "cli")
 
 
+class BackfillImportAuditCommandTests(TestCase):
+    def test_backfill_dry_run_empty_db(self):
+        User.objects.create_user(username="caa", password="x", is_staff=True)
+        out = StringIO()
+        call_command("backfill_import_audit_events", stdout=out)
+        self.assertIn("Dry-run", out.getvalue())
+        self.assertEqual(ImportAuditEvent.objects.count(), 0)
+
+
 def tempfile_named_csv():
     import tempfile
     from pathlib import Path
