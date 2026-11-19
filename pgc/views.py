@@ -72,6 +72,7 @@ DASHBOARD_ANUAL_UNE_ORDER = (
 )
 
 
+from core.money_precision import MONEY_STORE_PLACES, quantize_store
 from pgc.income_conversion import evaluate_result_achievement
 from pgc.objetivos_scoring import (
     INSURANCE_REQS_GRACE_NOTE,
@@ -1963,12 +1964,17 @@ def _get_ingresos_rows(periods=None, *, display_decimals: int = INGRESOS_DEFAULT
             else:
                 real = None
 
-        # Insurance siempre con 3 decimales
+        # Insurance: 3 dec en pantalla; demás ingresos: precisión de almacenamiento (6 dec).
         if target.une.code == "INSURANCE":
             if meta is not None:
                 meta = meta.quantize(Decimal("0.001"), rounding=ROUND_DOWN)
             if real is not None:
                 real = real.quantize(Decimal("0.001"), rounding=ROUND_DOWN)
+        else:
+            if meta is not None:
+                meta = quantize_store(meta, places=MONEY_STORE_PLACES)
+            if real is not None:
+                real = quantize_store(real, places=MONEY_STORE_PLACES)
 
         if meta is not None and real is not None:
             diferencia = real - meta

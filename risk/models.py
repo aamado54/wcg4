@@ -8,9 +8,9 @@ from core.wcg_models import Entidad, Producto
 class EstadoFinanciero(TimeStampedModel):
     entidad = models.ForeignKey(Entidad, on_delete=models.CASCADE, related_name="estados_financieros")
     periodo = models.CharField(max_length=7, help_text="YYYY-MM")
-    saldo_total = models.DecimalField(max_digits=16, decimal_places=2, default=0)
+    saldo_total = models.DecimalField(max_digits=18, decimal_places=6, default=0)
     mora_dias = models.PositiveIntegerField(default=0)
-    exposicion = models.DecimalField(max_digits=16, decimal_places=2, default=0)
+    exposicion = models.DecimalField(max_digits=18, decimal_places=6, default=0)
     notas = models.TextField(blank=True)
 
     class Meta:
@@ -27,7 +27,7 @@ class ProgramacionPago(TimeStampedModel):
     entidad = models.ForeignKey(Entidad, on_delete=models.CASCADE, related_name="programaciones_pago")
     referencia = models.CharField(max_length=80)
     fecha_programada = models.DateField()
-    monto = models.DecimalField(max_digits=16, decimal_places=2)
+    monto = models.DecimalField(max_digits=18, decimal_places=6)
     moneda = models.CharField(max_length=3, default="GTQ")
     producto = models.ForeignKey(
         Producto,
@@ -51,7 +51,7 @@ class PagoRealizado(TimeStampedModel):
     entidad = models.ForeignKey(Entidad, on_delete=models.CASCADE, related_name="pagos_realizados")
     referencia = models.CharField(max_length=80)
     fecha_pago = models.DateField()
-    monto = models.DecimalField(max_digits=16, decimal_places=2)
+    monto = models.DecimalField(max_digits=18, decimal_places=6)
     moneda = models.CharField(max_length=3, default="GTQ")
 
     class Meta:
@@ -108,10 +108,10 @@ class RiskOperationSnapshot(TimeStampedModel):
     fecha_snapshot = models.DateField()
     nivel_riesgo = models.CharField(max_length=20, choices=NIVEL_CHOICES, default=NIVEL_MEDIO)
     dias_mora = models.PositiveIntegerField(default=0)
-    saldo = models.DecimalField(max_digits=16, decimal_places=2, default=0)
+    saldo = models.DecimalField(max_digits=18, decimal_places=6, default=0)
     monto_exigible = models.DecimalField(
-        max_digits=16,
-        decimal_places=2,
+        max_digits=18,
+        decimal_places=6,
         default=0,
         help_text="Monto vencido/exigible al momento del snapshot.",
     )

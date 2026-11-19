@@ -9,6 +9,7 @@ from pathlib import Path
 
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
+from imports.management.import_audit_mixin import ImportAuditCommandMixin
 
 ROOT = Path(settings.BASE_DIR)
 TOOLS = ROOT / "tools" / "financiero"
@@ -21,7 +22,9 @@ DEFAULT_STRUCTURE = HUB / "activo" / "plan-cuentas" / "wcsource2512a.xlsx"
 DEFAULT_MERGE_BASE = HUB / "activo" / "consolidado" / "wcout2d-merge-base.xlsx"
 
 
-class Command(BaseCommand):
+class Command(ImportAuditCommandMixin, BaseCommand):
+    import_audit_tipo = "eeff_legacy"
+
     help = (
         "LEGACY: consolida TODO source-dir con wcup2 (sin filtro yyMM). "
         "Preferir: manage.py refresh_estados_financieros (ver integracion-eeff/README.md)."

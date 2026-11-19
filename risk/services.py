@@ -20,7 +20,14 @@ from decimal import Decimal
 
 import pandas as pd
 
-from core.services.column_map import normalize_columns, pick, pick_decimal, pick_int, require_any
+from core.services.column_map import (
+    normalize_columns,
+    pick,
+    pick_decimal,
+    pick_int,
+    pick_money_decimal,
+    require_any,
+)
 from core.services.import_base import read_dataframe, run_import_batch
 from core.wcg_models import DataImportBatch, Entidad, Producto, UnidadNegocio
 from crm.services import _entidad_codigo_from_row, _resolve_unidad, _slug_codigo
@@ -157,7 +164,7 @@ def import_leasing_database(user, uploaded_file) -> DataImportBatch:
             "duedays",
             "due_days",
         )
-        saldo = pick_decimal(
+        saldo = pick_money_decimal(
             row,
             "saldo",
             "saldo_total",
@@ -165,7 +172,7 @@ def import_leasing_database(user, uploaded_file) -> DataImportBatch:
             "capital_balance",
             "total_capital",
         )
-        exigible = pick_decimal(
+        exigible = pick_money_decimal(
             row,
             "monto_exigible",
             "exigible",
@@ -280,7 +287,9 @@ def import_leasing_rentas(user, uploaded_file) -> DataImportBatch:
         if not fecha:
             errors.append("falta fecha vencimiento")
             return None
-        monto = pick_decimal(row, "renta_total", "valor_renta_con_mora", "valor_renta", "monto")
+        monto = pick_money_decimal(
+            row, "renta_total", "valor_renta_con_mora", "valor_renta", "monto"
+        )
         estado = pick(row, "estado", "status").lower()
         moneda, mon_warn = _normalize_moneda_field(pick(row, "moneda"), "GTQ")
         if mon_warn:
@@ -347,9 +356,9 @@ def import_estados_financieros(user, uploaded_file) -> DataImportBatch:
             entidad=entidad,
             periodo=periodo,
             defaults={
-                "saldo_total": pick_decimal(row, "saldo_total", "saldo"),
+                "saldo_total": pick_money_decimal(row, "saldo_total", "saldo"),
                 "mora_dias": pick_int(row, "mora_dias", "dias_mora"),
-                "exposicion": pick_decimal(row, "exposicion"),
+                "exposicion": pick_money_decimal(row, "exposicion"),
                 "notas": pick(row, "notas"),
             },
         )
@@ -384,7 +393,7 @@ def import_programacion_pagos(user, uploaded_file) -> DataImportBatch:
             referencia=referencia,
             defaults={
                 "fecha_programada": fecha,
-                "monto": pick_decimal(row, "monto"),
+                "monto": pick_money_decimal(row, "monto"),
                 "moneda": _normalize_moneda_field(pick(row, "moneda"), "GTQ")[0],
             },
         )
@@ -419,7 +428,7 @@ def import_pagos_realizados(user, uploaded_file) -> DataImportBatch:
             referencia=referencia,
             defaults={
                 "fecha_pago": fecha,
-                "monto": pick_decimal(row, "monto"),
+                "monto": pick_money_decimal(row, "monto"),
                 "moneda": _normalize_moneda_field(pick(row, "moneda"), "GTQ")[0],
             },
         )

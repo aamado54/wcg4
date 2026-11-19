@@ -12,13 +12,19 @@ class ImportAuditCommandMixin:
 
     import_audit_tipo: str = ""
 
+    def _resolve_audit_path(self, options) -> Path | None:
+        for key in ("path", "source_dir", "file"):
+            raw = options.get(key)
+            if raw:
+                return Path(str(raw)).expanduser()
+        return None
+
     def execute(self, *args, **options):
         tipo = (self.import_audit_tipo or "").strip()
-        raw_path = options.get("path")
-        if not tipo or not raw_path:
+        path = self._resolve_audit_path(options)
+        if not tipo or path is None:
             return super().execute(*args, **options)
 
-        path = Path(raw_path)
         if not path.exists():
             return super().execute(*args, **options)
 

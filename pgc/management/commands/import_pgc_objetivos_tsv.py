@@ -9,6 +9,7 @@ from pathlib import Path
 
 from django.core.management import call_command
 from django.core.management.base import BaseCommand, CommandError
+from imports.management.import_audit_mixin import ImportAuditCommandMixin
 
 from pgc.excel_import_guard import assert_pgc_objetivos_import_allowed
 
@@ -66,7 +67,9 @@ def _parse_mes(mes: str) -> tuple[int, int] | None:
     return yr, mon
 
 
-class Command(BaseCommand):
+class Command(ImportAuditCommandMixin, BaseCommand):
+    import_audit_tipo = "pgc_objetivos_tsv"
+
     help = "Importa Objetivos desde TSV (todos los meses presentes) vía import_pgc_objetivos por mes."
 
     def add_arguments(self, parser):

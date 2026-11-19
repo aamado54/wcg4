@@ -208,8 +208,8 @@ class PgoScorecardCell(models.Model):
     month = models.PositiveSmallIntegerField(db_index=True)
     une = models.CharField(max_length=20, db_index=True)
     concept_id = models.CharField(max_length=80, db_index=True)
-    points = models.FloatField(null=True, blank=True)
-    max_points = models.FloatField(default=0)
+    points = models.DecimalField(max_digits=12, decimal_places=6, null=True, blank=True)
+    max_points = models.DecimalField(max_digits=12, decimal_places=6, default=0)
     confidence = models.CharField(max_length=10, default="none")
     note = models.TextField(blank=True)
 

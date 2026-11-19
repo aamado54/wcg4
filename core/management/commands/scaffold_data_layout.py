@@ -5,28 +5,24 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from django.conf import settings
 from django.core.management.base import BaseCommand
 
-
-def _repo_data_root() -> Path:
-    """Raíz `data/` del monorepo (wcg4/data), no dashboard/data."""
-    base = Path(settings.BASE_DIR)
-    if (base.parent / "data").is_dir() or base.name == "dashboard":
-        return base.parent / "data"
-    return base / "data"
+from core.services.data_layout import repo_data_root
 
 
 OTROS_PATHS = (
     "pgc/otros",
     "pgo/otros",
+    "ger/otros",
+    "pla/otros",
+    "dudas/otros",
     "otros",
 )
 
 
 class Command(BaseCommand):
     help = (
-        "Scaffold layout data/pgc/YYMM y data/pgo/YYMM + otros/. "
+        "Scaffold layout data/{pgc,pgo,ger,pla}/YYMM + otros/ y data/dudas/otros/. "
         "Nunca elimina archivos; solo crea carpetas y manifest.json vacíos."
     )
 
@@ -45,7 +41,7 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        root = _repo_data_root()
+        root = repo_data_root()
         year = options["year"]
         months = self._parse_months(options["months"])
 
@@ -58,7 +54,7 @@ class Command(BaseCommand):
 
         for month in months:
             yymm = f"{year % 100:02d}{month:02d}"
-            for module in ("pgc", "pgo"):
+            for module in ("pgc", "pgo", "ger", "pla"):
                 period_dir = root / module / yymm
                 period_dir.mkdir(parents=True, exist_ok=True)
                 manifest = period_dir / "manifest.json"

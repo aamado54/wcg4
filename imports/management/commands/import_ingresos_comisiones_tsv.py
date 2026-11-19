@@ -6,6 +6,7 @@ from decimal import Decimal
 from pathlib import Path
 
 from django.core.management.base import BaseCommand, CommandError
+from imports.management.import_audit_mixin import ImportAuditCommandMixin
 from django.db import transaction
 
 from core.models import MetricDefinition, UNE
@@ -17,7 +18,9 @@ from pgc.income_conversion import apply_result_achievement
 from pgc.models import MonthlyExchangeRate, MonthlyMetricResult, MonthlyTarget, PGCPlan
 
 
-class Command(BaseCommand):
+class Command(ImportAuditCommandMixin, BaseCommand):
+    import_audit_tipo = "ingresos_comisiones"
+
     help = (
         "Importa comisiones mensuales GTQ desde TSV Ingresos-Financieros "
         "y actualiza INGRESOS por UNE (FACTORING, LEASING, INSURANCE)."

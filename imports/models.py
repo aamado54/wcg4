@@ -390,7 +390,7 @@ class NewClientImportRow(TimeStampedModel):
         blank=True,
         related_name="new_client_import_rows",
     )
-    amount = models.DecimalField(max_digits=18, decimal_places=2, null=True, blank=True)
+    amount = models.DecimalField(max_digits=18, decimal_places=6, null=True, blank=True)
     interest_rate = models.DecimalField(
         max_digits=8,
         decimal_places=4,

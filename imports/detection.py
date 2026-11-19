@@ -80,6 +80,11 @@ TYPE_LABELS = {
     TYPE_INVESTMENT_GROWTH: "PGC — Inversiones AP/PG (crecimiento neto)",
     TYPE_BANK_LOANS: "PGC — Préstamos bancarios (fin de mes)",
     TYPE_UNKNOWN: "Desconocido",
+    "pgc_objetivos": "PGC — Objetivos Excel (ejecución)",
+    "pgc_objetivos_tsv": "PGC — Objetivos TSV",
+    "pgc_metas": "PGC — Metas mensuales TSV",
+    "ingresos_comisiones": "PGC — Comisiones TSV (EEFF)",
+    "eeff_legacy": "EEFF — Consolidación legacy (wcup2)",
 }
 
 ALL_IMPORTABLE = [

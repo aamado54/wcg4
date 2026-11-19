@@ -1,0 +1,89 @@
+{% extends "base_wcg.html" %}
+{% block title %}Evento #{{ event.pk }} — Auditoría{% endblock %}
+{% block content %}
+{% include "ops/_hub_nav_wcg.html" %}
+<div class="page-toolbar d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
+  <div>
+    <p class="ops-page-kicker">Detalle de evento</p>
+    <h1 class="ops-page-title">
+      {% if event.success %}<span class="text-success">Importación OK</span>{% else %}<span class="text-danger">Importación fallida</span>{% endif %}
+    </h1>
+    <p class="text-muted mb-0">{{ event.loaded_at|date:"Y-m-d H:i:s" }} · {{ tipo_label }}</p>
+  </div>
+  <a class="wcg-home-link" href="{% url 'imports:import_audit_list' %}">← Lista auditoría</a>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-6">
+    <div class="card border-0 h-100">
+      <div class="card-body">
+        <h2 class="h6 mb-3">Quién y cómo</h2>
+        <dl class="row small mb-0">
+          <dt class="col-sm-4">Usuario</dt>
+          <dd class="col-sm-8">{{ event.user.username|default:"—" }}{% if event.user and event.user.email %} · {{ event.user.email }}{% endif %}</dd>
+          <dt class="col-sm-4">Fuente</dt>
+          <dd class="col-sm-8">{{ event.get_source_display }}</dd>
+          <dt class="col-sm-4">Tipo</dt>
+          <dd class="col-sm-8"><code>{{ event.import_tipo|default:"—" }}</code> — {{ tipo_label }}</dd>
+          <dt class="col-sm-4">Archivo en disco</dt>
+          <dd class="col-sm-8">{% if event.file_available %}Disponible al cargar{% else %}No encontrado{% endif %}</dd>
+          {% if event.file_upload %}
+          <dt class="col-sm-4">FileUpload</dt>
+          <dd class="col-sm-8">#{{ event.file_upload_id }} · {{ event.file_upload.original_filename }}</dd>
+          {% endif %}
+        </dl>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card border-0 h-100">
+      <div class="card-body">
+        <h2 class="h6 mb-3">Archivo</h2>
+        <p class="small font-monospace text-break mb-3">{{ event.file_path_key }}</p>
+        {% if not event.success and event.error_message %}
+        <div class="alert alert-danger mb-0">
+          <p class="small fw-semibold mb-1">Error</p>
+          <pre class="small mb-0 text-wrap" style="white-space: pre-wrap;">{{ event.error_message }}</pre>
+        </div>
+        {% elif event.success %}
+        <p class="small text-muted mb-0">Sin mensaje de error.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if event.detail_json %}
+<div class="card border-0 mt-4">
+  <div class="card-body">
+    <h2 class="h6 mb-3">Detalle técnico (`detail_json`)</h2>
+    <pre class="small bg-light p-3 rounded mb-0" style="max-height: 20rem; overflow: auto;">{{ detail_json_pretty }}</pre>
+  </div>
+</div>
+{% endif %}
+
+{% if related %}
+<div class="card border-0 mt-4">
+  <div class="card-body">
+    <h2 class="h6 mb-3">Misma ruta / archivo (historial)</h2>
+    <div class="table-responsive">
+      <table class="table table-sm table-wcg mb-0">
+        <thead><tr><th>Cuándo</th><th>Estado</th><th>Quién</th><th></th></tr></thead>
+        <tbody>
+          {% for r in related %}
+          <tr>
+            <td class="small">{{ r.loaded_at|date:"Y-m-d H:i" }}</td>
+            <td>
+              {% if r.success %}<span class="badge text-bg-success">OK</span>{% else %}<span class="badge text-bg-danger">FAIL</span>{% endif %}
+            </td>
+            <td class="small">{{ r.user.username|default:"—" }}</td>
+            <td><a href="{% url 'imports:import_audit_detail' r.pk %}" class="small">Ver</a></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

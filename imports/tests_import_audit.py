@@ -5,12 +5,14 @@ from io import StringIO
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.management import call_command
-from django.test import TestCase
+from django.test import Client, TestCase
+from django.urls import reverse
 
 from core.wcg_models import DataImportBatch
 from imports.audit import (
     audit_summary_counts,
     cli_import_audit,
+    record_import_audit_event,
     resolve_path_key_from_upload,
     suppress_import_audit,
 )
@@ -18,6 +20,7 @@ from django.core.management.base import BaseCommand
 
 from imports.dispatch import _audit_after_dispatch, run_import
 from imports.management.import_audit_mixin import ImportAuditCommandMixin
+from imports.audit_cli_registry import cli_audit_coverage_ratio
 from imports.models import ImportAuditEvent
 
 User = get_user_model()
@@ -121,15 +124,91 @@ class CliAuditMixinTests(TestCase):
 
 
 class AuditImportStatusCommandTests(TestCase):
+    def test_cli_coverage_meets_threshold(self):
+        with_mixin, total, pct = cli_audit_coverage_ratio()
+        self.assertGreaterEqual(total, 10)
+        self.assertGreaterEqual(pct, 80.0)
+        self.assertGreaterEqual(with_mixin, 9)
+
+    def test_command_coverage_runs(self):
+        out = StringIO()
+        call_command("audit_import_status", "--coverage", stdout=out)
+        body = out.getvalue()
+        self.assertIn("CLI import_* con mixin", body)
+        self.assertIn("import_pgc_objetivos", body)
+
     def test_command_detailed_runs(self):
         out = StringIO()
         call_command("audit_import_status", "--detailed", stdout=out)
         self.assertIn("ImportAuditEvent", out.getvalue())
 
+    def test_checklist_lists_failures(self):
+        user = User.objects.create_user(username="clicheck", password="x")
+        record_import_audit_event(
+            user=user,
+            file_path_key="/tmp/fail.csv",
+            success=False,
+            import_tipo="new_clients",
+            error_message="parse error",
+        )
+        out = StringIO()
+        call_command("audit_import_status", "--checklist", stdout=out)
+        body = out.getvalue()
+        self.assertIn("FAIL", body)
+        self.assertIn("clicheck", body)
+        self.assertIn("auditoria", body)
+
     def test_audit_summary_empty(self):
         summary = audit_summary_counts()
         self.assertEqual(summary["total"], 0)
         self.assertEqual(summary["fail"], 0)
+
+
+class ImportAuditViewTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username="auditview", password="x")
+        self.client = Client()
+        self.client.login(username="auditview", password="x")
+
+    def test_list_requires_login(self):
+        anon = Client()
+        url = reverse("imports:import_audit_list")
+        resp = anon.get(url)
+        self.assertEqual(resp.status_code, 302)
+
+    def test_list_and_filter(self):
+        record_import_audit_event(
+            user=self.user,
+            file_path_key="ok_file.csv",
+            success=True,
+            import_tipo="cross_sale",
+        )
+        record_import_audit_event(
+            user=self.user,
+            file_path_key="bad_file.csv",
+            success=False,
+            import_tipo="new_clients",
+            error_message="broken",
+        )
+        url = reverse("imports:import_audit_list")
+        resp = self.client.get(url, {"success": "fail"})
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "bad_file.csv")
+        self.assertNotContains(resp, "ok_file.csv")
+
+    def test_detail_page(self):
+        ev = record_import_audit_event(
+            user=self.user,
+            file_path_key="detail.csv",
+            success=True,
+            import_tipo="financial",
+            detail={"cli": True},
+        )
+        url = reverse("imports:import_audit_detail", kwargs={"event_id": ev.pk})
+        resp = self.client.get(url)
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "detail.csv")
+        self.assertContains(resp, "cli")
 
 
 def tempfile_named_csv():

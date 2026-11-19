@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from decimal import Decimal, ROUND_DOWN, ROUND_HALF_UP
 
+from core.money_precision import MONEY_STORE_PLACES, quantize_store
 from core.models import MetricDefinition, UNE
 
 POINTS_QUANTIZE = Decimal("0.01")
@@ -116,6 +117,9 @@ def _ingresos_vs_meta_inputs(
         q = Decimal("0.001")
         m = m.quantize(q, rounding=ROUND_DOWN)
         t = t.quantize(q, rounding=ROUND_DOWN)
+    else:
+        m = quantize_store(m, places=MONEY_STORE_PLACES) or m
+        t = quantize_store(t, places=MONEY_STORE_PLACES) or t
     return m, t
 
 

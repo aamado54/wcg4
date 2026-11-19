@@ -6,6 +6,7 @@ from core.models import UNE, UNEAlias, MetricDefinition, Currency
 from core.services.une_resolve import resolve_une_from_text
 from decimal import Decimal
 from django.core.management.base import BaseCommand, CommandError
+from core.money_precision import quantize_store
 from imports.management.import_audit_mixin import ImportAuditCommandMixin
 from django.core.management import call_command
 from django.db import transaction
@@ -221,8 +222,8 @@ class Command(ImportAuditCommandMixin, BaseCommand):
                     try:
                         # PGC expresa montos de ingresos en miles;
                         # el archivo trae unidades → guardar ya dividido entre 1000.
-                        amount = Decimal(str(amount_raw).replace(",", "")) / Decimal(
-                            "1000"
+                        amount = quantize_store(
+                            Decimal(str(amount_raw).replace(",", "")) / Decimal("1000")
                         )
                     except Exception:
                         amount = None

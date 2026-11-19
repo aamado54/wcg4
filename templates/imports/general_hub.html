@@ -22,10 +22,12 @@
     Revise y elimine manualmente si corresponde.
   </span>
   <a href="{% url 'imports:duplicates_review' %}" class="btn btn-sm btn-outline-dark">Revisar duplicados</a>
+  <a href="{% url 'imports:import_audit_list' %}" class="btn btn-sm btn-outline-primary">Auditoría</a>
 </div>
 {% else %}
-<div class="mb-3">
+<div class="mb-3 d-flex flex-wrap gap-2">
   <a href="{% url 'imports:duplicates_review' %}" class="btn btn-sm btn-outline-secondary">Revisar duplicados</a>
+  <a href="{% url 'imports:import_audit_list' %}" class="btn btn-sm btn-outline-primary">Auditoría (quién / cuándo / éxito)</a>
 </div>
 {% endif %}
 

@@ -99,6 +99,12 @@ IMPORT_LINKS: tuple[OpsLink, ...] = (
         "imports:duplicates_review",
         path_prefixes=("/importaciones/duplicados",),
     ),
+    OpsLink(
+        "import_audit",
+        "Auditoría",
+        "imports:import_audit_list",
+        path_prefixes=("/importaciones/auditoria",),
+    ),
 )
 
 SYSTEM_LINKS: tuple[OpsLink, ...] = (
@@ -125,6 +131,8 @@ def _path(request) -> str:
 def _link_active(path: str, link: OpsLink) -> bool:
     if link.id == "django_admin":
         return path.startswith("/admin/") and not path.startswith("/admin-hub")
+    if link.id == "import_hub":
+        return path.rstrip("/") == "/importaciones"
     if link.id == "clients_browse":
         return path.startswith("/admin-hub/mensual/clientes-nuevos") and "/une" not in path
     if link.id == "clients_une":

@@ -5,6 +5,7 @@ from pathlib import Path
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.management.base import BaseCommand, CommandError
+from imports.management.import_audit_mixin import ImportAuditCommandMixin
 
 from pgo import services as pgo_services
 
@@ -43,7 +44,9 @@ def _resolve_path(explicit: str | None) -> Path:
     )
 
 
-class Command(BaseCommand):
+class Command(ImportAuditCommandMixin, BaseCommand):
+    import_audit_tipo = "pgo_catalogo"
+
     help = "Importa ArchivosPGO (catálogo PGO) y recalcula snapshot del tablero por puntos."
 
     def add_arguments(self, parser):

@@ -1,10 +1,12 @@
 from django.urls import path
-from . import views
+from . import audit_views, views
 
 app_name = "imports"
 
 urlpatterns = [
     path("", views.import_hub, name="import_hub"),
+    path("auditoria/", audit_views.import_audit_list, name="import_audit_list"),
+    path("auditoria/<int:event_id>/", audit_views.import_audit_detail, name="import_audit_detail"),
     path("duplicados/", views.duplicates_review, name="duplicates_review"),
     path("<int:file_id>/process-new-clients/", views.process_new_clients, name="process_new_clients"),
     path("<int:file_id>/process-cross-sale/", views.process_cross_sale, name="process_cross_sale"),

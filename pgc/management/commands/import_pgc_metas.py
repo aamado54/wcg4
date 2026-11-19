@@ -7,9 +7,11 @@ from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
 from django.core.management.base import BaseCommand, CommandError
+from imports.management.import_audit_mixin import ImportAuditCommandMixin
 from django.db import transaction
 
 from core.models import MetricDefinition, UNE
+from core.money_precision import quantize_store
 from pgc.income_conversion import apply_result_achievement
 from pgc.models import MonthlyMetricResult, MonthlyTarget, PGCPlan
 
@@ -41,7 +43,7 @@ def _parse_decimal(raw: str) -> Decimal:
     if not text:
         return Decimal("0")
     try:
-        return Decimal(text)
+        return quantize_store(Decimal(text)) or Decimal("0")
     except InvalidOperation as exc:
         raise ValueError(f"Valor numérico inválido: {raw!r}") from exc
 
@@ -119,7 +121,9 @@ def _default_tsv_path() -> Path:
     return Path(__file__).resolve().parents[4] / "data" / "now" / "PGC-metas-2026.tsv"
 
 
-class Command(BaseCommand):
+class Command(ImportAuditCommandMixin, BaseCommand):
+    import_audit_tipo = "pgc_metas"
+
     help = (
         "Carga metas mensuales PGC (CLIENTES_NUEVOS e INGRESOS) desde el TSV oficial. "
         "Valores en miles de US$; no son acumulados."

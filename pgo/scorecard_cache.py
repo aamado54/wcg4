@@ -6,10 +6,14 @@ import hashlib
 from dataclasses import dataclass
 from pathlib import Path
 
+from decimal import Decimal
+
 from django.conf import settings
 from django.db import transaction
 from django.db.models import Max
 from django.utils import timezone
+
+from core.money_precision import quantize_store
 
 from imports.models import FileUpload, InvestmentGrowthRow
 from pgc.models import MonthlyMetricResult
@@ -68,8 +72,8 @@ def _grid_from_cells(cells_qs) -> ScoreGrid:
     grid = ScoreGrid()
     for row in cells_qs.iterator(chunk_size=2000):
         cell = CellScore(
-            points=row.points,
-            max_points=float(row.max_points),
+            points=float(row.points) if row.points is not None else None,
+            max_points=float(row.max_points or 0),
             confidence=row.confidence,
             note=row.note or "",
         )
@@ -95,14 +99,21 @@ def rebuild_scorecard_cache(years: list[int] | None = None) -> PgoScorecardCache
         for month, by_une in by_month.items():
             for une, by_concept in by_une.items():
                 for concept_id, cell in by_concept.items():
+                    pts = cell.points
+                    max_pts = cell.max_points
                     bulk.append(
                         PgoScorecardCell(
                             year=year,
                             month=month,
                             une=une,
                             concept_id=concept_id,
-                            points=cell.points,
-                            max_points=cell.max_points,
+                            points=(
+                                quantize_store(Decimal(str(pts)))
+                                if pts is not None
+                                else None
+                            ),
+                            max_points=quantize_store(Decimal(str(max_pts)))
+                            or Decimal("0"),
                             confidence=cell.confidence,
                             note=(cell.note or "")[:2000],
                         )

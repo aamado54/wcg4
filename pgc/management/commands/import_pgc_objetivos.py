@@ -9,9 +9,11 @@ from pathlib import Path
 
 import openpyxl
 from django.core.management.base import BaseCommand, CommandError
+from imports.management.import_audit_mixin import ImportAuditCommandMixin
 from django.db import transaction
 
 from core.models import MetricDefinition, UNE
+from core.money_precision import quantize_store
 from pgc.excel_import_guard import assert_pgc_objetivos_import_allowed
 from pgc.income_conversion import apply_result_achievement
 from pgc.models import (
@@ -54,7 +56,7 @@ def _cell_decimal(val) -> Decimal | None:
     if val is None:
         return None
     try:
-        return Decimal(str(val))
+        return quantize_store(Decimal(str(val)))
     except (InvalidOperation, ValueError):
         return None
 
@@ -126,7 +128,9 @@ def _sync_monthly_target_points(
         tgt.save(update_fields=["points_if_achieved", "updated_at"])
 
 
-class Command(BaseCommand):
+class Command(ImportAuditCommandMixin, BaseCommand):
+    import_audit_tipo = "pgc_objetivos"
+
     help = (
         "Carga ejecución Tablero (proporción) desde la hoja Objetivos: "
         "clientes y puntos P_ing/P_cli. Comisiones (ingresos) preferir import_ingresos. "

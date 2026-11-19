@@ -48,6 +48,14 @@ def pick_decimal(row: pd.Series, *aliases: str, default: str = "0"):
         return Decimal(default)
 
 
+def pick_money_decimal(row: pd.Series, *aliases: str, default: str = "0"):
+    """Decimal de fila importación en precisión de almacenamiento monetario (6 dec)."""
+    from core.money_precision import quantize_store
+
+    raw = pick_decimal(row, *aliases, default=default)
+    return quantize_store(raw) or Decimal(str(default))
+
+
 def pick_int(row: pd.Series, *aliases: str, default: int = 0) -> int:
     try:
         return int(pick_decimal(row, *aliases, default=str(default)))

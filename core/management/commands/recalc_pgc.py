@@ -1,6 +1,8 @@
 from decimal import Decimal, ROUND_HALF_UP
 
 from django.core.management.base import BaseCommand, CommandError
+
+from core.money_precision import quantize_store
 from django.db import transaction
 
 from core.models import MetricDefinition, UNE
@@ -216,7 +218,13 @@ class Command(BaseCommand):
         target_value = metric_score.target_value
 
         if measured is not None and target_value is not None:
-            if measured >= target_value:
+            if metric.code == MetricDefinition.CODE_INGRESOS:
+                m = quantize_store(Decimal(str(measured))) or Decimal("0")
+                t = quantize_store(Decimal(str(target_value))) or Decimal("0")
+                achieved = m >= t
+            else:
+                achieved = Decimal(str(measured)) >= Decimal(str(target_value))
+            if achieved:
                 metric_score.is_achieved = True
                 metric_score.points_awarded = target.points_if_achieved
                 metric_score.calculation_note = "Modo1 cumple meta objetivo."
