@@ -859,26 +859,34 @@ def _verifica_template_path() -> Path | None:
 @login_required
 @user_passes_test(can_access_ops)
 def export_verifica_tsv_view(request):
-    """Descarga TSV verifica (filas 62–121) generado desde la BD activa."""
-    from pgc.verifica_export import export_verifica_tsv
+    """Descarga verifica CSV (filas 62–121); ?format=tsv para tabulado."""
+    from pgc.verifica_export import export_verifica
 
     try:
         year = int(request.GET.get("year", 2026))
     except (TypeError, ValueError):
         year = 2026
     mode = (request.GET.get("mode") or "modo2").strip() or "modo2"
+    if request.GET.get("format"):
+        file_format = request.GET.get("format", "csv").strip().lower() or "csv"
+    elif request.path.rstrip("/").endswith(".tsv"):
+        file_format = "tsv"
+    else:
+        file_format = "csv"
     template = _verifica_template_path()
 
-    with tempfile.NamedTemporaryFile(suffix=".tsv", delete=False) as tmp:
+    suffix_ext = "tsv" if file_format in ("tsv", "tab") else "csv"
+    with tempfile.NamedTemporaryFile(suffix=f".{suffix_ext}", delete=False) as tmp:
         tmp_path = Path(tmp.name)
 
     try:
-        export_verifica_tsv(
+        export_verifica(
             tmp_path,
             year=year,
             template=template,
             mode=mode,
             include_header=True,
+            file_format=file_format,
         )
         content = tmp_path.read_bytes()
     except ValueError as exc:
@@ -887,10 +895,11 @@ def export_verifica_tsv_view(request):
         tmp_path.unlink(missing_ok=True)
 
     suffix = datetime.now().strftime("%Y%m%d")
-    filename = f"verifica-export-wcg-lol-{suffix}.tsv"
-    response = HttpResponse(
-        content,
-        content_type="text/tab-separated-values; charset=utf-8",
-    )
+    filename = f"verifica-export-wcg-lol-{suffix}.{suffix_ext}"
+    if suffix_ext == "tsv":
+        content_type = "text/tab-separated-values; charset=utf-8"
+    else:
+        content_type = "text/csv; charset=utf-8"
+    response = HttpResponse(content, content_type=content_type)
     response["Content-Disposition"] = f'attachment; filename="{filename}"'
     return response

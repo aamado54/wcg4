@@ -1,4 +1,4 @@
-"""Exporta TSV verificación PGC desde BD (prod o local)."""
+"""Exporta CSV/TSV verificación PGC desde BD (prod o local)."""
 
 from __future__ import annotations
 
@@ -6,21 +6,29 @@ from pathlib import Path
 
 from django.core.management.base import BaseCommand, CommandError
 
-from pgc.verifica_export import export_verifica_tsv
+from pgc.verifica_export import export_verifica
 
 
 class Command(BaseCommand):
     help = (
-        "Genera TSV alineado a plantilla verifica.tsv (filas 62–121). "
-        "Sin --template usa 12×5 filas WC*. Requiere PGCPlan."
+        "Genera CSV (default) o TSV alineado a plantilla verifica.tsv (filas 62–121). "
+        "Sin --template: 60 filas en bloques WC→WCL→WCI→WCINV→WCG (12 meses c/u). "
+        "Requiere PGCPlan."
     )
 
     def add_arguments(self, parser):
         parser.add_argument(
+            "--format",
+            type=str,
+            default="csv",
+            choices=("csv", "tsv"),
+            help="Delimitador de salida (default csv).",
+        )
+        parser.add_argument(
             "--output",
             type=str,
-            default="data/done/verifica-export-2026.tsv",
-            help="Ruta salida TSV (default data/done/verifica-export-2026.tsv).",
+            default="",
+            help="Ruta salida (default data/done/verifica-export-2026.csv o .tsv).",
         )
         parser.add_argument(
             "--template",
@@ -46,7 +54,11 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        out = Path(options["output"]).expanduser()
+        fmt = options["format"]
+        out_s = (options["output"] or "").strip()
+        if not out_s:
+            out_s = f"data/done/verifica-export-2026.{fmt}"
+        out = Path(out_s).expanduser()
         if not out.is_absolute():
             out = Path.cwd() / out
 
@@ -58,24 +70,26 @@ class Command(BaseCommand):
             self.stdout.write(
                 self.style.WARNING(
                     f"Plantilla no encontrada: {template}; "
-                    "export con filas 12×5 por defecto (mismas columnas A–J)."
+                    "export con orden plantilla por defecto (5 UNE × 12 meses)."
                 )
             )
             template = None
 
         try:
-            n = export_verifica_tsv(
+            n = export_verifica(
                 out,
                 year=options["year"],
                 template=template,
                 mode=options["mode"],
                 include_header=not options["no_header"],
+                file_format=fmt,
             )
         except ValueError as exc:
             raise CommandError(str(exc)) from exc
 
         self.stdout.write(
             self.style.SUCCESS(
-                f"Escritas {n} filas en {out} (year={options['year']}, mode={options['mode']})"
+                f"Escritas {n} filas en {out} "
+                f"(year={options['year']}, mode={options['mode']}, format={fmt})"
             )
         )

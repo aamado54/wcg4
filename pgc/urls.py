@@ -11,6 +11,11 @@ urlpatterns = [
     path("clientes-nuevos/", views.clientes_nuevos_report, name="clientes_nuevos"),
     path("export/dashboard.md", views.pgc_dashboard_export_md, name="dashboard_export_md"),
     path(
+        "export/verifica.csv/",
+        admin_views.export_verifica_tsv_view,
+        name="export_verifica_csv",
+    ),
+    path(
         "export/verifica.tsv/",
         admin_views.export_verifica_tsv_view,
         name="export_verifica_tsv",

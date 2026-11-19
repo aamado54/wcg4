@@ -8,9 +8,15 @@ from pgc.verifica_export import (
     EXPECTED_ROW_COUNT,
     ROW_END_2026,
     ROW_START_2026,
+    VERIFICA_UNE_ORDER,
+    default_row_specs,
     normalize_wc_code,
     parse_verifica_template_rows,
 )
+
+
+def expected_une_then_month_keys() -> list[tuple[str, int]]:
+    return [(wc, month) for wc in VERIFICA_UNE_ORDER for month in range(1, 13)]
 
 
 class VerificaParseTests(SimpleTestCase):
@@ -46,6 +52,27 @@ class VerificaParseTests(SimpleTestCase):
         self.assertEqual(months, set(range(1, 13)))
         codes = {s.wc_code for s in specs}
         self.assertEqual(codes, {"WC", "WCL", "WCI", "WCINV", "WCG"})
+
+    def test_parse_2026_row_order_une_then_month(self):
+        path = self._template_path()
+        if not path.is_file():
+            self.skipTest("verifica.tsv no presente")
+        specs = parse_verifica_template_rows(path, year=2026)
+        actual = [(s.wc_code, s.month) for s in specs]
+        self.assertEqual(actual, expected_une_then_month_keys())
+
+    def test_default_row_specs_matches_template_order(self):
+        specs = default_row_specs(2026)
+        self.assertEqual(len(specs), EXPECTED_ROW_COUNT)
+        actual = [(s.wc_code, s.month) for s in specs]
+        self.assertEqual(actual, expected_une_then_month_keys())
+        path = self._template_path()
+        if path.is_file():
+            from_template = parse_verifica_template_rows(path, year=2026)
+            self.assertEqual(
+                [(s.wc_code, s.month) for s in from_template],
+                actual,
+            )
 
     def test_wcg_rows_without_points_flag(self):
         path = self._template_path()

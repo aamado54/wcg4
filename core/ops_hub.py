@@ -107,8 +107,8 @@ IMPORT_LINKS: tuple[OpsLink, ...] = (
     ),
     OpsLink(
         "export_verifica",
-        "Exportar verifica.tsv",
-        "pgc:export_verifica_tsv",
+        "Exportar verifica.csv",
+        "pgc:export_verifica_csv",
         path_prefixes=("/export/verifica",),
     ),
 )

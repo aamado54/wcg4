@@ -1,4 +1,4 @@
-"""Export TSV compatible con plantilla verifica.tsv (filas 62–121, año 2026)."""
+"""Export verifica (CSV o TSV) alineado a plantilla verifica.tsv filas 62–121."""
 
 from __future__ import annotations
 
@@ -76,6 +76,9 @@ MONTH_ALIASES = {
 ROW_START_2026 = 62
 ROW_END_2026 = 121
 EXPECTED_ROW_COUNT = ROW_END_2026 - ROW_START_2026 + 1
+
+# Orden canónico filas 62–121: 5 bloques UNE × 12 meses (col F en plantilla).
+VERIFICA_UNE_ORDER = ("WC", "WCL", "WCI", "WCINV", "WCG")
 
 
 @dataclass
@@ -159,12 +162,13 @@ def parse_verifica_template_rows(
 
 
 def default_row_specs(year: int) -> list[VerificaRowSpec]:
-    order = ("WC", "WCL", "WCI", "WCINV", "WCG")
+    """Mismo orden que verifica.tsv filas 62–121: bloque por UNE, luego 12 meses."""
+    order = VERIFICA_UNE_ORDER
     specs: list[VerificaRowSpec] = []
-    for month in range(1, 13):
-        abbr = list(MONTH_ALIASES.keys())[month - 1].title()
-        label = f"{abbr}-{year % 100:02d}"
-        for wc in order:
+    for wc in order:
+        for month in range(1, 13):
+            abbr = list(MONTH_ALIASES.keys())[month - 1].title()
+            label = f"{abbr}-{year % 100:02d}"
             specs.append(
                 VerificaRowSpec(
                     year=year,
@@ -376,13 +380,21 @@ def build_output_row(
     ]
 
 
-def export_verifica_tsv(
+def _normalize_file_format(file_format: str) -> str:
+    fmt = (file_format or "csv").strip().lower()
+    if fmt in ("csv", "tsv", "tab"):
+        return "tsv" if fmt in ("tsv", "tab") else "csv"
+    raise ValueError(f"Formato no soportado: {file_format!r} (use csv o tsv)")
+
+
+def export_verifica(
     output: Path,
     *,
     year: int,
     template: Path | None = None,
     mode: str = "modo2",
     include_header: bool = True,
+    file_format: str = "csv",
 ) -> int:
     plan = PGCPlan.objects.filter(year=year).first()
     if not plan:
@@ -396,11 +408,52 @@ def export_verifica_tsv(
     if not specs:
         raise ValueError("Sin filas de verifica (plantilla vacía o año sin coincidencias)")
 
+    fmt = _normalize_file_format(file_format)
+    delimiter = "\t" if fmt == "tsv" else ","
+    quoting = csv.QUOTE_MINIMAL
+
     rows = [build_output_row(spec, plan, mode=mode) for spec in specs]
     output.parent.mkdir(parents=True, exist_ok=True)
     with output.open("w", newline="", encoding="utf-8") as f:
-        writer = csv.writer(f, delimiter="\t")
+        writer = csv.writer(f, delimiter=delimiter, quoting=quoting)
         if include_header:
             writer.writerow(VERIFICA_HEADER_ROW)
         writer.writerows(rows)
     return len(rows)
+
+
+def export_verifica_tsv(
+    output: Path,
+    *,
+    year: int,
+    template: Path | None = None,
+    mode: str = "modo2",
+    include_header: bool = True,
+) -> int:
+    """Compatibilidad: salida tabulada."""
+    return export_verifica(
+        output,
+        year=year,
+        template=template,
+        mode=mode,
+        include_header=include_header,
+        file_format="tsv",
+    )
+
+
+def export_verifica_csv(
+    output: Path,
+    *,
+    year: int,
+    template: Path | None = None,
+    mode: str = "modo2",
+    include_header: bool = True,
+) -> int:
+    return export_verifica(
+        output,
+        year=year,
+        template=template,
+        mode=mode,
+        include_header=include_header,
+        file_format="csv",
+    )
