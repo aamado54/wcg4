@@ -95,12 +95,14 @@ def expected_tipo_from_name(filename: str, module_logical: str) -> str | None:
 
 
 def path_has_institution(filename: str) -> bool:
-    """PLAF/PLAL: nombre suele incluir institución (no tipo PGC/PGO)."""
+    """PLAF/PLAL: plantillas con nombre de institución."""
     lower = filename.lower()
-    if re.search(r"\b(banco|banrural|gyt|industrial|agricola|promerica|vivian)\b", lower):
+    if "plantilla" in lower or "planilla" in lower or "analisis-" in lower:
         return True
-    stem = Path(filename).stem
-    if len(stem) > 4 and not re.search(r"(plantilla|template|ejemplo)", lower):
+    if re.search(
+        r"\b(banco|banrural|gyt|industrial|agricola|promerica|corporacion|corp\.)\b",
+        lower,
+    ):
         return True
     return False
 
@@ -136,9 +138,13 @@ def iter_audit_files(root: Path) -> list[AuditFileRow]:
                 flags.append("organizar: en otros/ pero con YYMM claro")
             if expected and tipo != expected and tipo != "unknown":
                 if not (expected == "plantilla_institucion" and tipo == "plantilla"):
-                    flags.append(f"tipo: esperado {expected}, clasificado {tipo}")
-            elif expected and tipo == "unknown":
-                flags.append(f"tipo: esperado {expected}, clasificado unknown")
+                    flags.append(f"tipo: buscado {expected}, hallado {tipo}")
+            elif (
+                expected
+                and tipo == "unknown"
+                and expected not in ("plantilla_institucion",)
+            ):
+                flags.append(f"tipo: buscado {expected}, hallado unknown")
             rows.append(
                 AuditFileRow(
                     relpath=path.relative_to(root).as_posix(),
@@ -294,3 +300,79 @@ def run_data_repository_audit(
         report_path = out_dir / f"data-audit-report-{d.strftime('%Y%m%d')}.md"
         report_path.write_text(build_audit_markdown(rows, root=data_root), encoding="utf-8")
     return rows, report_path
+
+
+def data_repository_fingerprint(root: Path) -> tuple[int, float]:
+    """Recuento de archivos auditables y mtime máximo (invalidación de caché)."""
+    total = 0
+    max_mtime = 0.0
+    for dir_name in AUDIT_MODULE_DIRS:
+        module_root = root / dir_name
+        if not module_root.is_dir():
+            continue
+        for path in module_root.rglob("*"):
+            if not path.is_file() or _should_skip(path):
+                continue
+            total += 1
+            try:
+                max_mtime = max(max_mtime, path.stat().st_mtime)
+            except OSError:
+                pass
+    return total, max_mtime
+
+
+def disposition_for_row(
+    row: AuditFileRow,
+    *,
+    duplicate_paths: frozenset[str],
+) -> str:
+    if row.flags:
+        return "Alerta"
+    if row.relpath in duplicate_paths:
+        return "Organizar"
+    return "OK"
+
+
+def audit_row_to_dict(
+    row: AuditFileRow,
+    *,
+    duplicate_paths: frozenset[str],
+) -> dict:
+    return {
+        "relpath": row.relpath,
+        "module_key": row.module_key,
+        "module_logical": row.module_logical,
+        "folder_yymm": row.folder_yymm or "",
+        "import_tipo": row.import_tipo,
+        "tipo_label": row.tipo_label,
+        "yymm": row.yymm or "",
+        "yymm_source": row.yymm_source,
+        "expected_tipo": row.expected_tipo or "",
+        "flags_text": "; ".join(row.flags),
+        "flagged": bool(row.flags),
+        "disposition": disposition_for_row(row, duplicate_paths=duplicate_paths),
+    }
+
+
+def build_data_audit_snapshot(root: Path | None = None) -> dict:
+    """Datos en memoria para la vista web (sin escribir .md)."""
+    data_root = root or repo_data_root()
+    rows, _ = run_data_repository_audit(root=data_root, write_report=False)
+    dupes = find_duplicate_groups(rows)
+    duplicate_paths = frozenset(f for d in dupes for f in d["files"])
+    row_dicts = [
+        audit_row_to_dict(r, duplicate_paths=duplicate_paths)
+        for r in sorted(rows, key=lambda x: x.relpath)
+    ]
+    flagged = sum(1 for r in rows if r.flags)
+    fingerprint = data_repository_fingerprint(data_root)
+    return {
+        "fingerprint": fingerprint,
+        "root": str(data_root),
+        "file_count": len(rows),
+        "flagged_count": flagged,
+        "duplicate_groups_count": len(dupes),
+        "rows": row_dicts,
+        "dupes": dupes,
+        "module_dirs": list(AUDIT_MODULE_DIRS.keys()),
+    }

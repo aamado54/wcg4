@@ -6,6 +6,11 @@ app_name = "imports"
 urlpatterns = [
     path("", views.import_hub, name="import_hub"),
     path("auditoria/", audit_views.import_audit_list, name="import_audit_list"),
+    path(
+        "auditoria-datos/",
+        audit_views.data_audit_report,
+        name="data_audit_report",
+    ),
     path("auditoria/<int:event_id>/", audit_views.import_audit_detail, name="import_audit_detail"),
     path("duplicados/", views.duplicates_review, name="duplicates_review"),
     path("<int:file_id>/process-new-clients/", views.process_new_clients, name="process_new_clients"),

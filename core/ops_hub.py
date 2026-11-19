@@ -106,6 +106,12 @@ IMPORT_LINKS: tuple[OpsLink, ...] = (
         path_prefixes=("/importaciones/auditoria",),
     ),
     OpsLink(
+        "data_audit",
+        "Auditoría de datos",
+        "imports:data_audit_report",
+        path_prefixes=("/importaciones/auditoria-datos",),
+    ),
+    OpsLink(
         "export_verifica",
         "Exportar verifica.csv",
         "pgc:export_verifica_csv",
@@ -143,6 +149,11 @@ def _link_active(path: str, link: OpsLink) -> bool:
         return path.startswith("/admin-hub/mensual/clientes-nuevos") and "/une" not in path
     if link.id == "clients_une":
         return "/admin-hub/mensual/clientes-nuevos/une" in path
+    if link.id == "import_audit":
+        base = "/importaciones/auditoria"
+        return path.startswith(base + "/") or path.rstrip("/") == base
+    if link.id == "data_audit":
+        return path.startswith("/importaciones/auditoria-datos")
     for prefix in link.path_prefixes:
         if path.startswith(prefix):
             return True

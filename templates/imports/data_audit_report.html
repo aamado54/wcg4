@@ -1,0 +1,289 @@
+{% extends "base_wcg.html" %}
+{% block title %}Auditoría de datos — Centro de operaciones{% endblock %}
+{% block extra_css %}
+<style>
+  .data-audit-scroll {
+    max-height: min(70vh, 42rem);
+    overflow: auto;
+    border: 1px solid var(--wcg-line, #e2e8f0);
+    border-radius: 10px;
+  }
+  .data-audit-scroll .table-wcg thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: #f0f4f8;
+    box-shadow: 0 1px 0 #e2e8f0;
+    cursor: pointer;
+    user-select: none;
+  }
+  .data-audit-scroll .table-wcg thead th.sort-asc::after { content: " ▲"; font-size: 0.65rem; opacity: 0.6; }
+  .data-audit-scroll .table-wcg thead th.sort-desc::after { content: " ▼"; font-size: 0.65rem; opacity: 0.6; }
+  .data-audit-scroll tbody tr:nth-child(even) { background: #fafbfc; }
+  .data-audit-scroll tbody tr.row-hidden { display: none; }
+  .path-cell { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.78rem; max-width: 22rem; word-break: break-all; }
+</style>
+{% endblock %}
+{% block content %}
+{% include "ops/_hub_nav_wcg.html" %}
+<div class="page-toolbar d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
+  <div>
+    <p class="ops-page-kicker">Centro de operaciones · Repositorio</p>
+    <h1 class="ops-page-title">Auditoría de datos</h1>
+    <p class="text-muted mb-0" style="max-width:44rem;">
+      Inventario de archivos en <code class="small">data/1-pgc … 5-plal</code>: tipo detectado, YYMM, alertas y grupos duplicados.
+      Equivalente al informe <code class="small">audit_data_repository</code>, sin modificar archivos.
+    </p>
+    <p class="small text-muted mb-0 mt-1">Raíz: <code>{{ data_root }}</code></p>
+  </div>
+  <div class="d-flex flex-wrap gap-2 align-items-center">
+    <a class="btn btn-sm btn-outline-secondary" href="?refresh=1" title="Ignora caché y vuelve a escanear disco">Actualizar escaneo</a>
+    <a class="btn btn-sm btn-outline-primary" href="{% url 'imports:import_audit_list' %}">Auditoría de importaciones</a>
+    <a class="wcg-home-link" href="{% url 'imports:import_hub' %}">← Importación general</a>
+  </div>
+</div>
+
+{% if generated_at %}
+<p class="small text-muted mb-3">
+  Generado: {{ generated_at|date:"Y-m-d H:i" }}
+  {% if from_cache %}<span class="badge text-bg-light border ms-1">desde caché</span>{% else %}<span class="badge text-bg-light border ms-1">escaneo nuevo</span>{% endif %}
+</p>
+{% endif %}
+
+<div class="row g-3 mb-4">
+  <div class="col-md-4">
+    <div class="card border-0 h-100">
+      <div class="card-body">
+        <div class="text-muted small text-uppercase fw-semibold">Archivos auditados</div>
+        <div class="fs-4 fw-bold text-success">{{ summary.file_count }}</div>
+        <p class="small text-muted mb-0">Módulos 1-pgc … 5-plal</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card border-0 h-100 {% if summary.flagged_count %}border-start border-3 border-warning{% endif %}">
+      <div class="card-body">
+        <div class="text-muted small text-uppercase fw-semibold">Con alertas</div>
+        <div class="fs-4 fw-bold {% if summary.flagged_count %}text-danger{% else %}text-muted{% endif %}">{{ summary.flagged_count }}</div>
+        <p class="small text-muted mb-0">Carpeta, tipo o YYMM inconsistente</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card border-0 h-100 {% if summary.duplicate_groups_count %}border-start border-3 border-info{% endif %}">
+      <div class="card-body">
+        <div class="text-muted small text-uppercase fw-semibold">Grupos duplicados</div>
+        <div class="fs-4 fw-bold">{{ summary.duplicate_groups_count }}</div>
+        <p class="small text-muted mb-0">Copias confusas a organizar</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card border-0 mb-4">
+  <div class="card-body">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+      <h2 class="h6 mb-0">Inventario de archivos</h2>
+      <span class="small text-muted" id="data-audit-visible-count">{{ rows|length }} filas</span>
+    </div>
+    <div class="row g-2 mb-3">
+      <div class="col-md-4">
+        <label class="form-label small mb-1">Buscar ruta</label>
+        <input type="search" id="data-audit-q" class="form-control form-control-sm" placeholder="fragmento de ruta…" autocomplete="off">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label small mb-1">Módulo</label>
+        <select id="data-audit-module" class="form-select form-select-sm">
+          <option value="">Todos</option>
+          {% for m in module_dirs %}
+          <option value="{{ m }}">{{ m }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label small mb-1">Disposición</label>
+        <select id="data-audit-disposition" class="form-select form-select-sm">
+          <option value="">Todas</option>
+          <option value="Alerta">Solo alertas</option>
+          <option value="Organizar">Solo organizar</option>
+          <option value="OK">Solo OK</option>
+        </select>
+      </div>
+      <div class="col-md-2 d-flex align-items-end">
+        <button type="button" class="btn btn-sm btn-outline-secondary w-100" id="data-audit-clear">Limpiar</button>
+      </div>
+    </div>
+    <div class="data-audit-scroll">
+      <table class="table table-sm align-middle table-wcg mb-0" id="data-audit-table">
+        <thead>
+          <tr>
+            <th data-sort="relpath">Ruta</th>
+            <th data-sort="module_key">Módulo</th>
+            <th data-sort="folder_yymm">Carpeta YYMM</th>
+            <th data-sort="import_tipo">Tipo</th>
+            <th data-sort="yymm">YYMM</th>
+            <th data-sort="expected_tipo">Tipo esperado</th>
+            <th data-sort="disposition">Disposición</th>
+            <th data-sort="flags_text">Alertas</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in rows %}
+          <tr data-relpath="{{ row.relpath|lower }}"
+              data-module="{{ row.module_key }}"
+              data-disposition="{{ row.disposition }}"
+              data-folder-yymm="{{ row.folder_yymm }}"
+              data-import-tipo="{{ row.import_tipo }}"
+              data-yymm="{{ row.yymm }}"
+              data-expected-tipo="{{ row.expected_tipo }}"
+              data-flags-text="{{ row.flags_text }}"
+              class="{% if row.flagged %}table-warning{% endif %}">
+            <td class="path-cell" title="{{ row.relpath }}">{{ row.relpath }}</td>
+            <td class="small text-nowrap">{{ row.module_key }}</td>
+            <td class="small">{{ row.folder_yymm|default:"—" }}</td>
+            <td class="small">
+              <span title="{{ row.import_tipo }}">{{ row.tipo_label|default:row.import_tipo }}</span>
+            </td>
+            <td class="small text-nowrap">
+              {% if row.yymm %}{{ row.yymm }} <span class="text-muted">({{ row.yymm_source }})</span>{% else %}—{% endif %}
+            </td>
+            <td class="small">{{ row.expected_tipo|default:"—" }}</td>
+            <td class="small">
+              {% if row.disposition == "Alerta" %}
+              <span class="badge text-bg-warning">Alerta</span>
+              {% elif row.disposition == "Organizar" %}
+              <span class="badge text-bg-info">Organizar</span>
+              {% else %}
+              <span class="badge text-bg-success">OK</span>
+              {% endif %}
+            </td>
+            <td class="small text-muted">{{ row.flags_text|default:"—" }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="8" class="text-muted p-3">No hay archivos en los módulos auditados.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="card border-0 mb-4">
+  <div class="card-body">
+    <button class="btn btn-sm btn-link text-decoration-none p-0 mb-2" type="button" data-bs-toggle="collapse" data-bs-target="#dupes-collapse" aria-expanded="{% if dupes %}true{% else %}false{% endif %}" aria-controls="dupes-collapse">
+      <h2 class="h6 mb-0 d-inline">Duplicados / copias confusas ({{ dupes|length }})</h2>
+      <span class="small text-muted ms-1">— clic para expandir</span>
+    </button>
+    <div class="collapse {% if dupes %}show{% endif %}" id="dupes-collapse">
+      <div class="table-responsive">
+        <table class="table table-sm table-wcg mb-0">
+          <thead>
+            <tr>
+              <th>Módulo lógico</th>
+              <th>Tipo lógico</th>
+              <th>YYMM</th>
+              <th>Archivos</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for d in dupes %}
+            <tr>
+              <td class="small">{{ d.module }}</td>
+              <td class="small"><code>{{ d.logical_tipo }}</code></td>
+              <td class="small">{{ d.yymm }}</td>
+              <td class="small">
+                <ul class="mb-0 ps-3">
+                  {% for f in d.files %}
+                  <li class="path-cell">{{ f }}</li>
+                  {% endfor %}
+                </ul>
+              </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4" class="text-muted">Sin grupos duplicados detectados.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+(function () {
+  const table = document.getElementById("data-audit-table");
+  if (!table) return;
+  const tbody = table.querySelector("tbody");
+  const rows = Array.from(tbody.querySelectorAll("tr[data-relpath]"));
+  const qInput = document.getElementById("data-audit-q");
+  const modSelect = document.getElementById("data-audit-module");
+  const dispSelect = document.getElementById("data-audit-disposition");
+  const clearBtn = document.getElementById("data-audit-clear");
+  const visibleCount = document.getElementById("data-audit-visible-count");
+  let sortKey = "relpath";
+  let sortDir = 1;
+
+  function rowDataVal(tr, key) {
+    const attr = "data-" + key.replace(/_/g, "-");
+    return (tr.getAttribute(attr) || "").toLowerCase();
+  }
+
+  function applyFilters() {
+    const q = (qInput.value || "").trim().toLowerCase();
+    const mod = modSelect.value;
+    const disp = dispSelect.value;
+    let vis = 0;
+    rows.forEach(function (tr) {
+      const matchQ = !q || tr.dataset.relpath.indexOf(q) >= 0;
+      const matchMod = !mod || tr.dataset.module === mod;
+      const matchDisp = !disp || tr.dataset.disposition === disp;
+      const show = matchQ && matchMod && matchDisp;
+      tr.classList.toggle("row-hidden", !show);
+      if (show) vis++;
+    });
+    visibleCount.textContent = vis + " filas visibles";
+  }
+
+  function sortRows() {
+    rows.sort(function (a, b) {
+      const ka = rowDataVal(a, sortKey);
+      const kb = rowDataVal(b, sortKey);
+      if (ka < kb) return -sortDir;
+      if (ka > kb) return sortDir;
+      return 0;
+    });
+    rows.forEach(function (tr) { tbody.appendChild(tr); });
+    table.querySelectorAll("thead th").forEach(function (th) {
+      th.classList.remove("sort-asc", "sort-desc");
+      if (th.dataset.sort === sortKey) {
+        th.classList.add(sortDir === 1 ? "sort-asc" : "sort-desc");
+      }
+    });
+  }
+
+  table.querySelectorAll("thead th[data-sort]").forEach(function (th) {
+    th.addEventListener("click", function () {
+      const key = th.dataset.sort;
+      if (sortKey === key) sortDir *= -1;
+      else { sortKey = key; sortDir = 1; }
+      sortRows();
+    });
+  });
+
+  [qInput, modSelect, dispSelect].forEach(function (el) {
+    el.addEventListener("input", applyFilters);
+    el.addEventListener("change", applyFilters);
+  });
+  clearBtn.addEventListener("click", function () {
+    qInput.value = "";
+    modSelect.value = "";
+    dispSelect.value = "";
+    applyFilters();
+  });
+
+  sortRows();
+  applyFilters();
+})();
+</script>
+{% endblock %}

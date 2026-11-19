@@ -12,6 +12,7 @@
     </p>
   </div>
   <div class="d-flex flex-wrap gap-2 align-items-center">
+    <a class="btn btn-sm btn-outline-primary" href="{% url 'imports:data_audit_report' %}">Auditoría de datos (repositorio)</a>
     <a class="btn btn-sm btn-outline-primary" href="{% url 'pgc:export_verifica_csv' %}">Exportar verifica.csv</a>
     <a class="btn btn-sm btn-outline-secondary" href="{% url 'pgc:export_verifica_csv' %}?format=tsv">Exportar verifica.tsv</a>
     <a class="wcg-home-link" href="{% url 'imports:import_hub' %}">← Importación general</a>

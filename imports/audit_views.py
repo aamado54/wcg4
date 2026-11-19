@@ -13,10 +13,21 @@ from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
 from django.utils import timezone
 
+from django.core.cache import cache
+from django.utils import timezone
+
 from core.access import can_access_ops
+from core.services.data_layout import repo_data_root
+from core.services.data_repository_audit import (
+    build_data_audit_snapshot,
+    data_repository_fingerprint,
+)
 from imports.audit import audit_summary_counts
 from imports.detection import TYPE_LABELS
 from imports.models import FileUpload, ImportAuditEvent
+
+_DATA_AUDIT_CACHE_KEY = "wcg:data_repository_audit_snapshot:v1"
+_DATA_AUDIT_CACHE_TTL = 3600
 
 
 def _parse_date_param(value: str, *, end_of_day: bool = False):
@@ -160,6 +171,63 @@ def import_audit_list(request):
                 {"label": "Inicio", "url": reverse("portal:home")},
                 {"label": "Administración", "url": reverse("imports:import_hub")},
                 {"label": "Auditoría de importaciones"},
+            ],
+        },
+    )
+
+
+def _load_data_audit_snapshot(request) -> dict:
+    root = repo_data_root()
+    refresh = (request.GET.get("refresh") or "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+    )
+    if not refresh:
+        cached = cache.get(_DATA_AUDIT_CACHE_KEY)
+        if cached and cached.get("fingerprint") == data_repository_fingerprint(root):
+            cached = dict(cached)
+            cached["from_cache"] = True
+            return cached
+
+    snapshot = build_data_audit_snapshot(root)
+    snapshot["generated_at"] = timezone.now()
+    cache.set(_DATA_AUDIT_CACHE_KEY, snapshot, _DATA_AUDIT_CACHE_TTL)
+    snapshot = dict(snapshot)
+    snapshot["from_cache"] = False
+    return snapshot
+
+
+@login_required
+@user_passes_test(can_access_ops)
+def data_audit_report(request):
+    """Inventario y alertas de data/1-pgc … 5-plal (auditoría de repositorio)."""
+    snapshot = _load_data_audit_snapshot(request)
+    generated_at = snapshot.get("generated_at")
+    if generated_at and timezone.is_naive(generated_at):
+        generated_at = timezone.make_aware(
+            generated_at, timezone.get_current_timezone()
+        )
+
+    return render(
+        request,
+        "imports/data_audit_report.html",
+        {
+            "summary": {
+                "file_count": snapshot["file_count"],
+                "flagged_count": snapshot["flagged_count"],
+                "duplicate_groups_count": snapshot["duplicate_groups_count"],
+            },
+            "rows": snapshot["rows"],
+            "dupes": snapshot["dupes"],
+            "data_root": snapshot["root"],
+            "module_dirs": snapshot.get("module_dirs", []),
+            "from_cache": snapshot.get("from_cache", False),
+            "generated_at": generated_at,
+            "breadcrumbs": [
+                {"label": "Inicio", "url": reverse("portal:home")},
+                {"label": "Importación", "url": reverse("imports:import_hub")},
+                {"label": "Auditoría de datos"},
             ],
         },
     )
