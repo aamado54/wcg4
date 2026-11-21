@@ -345,8 +345,8 @@ class Command(BaseCommand):
             metric_score.points_awarded = points_if
             if reason == "insurance_grace":
                 note = (
-                    "Respuesta reqs: puntos provisionales Insurance "
-                    f"(grace). {INSURANCE_REQS_GRACE_NOTE}"
+                    "Respuesta reqs: Insurance sin puntos en score. "
+                    f"{INSURANCE_REQS_GRACE_NOTE}"
                 )
             elif reason == "default_sin_registro":
                 note = (

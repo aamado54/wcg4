@@ -1,17 +1,23 @@
 """Tests export verifica — parse plantilla y conteo filas 62–121."""
 
+from decimal import Decimal
 from pathlib import Path
 
-from django.test import SimpleTestCase
+from django.test import SimpleTestCase, TestCase
 
+from core.models import MetricDefinition, UNE
+from pgc.models import MonthlyMetricResult, MonthlyTarget, PGCPlan
 from pgc.verifica_export import (
     EXPECTED_ROW_COUNT,
     ROW_END_2026,
     ROW_START_2026,
     VERIFICA_UNE_ORDER,
+    VerificaRowSpec,
+    build_output_row,
     default_row_specs,
     normalize_wc_code,
     parse_verifica_template_rows,
+    _presupuesto_comisiones_gtq,
 )
 
 
@@ -82,3 +88,67 @@ class VerificaParseTests(SimpleTestCase):
         wcg = [s for s in specs if s.wc_code == "WCG"]
         self.assertEqual(len(wcg), 12)
         self.assertTrue(all(not s.has_points for s in wcg))
+
+
+class VerificaBuildOutputTests(TestCase):
+    def setUp(self):
+        self.plan = PGCPlan.objects.create(year=2026, name="Verifica")
+        self.factoring = UNE.objects.create(
+            code=UNE.CODE_FACTORING,
+            name="Factoring",
+            name_es="Factoraje",
+            sort_order=1,
+        )
+        self.metric_ing, _ = MetricDefinition.objects.get_or_create(
+            code=MetricDefinition.CODE_INGRESOS,
+            defaults={"name": "Ingresos", "is_scored": True},
+        )
+        self.metric_cli, _ = MetricDefinition.objects.get_or_create(
+            code=MetricDefinition.CODE_CLIENTES_NUEVOS,
+            defaults={"name": "Clientes", "is_scored": True},
+        )
+
+    def test_presupuesto_comisiones_falls_back_to_meta_miles_times_1000(self):
+        tgt = MonthlyTarget.objects.create(
+            plan=self.plan,
+            une=self.factoring,
+            metric=self.metric_ing,
+            year=2026,
+            month=4,
+            target_value=Decimal("440"),
+            presupuesto_gtq=None,
+        )
+        self.assertEqual(_presupuesto_comisiones_gtq(tgt), Decimal("440000"))
+
+    def test_exec_com_usd_from_measured_miles_not_gtq(self):
+        MonthlyTarget.objects.create(
+            plan=self.plan,
+            une=self.factoring,
+            metric=self.metric_cli,
+            year=2026,
+            month=5,
+            target_value=Decimal("1"),
+        )
+        MonthlyTarget.objects.create(
+            plan=self.plan,
+            une=self.factoring,
+            metric=self.metric_ing,
+            year=2026,
+            month=5,
+            target_value=Decimal("770"),
+            presupuesto_gtq=Decimal("770000"),
+        )
+        MonthlyMetricResult.objects.create(
+            plan=self.plan,
+            une=self.factoring,
+            metric=self.metric_ing,
+            year=2026,
+            month=5,
+            measured_value=Decimal("219.483"),
+            source_currency="GTQ",
+            source_value=Decimal("999999"),
+        )
+        spec = VerificaRowSpec(year=2026, month=5, wc_code="WC", label_a="May-26")
+        row = build_output_row(spec, self.plan)
+        self.assertEqual(row[3], "770000")
+        self.assertEqual(row[5], "219483")

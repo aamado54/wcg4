@@ -76,6 +76,7 @@ from core.money_precision import MONEY_STORE_PLACES, quantize_store
 from pgc.income_conversion import evaluate_result_achievement
 from pgc.objetivos_scoring import (
     INSURANCE_REQS_GRACE_NOTE,
+    insurance_respuesta_reqs_excluded_from_score,
     resolve_respuesta_reqs_compliance,
     respuesta_reqs_points_awarded,
 )
@@ -168,7 +169,23 @@ def parse_decimal_or_none(raw_value):
 
 def _get_active_pgc_plan():
     return get_active_pgc_plan()
-  
+
+
+def _display_respuesta_reqs_points(une_code, metrics) -> Decimal:
+    if insurance_respuesta_reqs_excluded_from_score(une_code):
+        return Decimal("0")
+    metric = metrics.get(MetricDefinition.CODE_RESPUESTA_REQS)
+    return Decimal(str(getattr(metric, "points_awarded", 0) or 0))
+
+
+def _display_total_points(une_code, scorecard, metrics) -> Decimal:
+    total = Decimal(str(getattr(scorecard, "total_points", 0) or 0))
+    if insurance_respuesta_reqs_excluded_from_score(une_code):
+        metric = metrics.get(MetricDefinition.CODE_RESPUESTA_REQS)
+        if metric is not None and metric.points_awarded:
+            total -= Decimal(str(metric.points_awarded))
+    return total
+
 
 def _get_dashboard_rows(periods=None, mode=DEFAULT_PGC_MODE):
     active_plan = _get_active_pgc_plan()
@@ -234,6 +251,7 @@ def _get_dashboard_rows(periods=None, mode=DEFAULT_PGC_MODE):
             scorecard.month,
         )
         metrics = metric_map.get(key, {})
+        une_code = scorecard.une.code
 
         rows.append(
             {
@@ -256,12 +274,8 @@ def _get_dashboard_rows(periods=None, mode=DEFAULT_PGC_MODE):
                     "points_awarded",
                     0,
                 ),
-                "p_respuesta_reqs": getattr(
-                    metrics.get(MetricDefinition.CODE_RESPUESTA_REQS),
-                    "points_awarded",
-                    0,
-                ),
-                "total_points": getattr(scorecard, "total_points", 0),
+                "p_respuesta_reqs": _display_respuesta_reqs_points(une_code, metrics),
+                "total_points": _display_total_points(une_code, scorecard, metrics),
                 "is_month_qualified": getattr(scorecard, "is_month_qualified", False),
             }
         )
@@ -886,9 +900,19 @@ def _build_dashboard_annual_tables(year: int, mode: str = DEFAULT_PGC_MODE) -> l
             p_ingresos.append(_pts(MetricDefinition.CODE_INGRESOS))
             p_clientes.append(_pts(MetricDefinition.CODE_CLIENTES_NUEVOS))
             p_venta.append(_pts(MetricDefinition.CODE_VENTA_CRUZADA))
-            p_reqs.append(_pts(MetricDefinition.CODE_RESPUESTA_REQS))
+            if insurance_respuesta_reqs_excluded_from_score(une.code):
+                p_reqs.append(Decimal("0"))
+            else:
+                p_reqs.append(_pts(MetricDefinition.CODE_RESPUESTA_REQS))
             if card is not None and card.total_points is not None:
-                totals.append(Decimal(str(card.total_points)))
+                total_mes = Decimal(str(card.total_points))
+                if insurance_respuesta_reqs_excluded_from_score(une.code):
+                    raw_reqs = pts_map.get(
+                        (une.id, month, MetricDefinition.CODE_RESPUESTA_REQS),
+                        Decimal("0"),
+                    )
+                    total_mes -= raw_reqs
+                totals.append(total_mes)
             else:
                 parts = [
                     v
@@ -1508,8 +1532,10 @@ def _get_respuesta_reqs_rows(periods=None):
     except MetricDefinition.DoesNotExist:
         metric = None
 
-    targets = MonthlyTarget.objects.select_related("une", "plan").filter(
-        metric__code=MetricDefinition.CODE_RESPUESTA_REQS
+    targets = (
+        MonthlyTarget.objects.select_related("une", "plan")
+        .filter(metric__code=MetricDefinition.CODE_RESPUESTA_REQS)
+        .exclude(une__code=UNE.CODE_INSURANCE)
     )
     results = MonthlyMetricResult.objects.select_related("une", "plan", "metric").filter(
         metric__code=MetricDefinition.CODE_RESPUESTA_REQS
@@ -1585,7 +1611,6 @@ def respuesta_reqs_report(request):
         "report_sort": report_sort,
         "available_periods": _get_available_periods(),
         "month_count_options": MONTH_COUNT_OPTIONS,
-        "insurance_reqs_grace_note": INSURANCE_REQS_GRACE_NOTE,
     }
     return render(request, "pgc/respuesta_reqs.html", context)
 

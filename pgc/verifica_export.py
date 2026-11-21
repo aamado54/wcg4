@@ -219,8 +219,38 @@ def _target_and_result(plan, une_code: str, metric_code: str, year: int, month: 
     tgt = MonthlyTarget.objects.filter(
         plan=plan, une=une, metric=metric, year=year, month=month
     ).first()
-    pres_gtq = getattr(tgt, "presupuesto_gtq", None) if tgt else None
+    pres_gtq = _presupuesto_comisiones_gtq(tgt) if tgt else None
     return res, tgt, pres_gtq
+
+
+def _presupuesto_comisiones_gtq(ing_tgt: MonthlyTarget | None) -> Decimal | None:
+    """
+    Presupuesto comisiones (col D plantilla / export D): presupuesto_gtq en metas INGRESOS,
+    o meta miles USD × 1000 cuando falta presupuesto explícito (convención Objetivos).
+    """
+    if ing_tgt is None:
+        return None
+    if ing_tgt.presupuesto_gtq is not None:
+        return Decimal(str(ing_tgt.presupuesto_gtq))
+    if ing_tgt.target_value is not None:
+        return Decimal(str(ing_tgt.target_value)) * Decimal("1000")
+    return None
+
+
+def _ingresos_exec_usd_full(ing_res: MonthlyMetricResult | None) -> Decimal | None:
+    """Ejecución comisiones en USD enteros (measured_value = miles USD canónico)."""
+    if ing_res is None or ing_res.measured_value is None:
+        return None
+    return (Decimal(str(ing_res.measured_value)) * Decimal("1000")).quantize(Decimal("1"))
+
+
+def _ingresos_exec_display(ing_res: MonthlyMetricResult | None, *, investment: bool = False) -> str:
+    if investment:
+        if ing_res is None or ing_res.measured_value is None:
+            return ""
+        return _investment_exec_display(ing_res.measured_value)
+    full = _ingresos_exec_usd_full(ing_res)
+    return _fmt_num(full) if full is not None else ""
 
 
 def _metric_points(plan, une_code: str, metric_code: str, year: int, month: int, mode: str):
@@ -260,7 +290,6 @@ def _sum_decimal(values: list[Decimal | None]) -> Decimal | None:
 
 
 def _wcg_field(plan, year: int, month: int, mode: str, field: str) -> str:
-    fx = _get_fx(year, month)
     pres_clis: list[Decimal | None] = []
     pres_coms: list[Decimal | None] = []
     exec_clis: list[Decimal | None] = []
@@ -276,12 +305,12 @@ def _wcg_field(plan, year: int, month: int, mode: str, field: str) -> str:
         if cli_tgt and cli_tgt.target_value is not None:
             pres_clis.append(Decimal(str(cli_tgt.target_value)))
         if pres_gtq is not None:
-            pres_coms.append(Decimal(str(pres_gtq)))
+            pres_coms.append(pres_gtq)
         if cli_res and cli_res.measured_value is not None:
             exec_clis.append(Decimal(str(cli_res.measured_value)))
-        if ing_res and ing_res.measured_value is not None:
-            gtq = _usd_miles_to_gtq_full(ing_res.measured_value, fx)
-            exec_coms.append(gtq)
+        usd_full = _ingresos_exec_usd_full(ing_res)
+        if usd_full is not None:
+            exec_coms.append(usd_full)
 
     mapping = {
         "pres_cli": _sum_decimal(pres_clis),
@@ -304,7 +333,6 @@ def build_output_row(
       A Mes, B←F UEN, C←B pres_cli, D←D pres_com GTQ, E←G exec_cli,
       F←I exec_com, G←S pts_ing, H←T pts_cli, I←U pts_vc, J←W total.
     """
-    fx = _get_fx(spec.year, spec.month)
     une_code = WC_TO_UNE.get(spec.wc_code)
 
     if une_code == "TOTAL_EX_INV":
@@ -343,13 +371,9 @@ def build_output_row(
     if cli_res and cli_res.measured_value is not None:
         exec_cli = _fmt_num(Decimal(str(cli_res.measured_value)))
 
-    exec_com = ""
-    if une_code == UNE.CODE_INVESTMENT:
-        if ing_res and ing_res.measured_value is not None:
-            exec_com = _investment_exec_display(ing_res.measured_value)
-    elif ing_res and ing_res.measured_value is not None:
-        gtq = _usd_miles_to_gtq_full(ing_res.measured_value, fx)
-        exec_com = _fmt_num(gtq) if gtq is not None else ""
+    exec_com = _ingresos_exec_display(
+        ing_res, investment=une_code == UNE.CODE_INVESTMENT
+    )
 
     pts_ing = pts_cli = pts_vc = total = ""
     if spec.has_points:

@@ -598,7 +598,7 @@ class RespuestaReqsComplianceTests(TestCase):
                 points_if_achieved=Decimal("5"),
             )
 
-    def test_insurance_grace_overrides_manual_no_cumple(self):
+    def test_insurance_excluded_from_respuesta_reqs_report(self):
         from pgc.views import _get_respuesta_reqs_rows
 
         ManualRequirementsCompliance.objects.create(
@@ -610,10 +610,15 @@ class RespuestaReqsComplianceTests(TestCase):
             incident_note="Excel NO APLICA",
         )
         _, rows = _get_respuesta_reqs_rows(periods=[(2026, 3)])
-        row = next(r for r in rows if r["target"].une_id == self.insurance.id)
-        self.assertEqual(row["measured_value"], Decimal("1"))
-        self.assertEqual(row["points_awarded"], Decimal("5"))
-        self.assertTrue(row["is_achieved"])
+        self.assertFalse(any(r["target"].une_id == self.insurance.id for r in rows))
+
+    def test_insurance_respuesta_reqs_points_never_scored(self):
+        from pgc.objetivos_scoring import respuesta_reqs_points_awarded
+
+        pts = respuesta_reqs_points_awarded(
+            UNE.CODE_INSURANCE, 2026, 3, Decimal("5"), True
+        )
+        self.assertEqual(pts, Decimal("0"))
 
     def test_sin_registro_asume_cumple_octubre_inversiones(self):
         from pgc.views import _get_respuesta_reqs_rows

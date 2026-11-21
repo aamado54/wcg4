@@ -161,10 +161,14 @@ def ingresos_points_objetivos(
 
 
 INSURANCE_REQS_GRACE_NOTE = (
-    "Insurance: se otorgan puntos de respuesta a requerimientos de forma provisional "
-    "(sin penalización) mientras no exista información completa ni un esquema de "
-    "evaluación equivalente al de otras UNE; la hoja Objetivos marca «NO APLICA»."
+    "Insurance: la métrica respuesta a requerimientos no suma puntos al score PGC "
+    "(la hoja Objetivos marca «NO APLICA»)."
 )
+
+
+def insurance_respuesta_reqs_excluded_from_score(une_code: str) -> bool:
+    """Insurance nunca recibe puntos por respuesta a requerimientos."""
+    return (une_code or "").upper() == UNE.CODE_INSURANCE
 
 
 def insurance_reqs_grace_applies(une_code: str) -> bool:
@@ -197,14 +201,14 @@ def resolve_respuesta_reqs_compliance(une_code: str, manual=None) -> tuple[bool,
 def respuesta_reqs_points_awarded(une_code, year, month, points_if, is_compliant) -> Decimal:
     """
     Puntos de respuesta a reqs.
-    Insurance: 5 en todos los meses. Investment oct-2026: igual (5), aunque la meta diga 0.
+    Insurance: siempre 0 (no participa en el score). Investment oct-2026: 5 si cumple.
     """
+    if insurance_respuesta_reqs_excluded_from_score(une_code):
+        return Decimal("0")
     if not is_compliant:
         return Decimal("0")
     pts = Decimal(str(points_if or 0))
     code = (une_code or "").upper()
-    if code == UNE.CODE_INSURANCE and pts < Decimal("5"):
-        pts = Decimal("5")
     if (
         code in {UNE.CODE_INVESTMENT, "INVESTMENTS", "INVERSIONES"}
         and int(year or 0) == 2026

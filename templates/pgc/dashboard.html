@@ -379,12 +379,7 @@
                 <td>{{ row.p_ingresos|floatformat:1 }}</td>
                 <td>{{ row.p_clientes|floatformat:1 }}</td>
                 <td>{{ row.p_venta_cruzada|floatformat:0 }}</td>
-                <td>
-                  {{ row.p_respuesta_reqs|floatformat:0 }}
-                  {% if row.scorecard.une.code == "INSURANCE" and row.p_respuesta_reqs > 0 %}
-                  <span class="muted" style="display:block; font-size:0.72rem; max-width:220px; line-height:1.25;" title="{{ insurance_reqs_grace_note }}">※ provisional</span>
-                  {% endif %}
-                </td>
+                <td>{{ row.p_respuesta_reqs|floatformat:0 }}</td>
                 <td><strong>{{ row.scorecard.total_points|floatformat:1 }}</strong></td>
 
                 <td>
