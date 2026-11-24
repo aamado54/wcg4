@@ -243,7 +243,12 @@ def detect_from_name(filename: str) -> DetectionResult | None:
             "nombre: Capital_Bancos",
         ),
         (TYPE_NEW_CLIENTS, "clientesnuevos" in compact or "clientes_nuevos" in name, "nombre: ClientesNuevos"),
-        (TYPE_CROSS_SALE, "ventacruzada" in compact, "nombre: VentaCruzada"),
+        (
+            TYPE_CROSS_SALE,
+            "ventacruzada" in compact
+            or ("venta" in compact and "cruzada" in compact and "pgc" in compact),
+            "nombre: VentaCruzada",
+        ),
         (TYPE_FINANCIAL, name.startswith("wc") or "estado_resultados" in name or "er_" in name, "nombre: WC*/ER financiero"),
         (TYPE_PGO_TICKETS, "pgo" in name and ("ticket" in name or "control" in name), "nombre: PGO+tickets/control"),
         (TYPE_PGO_CATALOGO, "pgo" in name and "archivo" in name, "nombre: PGO+archivos"),

@@ -7,9 +7,14 @@ from imports.management.import_audit_mixin import ImportAuditCommandMixin
 from django.db import transaction
 from imports.currency_normalize import normalize_currency_code
 from imports.models import CrossSaleImportHeader, CrossSaleImportRow
+from imports.venta_cruzada_parse import (
+    cross_sale_row_exists,
+    iter_cross_sale_rows,
+    parse_cross_sale_date,
+    parse_cross_sale_period,
+)
 from pathlib import Path
 from pgc.models import PGCPlan, MonthlyTarget, MonthlyMetricResult
-import csv
 
 
 class Command(ImportAuditCommandMixin, BaseCommand):
@@ -42,25 +47,15 @@ class Command(ImportAuditCommandMixin, BaseCommand):
         metric = MetricDefinition.objects.get(code=MetricDefinition.CODE_VENTA_CRUZADA)
 
         headers_cache = {}
-        counts_by_pair = {}
-        counts_by_origin = {}  # (year, month, une_origin_id) -> int
+        affected_months: set[tuple[int, int]] = set()
+        rows_created = 0
         q_alias_count = 0
         currency_warnings: list[str] = []
         currencies = {c.code.upper(): c for c in Currency.objects.all()}
+        skipped_duplicate = 0
+        skipped_period = 0
 
-        with path.open("r", encoding="utf-8-sig") as f:
-            sample = f.read(4096)
-            f.seek(0)
-
-            try:
-                dialect = csv.Sniffer().sniff(sample, delimiters=[",", "\t", ";"])
-            except csv.Error:
-                delimiter = "\t" if "\t" in sample else ","
-                dialect = csv.excel_tab if delimiter == "\t" else csv.excel
-          
-            reader = csv.DictReader(f, dialect=dialect)
-
-            for row in reader:
+        for row in iter_cross_sale_rows(path):
                 periodo = (
                     row.get("Período")
                     or row.get("Periodo")
@@ -70,12 +65,12 @@ class Command(ImportAuditCommandMixin, BaseCommand):
                 if not periodo:
                     continue
 
-                try:
-                    year_str, month_str = str(periodo).replace("-", "/").split("/")
-                    year = int(year_str)
-                    month = int(month_str)
-                except Exception:
+                parsed_period = parse_cross_sale_period(periodo)
+                if not parsed_period:
+                    skipped_period += 1
                     continue
+                year, month = parsed_period
+                affected_months.add((year, month))
 
                 cliente = (
                     row.get("Cliente")
@@ -92,11 +87,15 @@ class Command(ImportAuditCommandMixin, BaseCommand):
                     or ""
                 ).strip()
 
-                fecha_raw = (
+                fecha_cell = (
                     row.get("Fecha")
                     or row.get("FECHA")
                     or row.get("fecha")
-                    or ""
+                )
+                fecha_raw = (
+                    ""
+                    if fecha_cell is None
+                    else (fecha_cell if isinstance(fecha_cell, str) else str(fecha_cell))
                 ).strip()
 
                 moneda_raw = (
@@ -181,19 +180,20 @@ class Command(ImportAuditCommandMixin, BaseCommand):
                         )
                     headers_cache[header_key] = header
 
-                parsed_date = None
-                if fecha_raw:
-                    try:
-                        parsed_date = datetime.fromisoformat(
-                            fecha_raw.replace("Z", "+00:00")
-                        ).date()
-                    except Exception:
-                        try:
-                            parsed_date = datetime.strptime(
-                                fecha_raw[:10], "%Y-%m-%d"
-                            ).date()
-                        except Exception:
-                            parsed_date = None
+                parsed_date = parse_cross_sale_date(fecha_cell)
+
+                if cross_sale_row_exists(
+                    year=year,
+                    month=month,
+                    client_name=cliente,
+                    operation_code=operacion,
+                    row_date=parsed_date,
+                    currency_id=currency.id if currency else None,
+                    une_destination_id=une_destination.id if une_destination else None,
+                    une_origin_id=une_origin.id if une_origin else None,
+                ):
+                    skipped_duplicate += 1
+                    continue
 
                 CrossSaleImportRow.objects.create(
                     header=header,
@@ -208,14 +208,18 @@ class Command(ImportAuditCommandMixin, BaseCommand):
                     raw_une_destination=une_dest_raw,
                     raw_une_origin=une_origin_raw,
                 )
+                rows_created += 1
 
-                if une_origin and une_destination:
-                    key_pair = (year, month, une_origin.id, une_destination.id)
-                    counts_by_pair[key_pair] = counts_by_pair.get(key_pair, 0) + 1
-                
-                    key_origin = (year, month, une_origin.id)
+        counts_by_origin: dict[tuple[int, int, int], int] = {}
+        for year, month in affected_months:
+            qs = CrossSaleImportRow.objects.filter(year=year, month=month).only(
+                "une_origin_id", "une_destination_id"
+            )
+            for cs_row in qs.iterator():
+                if cs_row.une_origin_id and cs_row.une_destination_id:
+                    key_origin = (year, month, cs_row.une_origin_id)
                     counts_by_origin[key_origin] = counts_by_origin.get(key_origin, 0) + 1
-  
+
         for (year, month, une_origin_id), count in counts_by_origin.items():
             une_origin = UNE.objects.get(id=une_origin_id)
         
@@ -243,6 +247,23 @@ class Command(ImportAuditCommandMixin, BaseCommand):
                     "points_awarded": 0,
                     "calculation_note": f"{count} referencias válidas de venta cruzada en el mes",
                 },
+            )
+
+        if skipped_period:
+            self.stdout.write(
+                self.style.WARNING(
+                    f"Omitidas {skipped_period} fila(s) con período no reconocido."
+                )
+            )
+        if skipped_duplicate:
+            self.stdout.write(
+                self.style.WARNING(
+                    f"Omitidas {skipped_duplicate} fila(s) ya existentes (sin duplicar)."
+                )
+            )
+        if rows_created:
+            self.stdout.write(
+                self.style.SUCCESS(f"Filas nuevas guardadas: {rows_created}.")
             )
 
         if q_alias_count:

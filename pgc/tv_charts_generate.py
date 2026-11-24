@@ -49,6 +49,10 @@ TV_CHART_CONFIGS: tuple[dict, ...] = (
 
 IMAGE_WIDTH = 1920
 IMAGE_HEIGHT = 1080
+# v25: misma separación leyenda / «Período» que export Plotly (dashboard.html).
+TV_LEGEND_FONT = 11
+TV_XLABEL_FONT = 12
+TV_FIG_LINE_FRAC = TV_LEGEND_FONT / IMAGE_HEIGHT
 COLOR_TEXT = "#3D3F3F"
 COLOR_REAL = "#1D284A"
 COLOR_META = "#010202"
@@ -275,7 +279,12 @@ def render_chart_png(
     ax.set_xticks(x)
     ax.set_xticklabels(list(labels), fontsize=11, color=COLOR_TEXT)
     ax.set_ylabel(y_axis, fontsize=12, color=COLOR_TEXT)
-    ax.set_xlabel("Período", fontsize=12, color=COLOR_TEXT)
+    ax.set_xlabel(
+        "Período",
+        fontsize=TV_XLABEL_FONT,
+        color=COLOR_TEXT,
+        labelpad=int(TV_XLABEL_FONT * 1.5) + 4,
+    )
     ax.tick_params(axis="y", labelsize=11, colors=COLOR_TEXT)
     ax.yaxis.set_major_formatter(FuncFormatter(lambda v, _p: f"{v:,.0f}"))
     ax.set_ylim(bottom=0)
@@ -300,12 +309,12 @@ def render_chart_png(
     )
     ax.legend(
         loc="upper center",
-        bbox_to_anchor=(0.5, -0.12),
+        bbox_to_anchor=(0.5, -0.12 - TV_FIG_LINE_FRAC),
         ncol=2,
         frameon=False,
-        fontsize=11,
+        fontsize=TV_LEGEND_FONT,
     )
-    fig.subplots_adjust(left=0.08, right=0.98, top=0.88, bottom=0.22)
+    fig.subplots_adjust(left=0.08, right=0.98, top=0.88, bottom=0.24)
 
     buf = io.BytesIO()
     fig.savefig(buf, format="png", facecolor="white", edgecolor="none")

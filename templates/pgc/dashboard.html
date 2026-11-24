@@ -924,15 +924,16 @@ document.addEventListener("DOMContentLoaded", function () {
   //   Título y subtítulo = 2 annotations (y=1, yanchor=bottom, yshift).
   //
   // v24 (desde chart 5): título −45 px, subtítulo −10 px; margin.t se encoge igual.
+  // v25: leyenda Real/Meta y «Período» bajan 1 línea; «Período» +½ línea extra (separación).
 
-  const EXPORT_SVG_VERSION = "v24-header-tighten";
+  const EXPORT_SVG_VERSION = "v25-legend-period-spacing";
   const EXPORT_SUBTITLE =
     "Real vs meta por período. Cifras acumuladas dentro del rango.";
   const EXPORT_WIDTH = 1920;
   const EXPORT_HEIGHT = 1080;
   const IMAGE_WIDTH = 1920;
   const IMAGE_HEIGHT = 1080;
-  const EXPORT_MARGIN_B = 195;
+  const EXPORT_MARGIN_B = 195 + 48 + 24; // v25: +1 línea leyenda + ½ línea extra en «Período»
   const EXPORT_TITLE_SIZE = 180;
   const EXPORT_SUBTITLE_SIZE = 44;
   // Chart 5: 16 / 12 / 12. v24: subtítulo −10, título −45 (yshift↓ = más cerca del plot).
@@ -1106,11 +1107,13 @@ document.addEventListener("DOMContentLoaded", function () {
         // v7: -0.055 − 1× altura del font (bajo «Período»).
         // v13: −⅓ adicional de la altura del font de la leyenda.
         // v14–v16: − EXPORT_LEGEND_NUDGE_PX (1.5× ancho de un dígito del eje Y).
+        // v25: −1 línea (Real/Meta) para no solapar meses inclinados.
         y:
           -0.055 -
           EXPORT_LEGEND_SIZE / IMAGE_HEIGHT -
           EXPORT_LEGEND_SIZE / (3 * IMAGE_HEIGHT) -
-          EXPORT_LEGEND_NUDGE_PX / IMAGE_HEIGHT,
+          EXPORT_LEGEND_NUDGE_PX / IMAGE_HEIGHT -
+          EXPORT_LEGEND_SIZE / IMAGE_HEIGHT,
         yanchor: "top",
         font: { size: EXPORT_LEGEND_SIZE, color: EXPORT_COLOR_TEXT },
         bgcolor: "rgba(255,255,255,0)",
@@ -1123,7 +1126,8 @@ document.addEventListener("DOMContentLoaded", function () {
           text: "Período",
           font: { size: EXPORT_AXIS_TITLE_SIZE, color: EXPORT_COLOR_TEXT },
           // v8: 10; menor standoff = «Período» más arriba (más cerca de los meses)
-          standoff: 4,
+          // v25: +1 línea (igual que leyenda) + ½ línea extra bajo Real/Meta
+          standoff: 4 + Math.round(EXPORT_AXIS_TITLE_SIZE * 1.5),
         },
         type: "category",
         categoryorder: "array",
