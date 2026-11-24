@@ -277,14 +277,12 @@ def render_chart_png(
     )
 
     ax.set_xticks(x)
-    ax.set_xticklabels(list(labels), fontsize=11, color=COLOR_TEXT)
+    ax.set_xticklabels(list(labels), fontsize=11, color=COLOR_TEXT, rotation=30, ha="right")
     ax.set_ylabel(y_axis, fontsize=12, color=COLOR_TEXT)
-    ax.set_xlabel(
-        "Período",
-        fontsize=TV_XLABEL_FONT,
-        color=COLOR_TEXT,
-        labelpad=int(TV_XLABEL_FONT * 1.5) + 4,
-    )
+    footer_pad = 14
+    period_bottom = footer_pad / IMAGE_HEIGHT
+    legend_bottom = (footer_pad + TV_XLABEL_FONT + TV_XLABEL_FONT) / IMAGE_HEIGHT
+    ax.set_xlabel("")
     ax.tick_params(axis="y", labelsize=11, colors=COLOR_TEXT)
     ax.yaxis.set_major_formatter(FuncFormatter(lambda v, _p: f"{v:,.0f}"))
     ax.set_ylim(bottom=0)
@@ -308,13 +306,14 @@ def render_chart_png(
         color=COLOR_TEXT,
     )
     ax.legend(
-        loc="upper center",
-        bbox_to_anchor=(0.5, -0.12 - TV_FIG_LINE_FRAC),
+        loc="lower center",
+        bbox_to_anchor=(0.5, legend_bottom),
         ncol=2,
         frameon=False,
         fontsize=TV_LEGEND_FONT,
     )
-    fig.subplots_adjust(left=0.08, right=0.98, top=0.88, bottom=0.24)
+    fig.text(0.5, period_bottom, "Período", ha="center", va="bottom", fontsize=TV_XLABEL_FONT, color=COLOR_TEXT)
+    fig.subplots_adjust(left=0.08, right=0.98, top=0.88, bottom=0.28)
 
     buf = io.BytesIO()
     fig.savefig(buf, format="png", facecolor="white", edgecolor="none")
