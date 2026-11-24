@@ -11,6 +11,8 @@ from decimal import Decimal, ROUND_HALF_UP
 from core.money_precision import MONEY_STORE_PLACES, quantize_store
 from core.models import MetricDefinition, UNE
 
+# Almacenamiento autoritativo: MonthlyMetricScore.points_awarded (decimal_places=4).
+# Hasta 2 dec aquí alinea con Excel/reporte; subir a 0.0001 si se exigen 4 dec en BD.
 POINTS_QUANTIZE = Decimal("0.01")
 
 

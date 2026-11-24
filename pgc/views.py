@@ -2010,7 +2010,10 @@ def _get_ingresos_rows(periods=None, *, display_decimals: int = INGRESOS_DEFAULT
             else:
                 real = None
 
-        # Insurance: 3 dec en pantalla; demás ingresos: precisión de almacenamiento (6 dec).
+        # Ingresos vs meta — solo presentación (no afecta scoring ni MonthlyMetric* en BD):
+        # Insurance: meta/real/diferencia truncados a 3 dec (ROUND_DOWN), como la hoja histórica.
+        # F/L/INV: quantize_store (MONEY_STORE_PLACES, 6 dec) solo para filas del reporte.
+        # Puntos y proporción: objetivos_scoring + recalc_pgc usan miles USD completos (6 dec).
         if target.une.code == "INSURANCE":
             if meta is not None:
                 meta = meta.quantize(Decimal("0.001"), rounding=ROUND_DOWN)
