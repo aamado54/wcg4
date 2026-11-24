@@ -316,6 +316,7 @@
                 {% endfor %}
                 <td class="total-cell">{% if table.p_venta_total is not None %}{{ table.p_venta_total|floatformat:0 }}{% endif %}</td>
               </tr>
+              {% if table.show_respuesta_reqs %}
               <tr>
                 <td class="concept">Respuesta reqs</td>
                 {% for v in table.p_reqs %}
@@ -323,6 +324,7 @@
                 {% endfor %}
                 <td class="total-cell">{% if table.p_reqs_total is not None %}{{ table.p_reqs_total|floatformat:0 }}{% endif %}</td>
               </tr>
+              {% endif %}
               <tr class="row-total">
                 <td class="concept">Total</td>
                 {% for v in table.totals %}
@@ -379,7 +381,7 @@
                 <td>{{ row.p_ingresos|floatformat:1 }}</td>
                 <td>{{ row.p_clientes|floatformat:1 }}</td>
                 <td>{{ row.p_venta_cruzada|floatformat:0 }}</td>
-                <td>{{ row.p_respuesta_reqs|floatformat:0 }}</td>
+                <td>{% if row.show_respuesta_reqs %}{{ row.p_respuesta_reqs|floatformat:0 }}{% endif %}</td>
                 <td><strong>{{ row.scorecard.total_points|floatformat:1 }}</strong></td>
 
                 <td>

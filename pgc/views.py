@@ -277,6 +277,9 @@ def _get_dashboard_rows(periods=None, mode=DEFAULT_PGC_MODE):
                 "p_respuesta_reqs": _display_respuesta_reqs_points(une_code, metrics),
                 "total_points": _display_total_points(une_code, scorecard, metrics),
                 "is_month_qualified": getattr(scorecard, "is_month_qualified", False),
+                "show_respuesta_reqs": not insurance_respuesta_reqs_excluded_from_score(
+                    une_code
+                ),
             }
         )
 
@@ -767,7 +770,11 @@ def pgc_dashboard(request):
                 "p_ingresos": row["p_ingresos"],
                 "p_clientes": row["p_clientes"],
                 "p_venta_cruzada": row["p_venta_cruzada"],
-                "p_respuesta_reqs": row["p_respuesta_reqs"],
+                "p_respuesta_reqs": (
+                    row["p_respuesta_reqs"]
+                    if row.get("show_respuesta_reqs", True)
+                    else None
+                ),
                 "total": row["total_points"],
             }
             for row in rows
@@ -901,7 +908,7 @@ def _build_dashboard_annual_tables(year: int, mode: str = DEFAULT_PGC_MODE) -> l
             p_clientes.append(_pts(MetricDefinition.CODE_CLIENTES_NUEVOS))
             p_venta.append(_pts(MetricDefinition.CODE_VENTA_CRUZADA))
             if insurance_respuesta_reqs_excluded_from_score(une.code):
-                p_reqs.append(Decimal("0"))
+                p_reqs.append(None)
             else:
                 p_reqs.append(_pts(MetricDefinition.CODE_RESPUESTA_REQS))
             if card is not None and card.total_points is not None:
@@ -914,13 +921,18 @@ def _build_dashboard_annual_tables(year: int, mode: str = DEFAULT_PGC_MODE) -> l
                     total_mes -= raw_reqs
                 totals.append(total_mes)
             else:
+                req_part = (
+                    None
+                    if insurance_respuesta_reqs_excluded_from_score(une.code)
+                    else p_reqs[-1]
+                )
                 parts = [
                     v
                     for v in (
                         p_ingresos[-1],
                         p_clientes[-1],
                         p_venta[-1],
-                        p_reqs[-1],
+                        req_part,
                     )
                     if v is not None
                 ]
@@ -930,6 +942,7 @@ def _build_dashboard_annual_tables(year: int, mode: str = DEFAULT_PGC_MODE) -> l
             else:
                 clasifica.append(None)
 
+        show_respuesta_reqs = not insurance_respuesta_reqs_excluded_from_score(une.code)
         tables.append(
             {
                 "une": une,
@@ -941,10 +954,13 @@ def _build_dashboard_annual_tables(year: int, mode: str = DEFAULT_PGC_MODE) -> l
                 "p_reqs": p_reqs,
                 "totals": totals,
                 "clasifica": clasifica,
+                "show_respuesta_reqs": show_respuesta_reqs,
                 "p_ingresos_total": _sum_or_none_decimal(p_ingresos),
                 "p_clientes_total": _sum_or_none_decimal(p_clientes),
                 "p_venta_total": _sum_or_none_decimal(p_venta),
-                "p_reqs_total": _sum_or_none_decimal(p_reqs),
+                "p_reqs_total": (
+                    _sum_or_none_decimal(p_reqs) if show_respuesta_reqs else None
+                ),
                 "totals_ytd": _sum_or_none_decimal(totals),
             }
         )
@@ -1117,11 +1133,16 @@ def _build_dashboard_markdown(rows, report_filter, selected_mode="modo2"):
 
             clasifica = "Sí" if row["is_month_qualified"] else "No"
             periodo = f"{row['year']}-{row['month']:02d}"
+            reqs_pts = (
+                "N/A"
+                if insurance_respuesta_reqs_excluded_from_score(row["une"].code)
+                else row["p_respuesta_reqs"]
+            )
 
             lines.append(
                 f"| {row['une'].name_es} | {periodo} | "
                 f"{row['p_ingresos']} | {row['p_clientes']} | "
-                f"{row['p_venta_cruzada']} | {row['p_respuesta_reqs']} | "
+                f"{row['p_venta_cruzada']} | {reqs_pts} | "
                 f"{row['total_points']} | {clasifica} |"
             )
 

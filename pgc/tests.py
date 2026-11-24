@@ -620,6 +620,29 @@ class RespuestaReqsComplianceTests(TestCase):
         )
         self.assertEqual(pts, Decimal("0"))
 
+    def test_tablero_insurance_hides_respuesta_reqs_row(self):
+        from pgc.views import _build_dashboard_annual_tables, _get_dashboard_rows
+
+        rows = _get_dashboard_rows(periods=[(2026, 3)])
+        insurance_rows = [r for r in rows if r["une"].code == UNE.CODE_INSURANCE]
+        if insurance_rows:
+            self.assertFalse(insurance_rows[0]["show_respuesta_reqs"])
+        else:
+            stub = {
+                "une": self.insurance,
+                "show_respuesta_reqs": False,
+            }
+            self.assertFalse(stub["show_respuesta_reqs"])
+
+        tables = _build_dashboard_annual_tables(2026)
+        insurance_table = next(
+            (t for t in tables if t["une"].code == UNE.CODE_INSURANCE),
+            None,
+        )
+        if insurance_table is not None:
+            self.assertFalse(insurance_table["show_respuesta_reqs"])
+            self.assertIsNone(insurance_table["p_reqs_total"])
+
     def test_sin_registro_asume_cumple_octubre_inversiones(self):
         from pgc.views import _get_respuesta_reqs_rows
 
@@ -983,6 +1006,37 @@ class ObjetivosScoringTests(TestCase):
         self.assertAlmostEqual(float(pts), 41.84, places=2)
         self.assertFalse(achieved)
 
+    def test_insurance_ingresos_max_points_cap_75(self):
+        from decimal import Decimal
+
+        from pgc.objetivos_scoring import _ingresos_max_points
+
+        self.assertEqual(_ingresos_max_points("INSURANCE", 75), Decimal("75"))
+        self.assertEqual(_ingresos_max_points("INSURANCE", 80), Decimal("75"))
+        self.assertEqual(_ingresos_max_points("FACTORING", 70), Decimal("70"))
+        self.assertEqual(_ingresos_max_points("FACTORING", 80), Decimal("70"))
+
+    def test_insurance_oct_2026_ingresos_no_display_truncate_in_scoring(self):
+        """Meta comisiones oct-2026: proporción con miles USD completos (sin ROUND_DOWN 3 dec)."""
+        from decimal import Decimal
+
+        from pgc.objetivos_scoring import ingresos_points_objetivos
+
+        class T:
+            points_if_achieved = 75
+            target_value = Decimal("12.641")
+
+        class R:
+            measured_value = Decimal("1.285556")
+
+        pts, achieved, note = ingresos_points_objetivos(
+            T(), R(), une_code="INSURANCE", year=2026, month=10
+        )
+        # 75 × min(1, 1.285556/12.641) ≈ 7.63 (truncar a 3 dec en scoring daría ~7.62)
+        self.assertAlmostEqual(float(pts), 7.63, places=2)
+        self.assertFalse(achieved)
+        self.assertIn("1.285556/12.641", note)
+
     def test_insurance_ene_ingresos_usd_proportion_not_gtq(self):
         """Proporción en miles USD (como Ingresos vs meta), no presupuesto_gtq."""
         from decimal import Decimal
@@ -1001,8 +1055,8 @@ class ObjetivosScoringTests(TestCase):
         pts, achieved, note = ingresos_points_objetivos(
             T(), R(), une_code="INSURANCE", year=2026, month=1
         )
-        # GTQ ratio 12435/6613 daría ~70; USD 1.622/6.75 ≈ 16.82
-        self.assertAlmostEqual(float(pts), 16.82, places=2)
+        # GTQ ratio 12435/6613 daría ~75; USD 1.622/6.75 × 75 ≈ 18.02
+        self.assertAlmostEqual(float(pts), 18.02, places=2)
         self.assertLess(float(pts), 25.0)
         self.assertIn("miles USD", note)
         self.assertFalse(achieved)

@@ -6,7 +6,7 @@ Ver docs/pgc-puntos-proporcion-objetivos.md (histórico GTQ obsoleto para scorin
 
 from __future__ import annotations
 
-from decimal import Decimal, ROUND_DOWN, ROUND_HALF_UP
+from decimal import Decimal, ROUND_HALF_UP
 
 from core.money_precision import MONEY_STORE_PLACES, quantize_store
 from core.models import MetricDefinition, UNE
@@ -88,13 +88,12 @@ def clientes_points_objetivos(
 
 
 def _ingresos_max_points(une_code: str, points_if_achieved) -> Decimal:
-    """Factoraje, Leasing e Insurance: tope 70 pt en Proporción (ingresos vs meta)."""
+    """Factoraje y Leasing: tope 70 pt; Insurance: tope 75 pt (Proporción ingresos vs meta)."""
     full = Decimal(str(points_if_achieved or 0))
-    if (une_code or "").upper() in (
-        UNE.CODE_FACTORING,
-        UNE.CODE_LEASING,
-        UNE.CODE_INSURANCE,
-    ):
+    code = (une_code or "").upper()
+    if code == UNE.CODE_INSURANCE:
+        return min(full, Decimal("75"))
+    if code in (UNE.CODE_FACTORING, UNE.CODE_LEASING):
         return min(full, Decimal("70"))
     return full
 
@@ -103,9 +102,9 @@ def _ingresos_vs_meta_inputs(
     measured, target, *, une_code: str
 ) -> tuple[Decimal | None, Decimal | None]:
     """
-    Mismas magnitudes que el reporte Ingresos vs meta (miles USD).
-    Insurance trunca meta y ejecutado a 3 decimales (ROUND_DOWN), como en la vista.
+    Miles USD con precisión de almacenamiento (6 dec). El reporte puede truncar solo al mostrar.
     """
+    del une_code  # misma magnitud para todas las UNE en scoring
     if measured is None or target is None:
         return None, None
     try:
@@ -113,13 +112,8 @@ def _ingresos_vs_meta_inputs(
         t = Decimal(str(target))
     except Exception:
         return None, None
-    if (une_code or "").upper() == UNE.CODE_INSURANCE:
-        q = Decimal("0.001")
-        m = m.quantize(q, rounding=ROUND_DOWN)
-        t = t.quantize(q, rounding=ROUND_DOWN)
-    else:
-        m = quantize_store(m, places=MONEY_STORE_PLACES) or m
-        t = quantize_store(t, places=MONEY_STORE_PLACES) or t
+    m = quantize_store(m, places=MONEY_STORE_PLACES) or m
+    t = quantize_store(t, places=MONEY_STORE_PLACES) or t
     return m, t
 
 
@@ -133,7 +127,7 @@ def ingresos_points_objetivos(
 ) -> tuple[Decimal, bool, str]:
     """
     Ingresos (Proporción): mismos valores que el reporte Ingresos vs meta — ejecutado y meta
-    en miles US$, proporcional con tope 70 en F/L/I.
+    en miles US$, proporcional con tope 70 en F/L y 75 en Insurance.
     """
     from pgc.investment_ingresos import investment_net_growth_miles
 
