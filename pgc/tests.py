@@ -1016,6 +1016,42 @@ class ObjetivosScoringTests(TestCase):
         self.assertEqual(_ingresos_max_points("FACTORING", 70), Decimal("70"))
         self.assertEqual(_ingresos_max_points("FACTORING", 80), Decimal("70"))
 
+    def test_insurance_ingresos_cap_70_vs_75_on_target(self):
+        """Con points_if 70 u 80 en meta, el scoring usa 70 o min(80,75)=75 respectivamente."""
+        from decimal import Decimal
+
+        from pgc.objetivos_scoring import ingresos_points_objetivos
+
+        class R:
+            measured_value = Decimal("5")
+            target_value = Decimal("10")
+
+        class T70:
+            points_if_achieved = 70
+            target_value = Decimal("10")
+
+        class T75:
+            points_if_achieved = 75
+            target_value = Decimal("10")
+
+        class T80:
+            points_if_achieved = 80
+            target_value = Decimal("10")
+
+        pts70, _, _ = ingresos_points_objetivos(
+            T70(), R(), une_code="INSURANCE", year=2026, month=1
+        )
+        pts75, _, _ = ingresos_points_objetivos(
+            T75(), R(), une_code="INSURANCE", year=2025, month=6
+        )
+        pts80, _, _ = ingresos_points_objetivos(
+            T80(), R(), une_code="INSURANCE", year=2026, month=10
+        )
+        # 50% de meta → 35, 37.5, 37.5
+        self.assertEqual(pts70, Decimal("35.00"))
+        self.assertEqual(pts75, Decimal("37.50"))
+        self.assertEqual(pts80, Decimal("37.50"))
+
     def test_insurance_oct_2026_ingresos_no_display_truncate_in_scoring(self):
         """Meta comisiones oct-2026: proporción con miles USD completos (sin ROUND_DOWN 3 dec)."""
         from decimal import Decimal

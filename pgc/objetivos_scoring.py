@@ -88,7 +88,12 @@ def clientes_points_objetivos(
 
 
 def _ingresos_max_points(une_code: str, points_if_achieved) -> Decimal:
-    """Factoraje y Leasing: tope 70 pt; Insurance: tope 75 pt (Proporción ingresos vs meta)."""
+    """
+    Tope de puntos «completos» en Proporción ingresos vs meta (todos los meses y años).
+
+    Factoraje y Leasing: min(points_if, 70). Insurance: min(points_if, 75) siempre
+    (no limitado a un trimestre ni a 2026).
+    """
     full = Decimal(str(points_if_achieved or 0))
     code = (une_code or "").upper()
     if code == UNE.CODE_INSURANCE:
@@ -127,7 +132,7 @@ def ingresos_points_objetivos(
 ) -> tuple[Decimal, bool, str]:
     """
     Ingresos (Proporción): mismos valores que el reporte Ingresos vs meta — ejecutado y meta
-    en miles US$, proporcional con tope 70 en F/L y 75 en Insurance.
+    en miles US$, proporcional con tope 70 en F/L y 75 en Insurance (cada mes).
     """
     from pgc.investment_ingresos import investment_net_growth_miles
 
