@@ -927,7 +927,11 @@ document.addEventListener("DOMContentLoaded", function () {
   // v25: intento con standoff/leyenda paper (insuficiente con meses a ~30°).
   // v26: pie apilado desde el borde inferior (leyenda + 1 línea + «Período»); margin.b ≥ ticks rotados.
 
-  const EXPORT_SVG_VERSION = "v26-footer-stack";
+  const EXPORT_SVG_VERSION = "v27-mes-abbr";
+  const EXPORT_MONTH_ABBR = [
+    "ene", "feb", "mar", "abr", "may", "jun",
+    "jul", "ago", "sep", "oct", "nov", "dic",
+  ];
   const EXPORT_SUBTITLE =
     "Real vs meta por período. Cifras acumuladas dentro del rango.";
   const EXPORT_WIDTH = 1920;
@@ -997,6 +1001,21 @@ document.addEventListener("DOMContentLoaded", function () {
   const EXPORT_COLOR_REAL = "#1D284A";
   const EXPORT_COLOR_META = "#010202";
 
+  function exportMonthAbbrev(period) {
+    const m = Number(period.month);
+    if (m >= 1 && m <= 12) {
+      return EXPORT_MONTH_ABBR[m - 1];
+    }
+    const match = String(period.label || "").match(/(\d{4})[-/](\d{1,2})/);
+    if (match) {
+      const mn = parseInt(match[2], 10);
+      if (mn >= 1 && mn <= 12) {
+        return EXPORT_MONTH_ABBR[mn - 1];
+      }
+    }
+    return String(period.label || "");
+  }
+
   function getExportIngresosPeriods() {
     const exportBlock = chartPayload.export_ingresos;
     if (exportBlock && Array.isArray(exportBlock.periods) && exportBlock.periods.length) {
@@ -1022,10 +1041,13 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function buildExportIncomeSeries(periods, selectedUneCodes) {
     const labels = [];
+    const tickLabels = [];
     const realValues = [];
     const targetValues = [];
     periods.forEach(function (period) {
-      labels.push(period.label);
+      const key = period.label;
+      labels.push(key);
+      tickLabels.push(exportMonthAbbrev(period));
       let realSum = 0;
       let targetSum = 0;
       selectedUneCodes.forEach(function (uneCode) {
@@ -1040,6 +1062,7 @@ document.addEventListener("DOMContentLoaded", function () {
     });
     return {
       labels: labels,
+      tickLabels: tickLabels,
       realValues: accumulateValues(realValues),
       targetValues: accumulateValues(targetValues),
     };
@@ -1105,17 +1128,6 @@ document.addEventListener("DOMContentLoaded", function () {
           showarrow: false,
           font: { size: EXPORT_SUBTITLE_SIZE, color: EXPORT_COLOR_TEXT },
         },
-        {
-          text: "Período",
-          xref: "paper",
-          yref: "paper",
-          x: 0.5,
-          xanchor: "center",
-          y: EXPORT_FOOTER_PERIOD_Y,
-          yanchor: "bottom",
-          showarrow: false,
-          font: { size: EXPORT_AXIS_TITLE_SIZE, color: EXPORT_COLOR_TEXT },
-        },
       ],
       barmode: "group",
       bargap: 0.28,
@@ -1149,8 +1161,8 @@ document.addEventListener("DOMContentLoaded", function () {
         categoryarray: series.labels,
         tickmode: "array",
         tickvals: series.labels,
-        ticktext: series.labels,
-        tickangle: EXPORT_XTICK_ANGLE,
+        ticktext: series.tickLabels,
+        tickangle: 0,
         tickfont: { size: EXPORT_TICK_SIZE, color: EXPORT_COLOR_TEXT },
         ticklen: 8,
         tickwidth: 1.5,

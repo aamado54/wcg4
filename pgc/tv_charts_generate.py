@@ -56,6 +56,26 @@ TV_FIG_LINE_FRAC = TV_LEGEND_FONT / IMAGE_HEIGHT
 COLOR_TEXT = "#3D3F3F"
 COLOR_REAL = "#1D284A"
 COLOR_META = "#010202"
+MONTH_ABBR_ES = (
+    "ene",
+    "feb",
+    "mar",
+    "abr",
+    "may",
+    "jun",
+    "jul",
+    "ago",
+    "sep",
+    "oct",
+    "nov",
+    "dic",
+)
+
+
+def month_abbrev_es(month: int) -> str:
+    if 1 <= month <= 12:
+        return MONTH_ABBR_ES[month - 1]
+    return str(month)
 
 _refresh_lock = threading.Lock()
 _refresh_scheduled = False
@@ -141,7 +161,7 @@ def build_income_series(
     reals: list[float] = []
     targets: list[float] = []
     for period in periods:
-        labels.append(period.label)
+        labels.append(month_abbrev_es(period.month))
         real_sum = 0.0
         target_sum = 0.0
         for code in une_codes:
@@ -277,7 +297,7 @@ def render_chart_png(
     )
 
     ax.set_xticks(x)
-    ax.set_xticklabels(list(labels), fontsize=11, color=COLOR_TEXT, rotation=30, ha="right")
+    ax.set_xticklabels(list(labels), fontsize=11, color=COLOR_TEXT)
     ax.set_ylabel(y_axis, fontsize=12, color=COLOR_TEXT)
     footer_pad = 14
     period_bottom = footer_pad / IMAGE_HEIGHT
@@ -312,7 +332,6 @@ def render_chart_png(
         frameon=False,
         fontsize=TV_LEGEND_FONT,
     )
-    fig.text(0.5, period_bottom, "Período", ha="center", va="bottom", fontsize=TV_XLABEL_FONT, color=COLOR_TEXT)
     fig.subplots_adjust(left=0.08, right=0.98, top=0.88, bottom=0.28)
 
     buf = io.BytesIO()
