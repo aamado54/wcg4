@@ -322,14 +322,17 @@ def render_chart_png(
         fontsize=11,
         color=COLOR_TEXT,
     )
-    ax.legend(
-        loc="upper center",
-        bbox_to_anchor=(0.5, -0.09),
+    leg_handles, leg_labels = ax.get_legend_handles_labels()
+    fig.legend(
+        leg_handles,
+        leg_labels,
+        loc="lower center",
+        bbox_to_anchor=(0.5, 0.03),
         ncol=2,
         frameon=False,
         fontsize=TV_LEGEND_FONT,
     )
-    fig.subplots_adjust(left=0.08, right=0.98, top=0.88, bottom=0.17)
+    fig.subplots_adjust(left=0.08, right=0.98, top=0.88, bottom=0.15)
 
     buf = io.BytesIO()
     fig.savefig(buf, format="png", facecolor="white", edgecolor="none")
