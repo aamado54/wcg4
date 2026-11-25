@@ -927,9 +927,7 @@ document.addEventListener("DOMContentLoaded", function () {
   // v25: intento con standoff/leyenda paper (insuficiente con meses a ~30°).
   // v28: meses horizontales (ene…dic); leyenda bajo el eje X (y negativo / yanchor top).
 
-  const EXPORT_SVG_VERSION = "v30-footer-legend";
-  // Fracción paper (0=borde inferior): leyenda bajo meses horizontales.
-  const EXPORT_LEGEND_PAPER_Y = 0.028;
+  const EXPORT_SVG_VERSION = "v31-legend-nudge";
   const EXPORT_YAXIS_DOMAIN_BOTTOM = 0.21;
   const EXPORT_MONTH_ABBR = [
     "ene", "feb", "mar", "abr", "may", "jun",
@@ -944,6 +942,9 @@ document.addEventListener("DOMContentLoaded", function () {
   const EXPORT_AXIS_TITLE_SIZE = 48;
   const EXPORT_TICK_SIZE = 40;
   const EXPORT_LEGEND_SIZE = 48;
+  // Fracción paper (0=borde inferior): leyenda bajo meses; −¾ línea respecto a v30.
+  const EXPORT_LEGEND_PAPER_Y =
+    0.028 - (0.75 * EXPORT_LEGEND_SIZE) / IMAGE_HEIGHT;
   const EXPORT_MARGIN_B = 172;
   const EXPORT_TITLE_SIZE = 180;
   const EXPORT_SUBTITLE_SIZE = 44;
@@ -1144,6 +1145,8 @@ document.addEventListener("DOMContentLoaded", function () {
       },
       xaxis: {
         title: { text: "" },
+        domain: [0, 1],
+        anchor: "y",
         type: "category",
         categoryorder: "array",
         categoryarray: series.labels,

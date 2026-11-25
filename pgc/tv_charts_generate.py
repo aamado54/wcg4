@@ -327,7 +327,7 @@ def render_chart_png(
         leg_handles,
         leg_labels,
         loc="lower center",
-        bbox_to_anchor=(0.5, 0.028),
+        bbox_to_anchor=(0.5, 0.028 - (0.75 * TV_LEGEND_FONT) / IMAGE_HEIGHT),
         ncol=2,
         frameon=False,
         fontsize=TV_LEGEND_FONT,
