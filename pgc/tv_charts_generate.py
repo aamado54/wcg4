@@ -327,12 +327,12 @@ def render_chart_png(
         leg_handles,
         leg_labels,
         loc="lower center",
-        bbox_to_anchor=(0.5, 0.03),
+        bbox_to_anchor=(0.5, 0.028),
         ncol=2,
         frameon=False,
         fontsize=TV_LEGEND_FONT,
     )
-    fig.subplots_adjust(left=0.08, right=0.98, top=0.88, bottom=0.15)
+    fig.subplots_adjust(left=0.08, right=0.98, top=0.88, bottom=0.16)
 
     buf = io.BytesIO()
     fig.savefig(buf, format="png", facecolor="white", edgecolor="none")

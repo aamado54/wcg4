@@ -927,8 +927,10 @@ document.addEventListener("DOMContentLoaded", function () {
   // v25: intento con standoff/leyenda paper (insuficiente con meses a ~30°).
   // v28: meses horizontales (ene…dic); leyenda bajo el eje X (y negativo / yanchor top).
 
-  const EXPORT_SVG_VERSION = "v29-legend-annotation";
-  const EXPORT_LEGEND_ANNOT_Y = 0.038;
+  const EXPORT_SVG_VERSION = "v30-footer-legend";
+  // Fracción paper (0=borde inferior): leyenda bajo meses horizontales.
+  const EXPORT_LEGEND_PAPER_Y = 0.028;
+  const EXPORT_YAXIS_DOMAIN_BOTTOM = 0.21;
   const EXPORT_MONTH_ABBR = [
     "ene", "feb", "mar", "abr", "may", "jun",
     "jul", "ago", "sep", "oct", "nov", "dic",
@@ -942,7 +944,7 @@ document.addEventListener("DOMContentLoaded", function () {
   const EXPORT_AXIS_TITLE_SIZE = 48;
   const EXPORT_TICK_SIZE = 40;
   const EXPORT_LEGEND_SIZE = 48;
-  const EXPORT_MARGIN_B = 210;
+  const EXPORT_MARGIN_B = 172;
   const EXPORT_TITLE_SIZE = 180;
   const EXPORT_SUBTITLE_SIZE = 44;
   // Chart 5: 16 / 12 / 12. v24: subtítulo −10, título −45 (yshift↓ = más cerca del plot).
@@ -1063,6 +1065,7 @@ document.addEventListener("DOMContentLoaded", function () {
         y: series.realValues,
         type: "bar",
         name: "Real",
+        showlegend: true,
         marker: {
           color: realFill,
           line: { color: EXPORT_COLOR_REAL, width: 0 },
@@ -1075,6 +1078,7 @@ document.addEventListener("DOMContentLoaded", function () {
         type: "scatter",
         mode: "lines",
         name: "Meta",
+        showlegend: true,
         line: { color: EXPORT_COLOR_META, width: 3, dash: "dash" },
         marker: { color: EXPORT_COLOR_META },
       },
@@ -1111,24 +1115,6 @@ document.addEventListener("DOMContentLoaded", function () {
           showarrow: false,
           font: { size: EXPORT_SUBTITLE_SIZE, color: EXPORT_COLOR_TEXT },
         },
-        {
-          text:
-            '<span style="color:' +
-            EXPORT_COLOR_REAL +
-            '">■</span> Real   ' +
-            '<span style="color:' +
-            EXPORT_COLOR_META +
-            '">- -</span> Meta',
-          xref: "paper",
-          yref: "paper",
-          x: 0.5,
-          xanchor: "center",
-          y: EXPORT_LEGEND_ANNOT_Y,
-          yanchor: "bottom",
-          showarrow: false,
-          font: { size: EXPORT_LEGEND_SIZE, color: EXPORT_COLOR_TEXT },
-          align: "center",
-        },
       ],
       barmode: "group",
       bargap: 0.28,
@@ -1141,7 +1127,21 @@ document.addEventListener("DOMContentLoaded", function () {
         b: EXPORT_MARGIN_B,
         pad: 0,
       },
-      legend: { traceorder: "normal" },
+      legend: {
+        orientation: "h",
+        xref: "paper",
+        yref: "paper",
+        x: 0.5,
+        xanchor: "center",
+        y: EXPORT_LEGEND_PAPER_Y,
+        yanchor: "bottom",
+        font: { size: EXPORT_LEGEND_SIZE, color: EXPORT_COLOR_TEXT },
+        bgcolor: "rgba(255,255,255,1)",
+        borderwidth: 0,
+        itemsizing: "constant",
+        itemwidth: 60,
+        traceorder: "normal",
+      },
       xaxis: {
         title: { text: "" },
         type: "category",
@@ -1155,11 +1155,13 @@ document.addEventListener("DOMContentLoaded", function () {
         ticklen: 8,
         tickwidth: 1.5,
         linecolor: EXPORT_COLOR_TEXT,
-        automargin: false,
+        anchor: "y",
+        automargin: true,
         fixedrange: true,
         mirror: false,
       },
       yaxis: {
+        domain: [EXPORT_YAXIS_DOMAIN_BOTTOM, 0.93],
         title: {
           text: yAxis || "Cifras en miles de US$",
           font: { size: EXPORT_AXIS_TITLE_SIZE, color: EXPORT_COLOR_TEXT },
@@ -1181,7 +1183,7 @@ document.addEventListener("DOMContentLoaded", function () {
       colorway: [EXPORT_COLOR_REAL, EXPORT_COLOR_META],
       paper_bgcolor: "#ffffff",
       plot_bgcolor: "#ffffff",
-      showlegend: false,
+      showlegend: true,
     };
   }
 
