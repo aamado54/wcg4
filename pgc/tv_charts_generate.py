@@ -299,9 +299,6 @@ def render_chart_png(
     ax.set_xticks(x)
     ax.set_xticklabels(list(labels), fontsize=11, color=COLOR_TEXT)
     ax.set_ylabel(y_axis, fontsize=12, color=COLOR_TEXT)
-    footer_pad = 14
-    period_bottom = footer_pad / IMAGE_HEIGHT
-    legend_bottom = (footer_pad + TV_XLABEL_FONT + TV_XLABEL_FONT) / IMAGE_HEIGHT
     ax.set_xlabel("")
     ax.tick_params(axis="y", labelsize=11, colors=COLOR_TEXT)
     ax.yaxis.set_major_formatter(FuncFormatter(lambda v, _p: f"{v:,.0f}"))
@@ -326,13 +323,13 @@ def render_chart_png(
         color=COLOR_TEXT,
     )
     ax.legend(
-        loc="lower center",
-        bbox_to_anchor=(0.5, legend_bottom),
+        loc="upper center",
+        bbox_to_anchor=(0.5, -0.09),
         ncol=2,
         frameon=False,
         fontsize=TV_LEGEND_FONT,
     )
-    fig.subplots_adjust(left=0.08, right=0.98, top=0.88, bottom=0.28)
+    fig.subplots_adjust(left=0.08, right=0.98, top=0.88, bottom=0.17)
 
     buf = io.BytesIO()
     fig.savefig(buf, format="png", facecolor="white", edgecolor="none")

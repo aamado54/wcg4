@@ -925,9 +925,9 @@ document.addEventListener("DOMContentLoaded", function () {
   //
   // v24 (desde chart 5): título −45 px, subtítulo −10 px; margin.t se encoge igual.
   // v25: intento con standoff/leyenda paper (insuficiente con meses a ~30°).
-  // v26: pie apilado desde el borde inferior (leyenda + 1 línea + «Período»); margin.b ≥ ticks rotados.
+  // v28: meses horizontales (ene…dic); leyenda bajo el eje X (y negativo / yanchor top).
 
-  const EXPORT_SVG_VERSION = "v27-mes-abbr";
+  const EXPORT_SVG_VERSION = "v28-legend-under-months";
   const EXPORT_MONTH_ABBR = [
     "ene", "feb", "mar", "abr", "may", "jun",
     "jul", "ago", "sep", "oct", "nov", "dic",
@@ -941,25 +941,7 @@ document.addEventListener("DOMContentLoaded", function () {
   const EXPORT_AXIS_TITLE_SIZE = 48;
   const EXPORT_TICK_SIZE = 40;
   const EXPORT_LEGEND_SIZE = 48;
-  const EXPORT_XTICK_ANGLE = -30; // igual que Plotly auto (~30°); no cambiar estética de meses
-  const EXPORT_XTICK_BELOW_AXIS_PX = 118; // espacio útil bajo el eje para etiquetas inclinadas (font 40)
-  const EXPORT_FOOTER_PAD_PX = 14;
-  const EXPORT_LEGEND_PERIOD_GAP_PX = EXPORT_AXIS_TITLE_SIZE; // 1 línea completa entre leyenda y «Período»
-  const EXPORT_FOOTER_LEGEND_BOTTOM_PX =
-    EXPORT_FOOTER_PAD_PX +
-    EXPORT_AXIS_TITLE_SIZE +
-    EXPORT_LEGEND_PERIOD_GAP_PX;
-  const EXPORT_FOOTER_LEGEND_BLOCK_PX = EXPORT_LEGEND_SIZE + 28;
-  const EXPORT_MARGIN_B =
-    80 +
-    EXPORT_XTICK_BELOW_AXIS_PX +
-    16 +
-    EXPORT_FOOTER_LEGEND_BLOCK_PX +
-    EXPORT_LEGEND_PERIOD_GAP_PX +
-    EXPORT_AXIS_TITLE_SIZE +
-    EXPORT_FOOTER_PAD_PX;
-  const EXPORT_FOOTER_PERIOD_Y = EXPORT_FOOTER_PAD_PX / IMAGE_HEIGHT;
-  const EXPORT_FOOTER_LEGEND_Y = EXPORT_FOOTER_LEGEND_BOTTOM_PX / IMAGE_HEIGHT;
+  const EXPORT_MARGIN_B = 195;
   const EXPORT_TITLE_SIZE = 180;
   const EXPORT_SUBTITLE_SIZE = 44;
   // Chart 5: 16 / 12 / 12. v24: subtítulo −10, título −45 (yshift↓ = más cerca del plot).
@@ -1146,8 +1128,13 @@ document.addEventListener("DOMContentLoaded", function () {
         yref: "paper",
         x: 0.5,
         xanchor: "center",
-        y: EXPORT_FOOTER_LEGEND_Y,
-        yanchor: "bottom",
+        // Debajo de meses (ene…dic): margen inferior + y paper negativo.
+        y:
+          -0.02 -
+          EXPORT_LEGEND_SIZE / IMAGE_HEIGHT -
+          EXPORT_LEGEND_SIZE / (3 * IMAGE_HEIGHT) -
+          EXPORT_LEGEND_NUDGE_PX / IMAGE_HEIGHT,
+        yanchor: "top",
         font: { size: EXPORT_LEGEND_SIZE, color: EXPORT_COLOR_TEXT },
         bgcolor: "rgba(255,255,255,0)",
         borderwidth: 0,
