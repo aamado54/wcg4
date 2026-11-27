@@ -9,6 +9,7 @@ from imports.currency_normalize import normalize_currency_code
 from imports.models import CrossSaleImportHeader, CrossSaleImportRow
 from imports.venta_cruzada_parse import (
     cross_sale_row_exists,
+    cross_sale_scoring_une_raw,
     iter_cross_sale_rows,
     parse_cross_sale_date,
     parse_cross_sale_period,
@@ -54,6 +55,7 @@ class Command(ImportAuditCommandMixin, BaseCommand):
         currencies = {c.code.upper(): c for c in Currency.objects.all()}
         skipped_duplicate = 0
         skipped_period = 0
+        replaced_months: set[tuple[int, int]] = set()
 
         for row in iter_cross_sale_rows(path):
                 periodo = (
@@ -71,6 +73,17 @@ class Command(ImportAuditCommandMixin, BaseCommand):
                     continue
                 year, month = parsed_period
                 affected_months.add((year, month))
+
+                period_key = (year, month)
+                if period_key not in replaced_months:
+                    deleted, _ = CrossSaleImportRow.objects.filter(
+                        year=year, month=month
+                    ).delete()
+                    replaced_months.add(period_key)
+                    if deleted:
+                        self.stdout.write(
+                            f"Reemplazo VC {year}-{month:02d}: {deleted} fila(s) anteriores."
+                        )
 
                 cliente = (
                     row.get("Cliente")
@@ -118,7 +131,8 @@ class Command(ImportAuditCommandMixin, BaseCommand):
                     or ""
                 ).strip()
 
-                if not une_dest_raw:
+                scoring_raw = cross_sale_scoring_une_raw(row)
+                if not scoring_raw:
                     continue
 
                 une_destination = resolve_une_from_text(
@@ -132,6 +146,14 @@ class Command(ImportAuditCommandMixin, BaseCommand):
                     aliases=aliases,
                     unes_by_code=unes_by_code,
                 )
+
+                scoring_une = resolve_une_from_text(
+                    scoring_raw,
+                    aliases=aliases,
+                    unes_by_code=unes_by_code,
+                )
+                if not scoring_une:
+                    continue
 
                 currency = None
                 moneda_code, currency_warn = normalize_currency_code(moneda_raw)
@@ -210,17 +232,25 @@ class Command(ImportAuditCommandMixin, BaseCommand):
                 )
                 rows_created += 1
 
-        counts_by_origin: dict[tuple[int, int, int], int] = {}
+        counts_by_scoring_une: dict[tuple[int, int, int], int] = {}
         for year, month in affected_months:
             qs = CrossSaleImportRow.objects.filter(year=year, month=month).only(
-                "une_origin_id", "une_destination_id"
+                "une_origin_id",
+                "une_destination_id",
+                "raw_une_origin",
+                "raw_une_destination",
             )
             for cs_row in qs.iterator():
-                if cs_row.une_origin_id and cs_row.une_destination_id:
-                    key_origin = (year, month, cs_row.une_origin_id)
-                    counts_by_origin[key_origin] = counts_by_origin.get(key_origin, 0) + 1
+                if (cs_row.raw_une_origin or "").strip() and cs_row.une_origin_id:
+                    une_id = cs_row.une_origin_id
+                elif cs_row.une_destination_id:
+                    une_id = cs_row.une_destination_id
+                else:
+                    continue
+                key = (year, month, une_id)
+                counts_by_scoring_une[key] = counts_by_scoring_une.get(key, 0) + 1
 
-        for (year, month, une_origin_id), count in counts_by_origin.items():
+        for (year, month, une_origin_id), count in counts_by_scoring_une.items():
             une_origin = UNE.objects.get(id=une_origin_id)
         
             target = MonthlyTarget.objects.filter(

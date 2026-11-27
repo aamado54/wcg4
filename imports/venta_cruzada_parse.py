@@ -97,6 +97,23 @@ def iter_cross_sale_rows(path: Path):
             yield row
 
 
+def cross_sale_scoring_une_raw(row: dict) -> str:
+    """
+    UNE que recibe puntos: col 7 «UNE que refiere» si viene; si no, col 6 «UNE».
+    (En la hoja a veces solo anotan la UNE que refiere en la columna 6.)
+    """
+    ref = (
+        row.get("UNE que refiere")
+        or row.get("UNE QUE REFIERE")
+        or row.get("une que refiere")
+        or ""
+    )
+    ref = str(ref).strip()
+    if ref:
+        return ref
+    return str(row.get("UNE") or row.get("une") or "").strip()
+
+
 def cross_sale_row_exists(
     *,
     year: int,
