@@ -1650,7 +1650,7 @@ class PrecisionRolloutTests(TestCase):
             instrument="AP",
             operation_code="P",
             amount_usd=usd_jan + Decimal("1.234"),
-            amount_gtq=gtq,
+            amount_gtq=gtq + Decimal("1.234") * tc,
             exchange_rate=tc,
         )
         call_command(

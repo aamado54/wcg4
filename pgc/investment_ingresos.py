@@ -138,6 +138,25 @@ def has_investment_growth_data() -> bool:
     return InvestmentGrowthRow.objects.exists() or BankLoanMonthSnapshot.objects.exists()
 
 
+def investment_ap_pg_balance_usd(year: int, month: int) -> Decimal | None:
+    """
+  Saldo AP+PG del mes: suma columna Quetzalizado / último TC del archivo (misma fila orden id).
+  Precisión completa en división; sin redondear por fila.
+    """
+    qs = InvestmentGrowthRow.objects.filter(year=year, month=month).order_by("id")
+    if not qs.exists():
+        return None
+    sum_gtq = Decimal("0")
+    last_tc: Decimal | None = None
+    for row in qs.only("amount_gtq", "exchange_rate"):
+        sum_gtq += row.amount_gtq or Decimal("0")
+        if row.exchange_rate and row.exchange_rate != 0:
+            last_tc = row.exchange_rate
+    if not last_tc:
+        return None
+    return sum_gtq / last_tc
+
+
 def investment_periods_with_data() -> list[tuple[int, int]]:
     inv_periods = set(
         InvestmentGrowthRow.objects.values_list("year", "month").distinct()
@@ -202,10 +221,17 @@ def investment_gross_usd(year: int, month: int) -> dict[str, Decimal | None]:
             "has_data": False,
         }
 
-    total_usd = ap_usd + pg_usd + banks_for_total
+    ap_pg_balance = investment_ap_pg_balance_usd(year, month)
+    ap_pg_total = (
+        ap_pg_balance
+        if ap_pg_balance is not None
+        else (ap_usd + pg_usd if has_inv else Decimal("0"))
+    )
+    total_usd = ap_pg_total + banks_for_total
     return {
         "ap_usd": ap_usd,
         "pg_usd": pg_usd,
+        "ap_pg_balance_usd": ap_pg_balance,
         "banks_usd": banks_usd,
         "total_usd": total_usd,
         "has_data": True,
@@ -225,6 +251,9 @@ def _banks_snapshot_exists(year: int, month: int) -> bool:
 def _ap_pg_total_usd(gross: dict[str, Decimal | None]) -> Decimal | None:
     if not gross.get("has_data"):
         return None
+    bal = gross.get("ap_pg_balance_usd")
+    if bal is not None:
+        return bal
     ap = gross.get("ap_usd")
     pg = gross.get("pg_usd")
     if ap is None and pg is None:
