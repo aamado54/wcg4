@@ -35,6 +35,7 @@ UNE_SECTIONS = {
     "METAS FACTORING": "FACTORING",
     "METAS LEASING": "LEASING",
     "METAS INVESTMENT": "INVESTMENT",
+    "METAS INSURANCE": "INSURANCE",
 }
 
 
@@ -51,7 +52,7 @@ def _parse_decimal(raw: str) -> Decimal:
 def _parse_tsv(path: Path) -> dict[str, dict[str, dict[int, Decimal]]]:
     """
     Retorna {UNE_CODE: {"CLIENTES_NUEVOS": {month: val}, "INGRESOS": {month: val}}}.
-    Insurance suma Personas + Empresas por mes.
+    Insurance: sección única METAS INSURANCE (miles USD). Legacy: suma Personas+Empresas.
     """
     lines = [ln for ln in path.read_text(encoding="utf-8").splitlines() if ln.strip()]
     out: dict[str, dict[str, dict[int, Decimal]]] = {}
@@ -101,19 +102,19 @@ def _parse_tsv(path: Path) -> dict[str, dict[str, dict[int, Decimal]]]:
             out[une_code]["CLIENTES_NUEVOS"][month] = _parse_decimal(cli_row[col])
             out[une_code]["INGRESOS"][month] = _parse_decimal(ing_row[col])
 
-    if len(insurance_parts) != 2:
-        raise ValueError(
-            "Se esperaban secciones METAS INSURANCE PERSONAS y METAS INSURANCE EMPRESAS."
-        )
-
-    out["INSURANCE"] = {"CLIENTES_NUEVOS": {}, "INGRESOS": {}}
-    for month in range(1, 13):
-        out["INSURANCE"]["CLIENTES_NUEVOS"][month] = sum(
-            p["CLIENTES_NUEVOS"][month] for p in insurance_parts
-        )
-        out["INSURANCE"]["INGRESOS"][month] = sum(
-            p["INGRESOS"][month] for p in insurance_parts
-        )
+    if "INSURANCE" not in out:
+        if len(insurance_parts) != 2:
+            raise ValueError(
+                "Falta METAS INSURANCE o las secciones legacy PERSONAS + EMPRESAS."
+            )
+        out["INSURANCE"] = {"CLIENTES_NUEVOS": {}, "INGRESOS": {}}
+        for month in range(1, 13):
+            out["INSURANCE"]["CLIENTES_NUEVOS"][month] = sum(
+                p["CLIENTES_NUEVOS"][month] for p in insurance_parts
+            )
+            out["INSURANCE"]["INGRESOS"][month] = sum(
+                p["INGRESOS"][month] for p in insurance_parts
+            )
     return out
 
 

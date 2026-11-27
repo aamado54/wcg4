@@ -1196,7 +1196,16 @@ class ImportPgcMetasTests(TestCase):
             year=self.year,
             month=8,
         )
-        self.assertEqual(aug_cli.target_value, Decimal("3"))
+        self.assertEqual(aug_cli.target_value, Decimal("12"))
+
+        oct_ins_ing = MonthlyTarget.objects.get(
+            plan=self.plan,
+            une=insurance,
+            metric=self.metric_ing,
+            year=self.year,
+            month=10,
+        )
+        self.assertEqual(oct_ins_ing.target_value, Decimal("12.641"))
 
         investment = UNE.objects.get(code="INVESTMENT")
         jan_ing = MonthlyTarget.objects.get(
