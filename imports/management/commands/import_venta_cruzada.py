@@ -173,28 +173,21 @@ class Command(ImportAuditCommandMixin, BaseCommand):
                     if header is None:
                         from imports.models import FileUpload, guess_file_format
 
-                        upload = FileUpload.objects.filter(
+                        upload = FileUpload.objects.create(
+                            original_filename=path.name,
+                            file_format=guess_file_format(path.name),
                             file_type_detected=FileUpload.TYPE_CROSS_SALE,
                             detected_year=year,
                             detected_month=month,
-                        ).order_by("-id").first()
-                        if upload is None:
-                            upload = FileUpload.objects.create(
-                                original_filename=path.name,
-                                file_format=guess_file_format(path.name),
-                                file_type_detected=FileUpload.TYPE_CROSS_SALE,
-                                detected_year=year,
-                                detected_month=month,
-                                status=FileUpload.STATUS_UPLOADED,
-                            )
-                            # Adjuntar archivo existente si la ruta es local
-                            try:
-                                from django.core.files import File as DjFile
+                            status=FileUpload.STATUS_UPLOADED,
+                        )
+                        try:
+                            from django.core.files import File as DjFile
 
-                                with path.open("rb") as fh:
-                                    upload.stored_file.save(path.name, DjFile(fh), save=True)
-                            except Exception:
-                                upload.save()
+                            with path.open("rb") as fh:
+                                upload.stored_file.save(path.name, DjFile(fh), save=True)
+                        except Exception:
+                            upload.save()
                         header = CrossSaleImportHeader.objects.create(
                             file_upload=upload,
                             year=year,
