@@ -1015,6 +1015,28 @@ class ObjetivosScoringTests(TestCase):
         self.assertEqual(_ingresos_max_points("INSURANCE", 80), Decimal("75"))
         self.assertEqual(_ingresos_max_points("FACTORING", 70), Decimal("70"))
         self.assertEqual(_ingresos_max_points("FACTORING", 80), Decimal("70"))
+        self.assertEqual(_ingresos_max_points("INVESTMENT", 75), Decimal("70"))
+        self.assertEqual(_ingresos_max_points("INVESTMENT", 80), Decimal("70"))
+
+    def test_investment_ingresos_points_use_miles_meta_and_cap_70(self):
+        from decimal import Decimal
+
+        from pgc.objetivos_scoring import ingresos_points_objetivos
+
+        class T:
+            points_if_achieved = 75
+            target_value = Decimal("2.0")
+
+        class R:
+            measured_value = Decimal("941.181843")
+
+        pts, achieved, note = ingresos_points_objetivos(
+            T(), R(), une_code="INVESTMENT", year=2026, month=10
+        )
+        # Meta TSV 2.0 MUSD → 2000 miles; 70 × 941.181843/2000 ≈ 32.94
+        self.assertAlmostEqual(float(pts), 32.94, places=2)
+        self.assertFalse(achieved)
+        self.assertIn("2000", note)
 
     def test_insurance_ingresos_cap_70_vs_75_on_target(self):
         """Con points_if 70 u 80 en meta, el scoring usa 70 o min(80,75)=75 respectivamente."""

@@ -183,6 +183,12 @@ class Command(ImportAuditCommandMixin, BaseCommand):
             for metric_code, month_values in metrics.items():
                 metric = metric_cli if metric_code == "CLIENTES_NUEVOS" else metric_ing
                 for month, new_value in month_values.items():
+                    if (
+                        une_code == "INVESTMENT"
+                        and metric_code == "INGRESOS"
+                        and new_value < Decimal("500")
+                    ):
+                        new_value = new_value * Decimal("1000")
                     tgt = MonthlyTarget.objects.filter(
                         plan=plan,
                         une=une,

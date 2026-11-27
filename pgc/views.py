@@ -1873,7 +1873,14 @@ def _build_ingresos_annual_tables(year, *, decimals: int = INGRESOS_DEFAULT_DECI
         income_meta = []
         for month in range(1, 13):
             clients_meta.append(target_map.get((une.id, MetricDefinition.CODE_CLIENTES_NUEVOS, month)))
-            income_meta.append(target_map.get((une.id, MetricDefinition.CODE_INGRESOS, month)))
+            raw_income_meta = target_map.get(
+                (une.id, MetricDefinition.CODE_INGRESOS, month)
+            )
+            if une.code in {"INVESTMENT", "INVESTMENTS", "INVERSIONES"}:
+                from pgc.investment_ingresos import investment_ingresos_target_miles
+
+                raw_income_meta = investment_ingresos_target_miles(raw_income_meta)
+            income_meta.append(raw_income_meta)
 
         annual_income = sum((v or Decimal("0")) for v in income_meta)
         pct_row = []
@@ -1999,7 +2006,12 @@ def _get_ingresos_rows(periods=None, *, display_decimals: int = INGRESOS_DEFAULT
         real = result.measured_value if result and result.measured_value is not None else None
 
         investment_codes = {"INVESTMENT", "INVESTMENTS", "INVERSIONES"}
-        
+
+        if target.une.code in investment_codes and meta is not None:
+            from pgc.investment_ingresos import investment_ingresos_target_miles
+
+            meta = investment_ingresos_target_miles(meta)
+
         if target.une.code in investment_codes:
             inv_key = (target.year, target.month, target.une_id)
             if inv_key in investment_real_map:

@@ -17,12 +17,25 @@ from decimal import Decimal
 from django.conf import settings
 from django.db.models import Q, Sum
 
+from core.money_precision import quantize_store
 from core.models import UNE
 from imports.models import BankLoanMonthSnapshot, InvestmentGrowthRow, NewClientImportRow
 from pgc.models import MonthlyExchangeRate
 
 INVESTMENT_UNE_CODES = ("INVESTMENT", "INVESTMENTS", "INVERSIONES")
 MILES_DIVISOR = Decimal("1000")
+# PGC-metas TSV (fila Comisiones WCINV): 0.2, 1.0, 2.0… son millones USD; el Δ PGC va en miles USD.
+_INVESTMENT_TARGET_ALREADY_MILES_THRESHOLD = Decimal("500")
+
+
+def investment_ingresos_target_miles(target_value: Decimal | None) -> Decimal | None:
+    """Meta ingresos Investment en la misma unidad que measured_value (miles USD del incremento)."""
+    if target_value is None:
+        return None
+    v = Decimal(str(target_value))
+    if v < _INVESTMENT_TARGET_ALREADY_MILES_THRESHOLD:
+        v = v * MILES_DIVISOR
+    return quantize_store(v)
 
 INVESTMENT_BANK_LOANS_POLICY_2026_NOTE = (
     "Inversiones 2026: enero–agosto el crecimiento neto (miles USD) incluye préstamos "
