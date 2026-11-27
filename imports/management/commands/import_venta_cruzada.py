@@ -188,11 +188,16 @@ class Command(ImportAuditCommandMixin, BaseCommand):
                                 upload.stored_file.save(path.name, DjFile(fh), save=True)
                         except Exception:
                             upload.save()
-                        header = CrossSaleImportHeader.objects.create(
-                            file_upload=upload,
-                            year=year,
-                            month=month,
-                        )
+                        # FileUpload.save() ya crea CrossSaleImportHeader vía update_or_create.
+                        header = CrossSaleImportHeader.objects.filter(
+                            year=year, month=month
+                        ).first()
+                        if header is None:
+                            header = CrossSaleImportHeader.objects.create(
+                                file_upload=upload,
+                                year=year,
+                                month=month,
+                            )
                     headers_cache[header_key] = header
 
                 parsed_date = parse_cross_sale_date(fecha_cell)
