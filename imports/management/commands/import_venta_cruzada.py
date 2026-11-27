@@ -18,6 +18,12 @@ from pathlib import Path
 from pgc.models import PGCPlan, MonthlyTarget, MonthlyMetricResult
 
 
+def _cell_str(value) -> str:
+    if value is None:
+        return ""
+    return str(value).strip()
+
+
 class Command(ImportAuditCommandMixin, BaseCommand):
     import_audit_tipo = "cross_sale"
     help = "Importa archivo de Venta Cruzada y actualiza métricas de VENTA_CRUZADA"
@@ -58,7 +64,7 @@ class Command(ImportAuditCommandMixin, BaseCommand):
         replaced_months: set[tuple[int, int]] = set()
 
         for row in iter_cross_sale_rows(path):
-                periodo = (
+                periodo = _cell_str(
                     row.get("Período")
                     or row.get("Periodo")
                     or row.get("PERIODO")
@@ -85,20 +91,18 @@ class Command(ImportAuditCommandMixin, BaseCommand):
                             f"Reemplazo VC {year}-{month:02d}: {deleted} fila(s) anteriores."
                         )
 
-                cliente = (
+                cliente = _cell_str(
                     row.get("Cliente")
                     or row.get("CLIENTE")
                     or row.get("cliente")
-                    or ""
-                ).strip()
+                )
 
-                operacion = (
+                operacion = _cell_str(
                     row.get("Operación")
                     or row.get("Operacion")
                     or row.get("OPERACION")
                     or row.get("operacion")
-                    or ""
-                ).strip()
+                )
 
                 fecha_cell = (
                     row.get("Fecha")
@@ -111,25 +115,15 @@ class Command(ImportAuditCommandMixin, BaseCommand):
                     else (fecha_cell if isinstance(fecha_cell, str) else str(fecha_cell))
                 ).strip()
 
-                moneda_raw = (
-                    row.get("Moneda")
-                    or row.get("MONEDA")
-                    or row.get("moneda")
-                    or ""
-                )
+                moneda_raw = row.get("Moneda") or row.get("MONEDA") or row.get("moneda")
 
-                une_dest_raw = (
-                    row.get("UNE")
-                    or row.get("une")
-                    or ""
-                ).strip()
+                une_dest_raw = _cell_str(row.get("UNE") or row.get("une"))
 
-                une_origin_raw = (
+                une_origin_raw = _cell_str(
                     row.get("UNE que refiere")
                     or row.get("UNE QUE REFIERE")
                     or row.get("une que refiere")
-                    or ""
-                ).strip()
+                )
 
                 scoring_raw = cross_sale_scoring_une_raw(row)
                 if not scoring_raw:
