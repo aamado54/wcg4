@@ -10,6 +10,7 @@ from pgc.objetivos_scoring import (
     INSURANCE_REQS_GRACE_NOTE,
     clientes_points_objetivos,
     ingresos_points_objetivos,
+    venta_cruzada_points_objetivos,
     insurance_reqs_uses_grace_points,
     proportional_points,
     resolve_respuesta_reqs_compliance,
@@ -217,6 +218,20 @@ class Command(BaseCommand):
         measured = metric_score.measured_value
         target_value = metric_score.target_value
 
+        if metric.code == MetricDefinition.CODE_CLIENTES_NUEVOS:
+            pts, achieved, note = clientes_points_objetivos(target, measured)
+            metric_score.points_awarded = pts
+            metric_score.is_achieved = achieved
+            metric_score.calculation_note = f"Modo1 proporción. {note}"
+            return
+
+        if metric.code == MetricDefinition.CODE_VENTA_CRUZADA:
+            pts, achieved, note = venta_cruzada_points_objetivos(target, measured)
+            metric_score.points_awarded = pts
+            metric_score.is_achieved = achieved
+            metric_score.calculation_note = f"Modo1 proporción. {note}"
+            return
+
         if measured is not None and target_value is not None:
             if metric.code == MetricDefinition.CODE_INGRESOS:
                 m = quantize_store(Decimal(str(measured))) or Decimal("0")
@@ -234,10 +249,7 @@ class Command(BaseCommand):
                 metric_score.calculation_note = "Modo1 no cumple meta objetivo."
             return
 
-        if metric.code in (
-            MetricDefinition.CODE_VENTA_CRUZADA,
-            MetricDefinition.CODE_RESPUESTA_REQS,
-        ):
+        if metric.code == MetricDefinition.CODE_RESPUESTA_REQS:
             if measured and measured >= Decimal("1"):
                 metric_score.is_achieved = True
                 metric_score.points_awarded = target.points_if_achieved
@@ -296,6 +308,8 @@ class Command(BaseCommand):
         target_value = metric_score.target_value
         if metric.code == MetricDefinition.CODE_CLIENTES_NUEVOS:
             pts, achieved, note = clientes_points_objetivos(target, measured)
+        elif metric.code == MetricDefinition.CODE_VENTA_CRUZADA:
+            pts, achieved, note = venta_cruzada_points_objetivos(target, measured)
         else:
             pts, achieved, note = proportional_points(
                 target.points_if_achieved,

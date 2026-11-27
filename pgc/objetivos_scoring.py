@@ -15,6 +15,20 @@ from core.models import MetricDefinition, UNE
 # Hasta 2 dec aquí alinea con Excel/reporte; subir a 0.0001 si se exigen 4 dec en BD.
 POINTS_QUANTIZE = Decimal("0.01")
 
+CLIENTES_NUEVOS_MAX_POINTS = Decimal("15")
+VENTA_CRUZADA_MAX_POINTS = Decimal("10")
+
+
+def objetivos_proportion_max_points(metric_code: str, points_if_achieved) -> Decimal:
+    """Tope de puntos en proporción clientes / venta cruzada (Tablero modo2)."""
+    full = Decimal(str(points_if_achieved or 0))
+    code = (metric_code or "").upper()
+    if code == MetricDefinition.CODE_CLIENTES_NUEVOS:
+        return min(full, CLIENTES_NUEVOS_MAX_POINTS)
+    if code == MetricDefinition.CODE_VENTA_CRUZADA:
+        return min(full, VENTA_CRUZADA_MAX_POINTS)
+    return full
+
 
 def _cap_ratio(numerator: Decimal, denominator: Decimal) -> Decimal:
     if denominator is None or denominator <= 0 or numerator is None:
@@ -64,28 +78,38 @@ def clientes_points_objetivos(
     measured,
 ) -> tuple[Decimal, bool, str]:
     """
-    Clientes nuevos: proporción habitual; si presupuesto ≤ 0 y ejecución 0, la hoja
-    otorga los puntos completos (único caso documentado: WCL ene-2026).
+    Clientes nuevos: min(P_cli, ejec/meta × P_cli), P_cli ≤ 15.
     """
-    full = Decimal(str(target.points_if_achieved or 0))
+    full = objetivos_proportion_max_points(
+        MetricDefinition.CODE_CLIENTES_NUEVOS,
+        target.points_if_achieved,
+    )
     target_value = getattr(target, "target_value", None)
-    try:
-        t = Decimal(str(target_value)) if target_value is not None else Decimal("0")
-        m = Decimal(str(measured)) if measured is not None else Decimal("0")
-    except Exception:
-        t = Decimal("0")
-        m = Decimal("0")
-    if full > 0 and t <= 0 and m <= 0:
-        return (
-            full.quantize(POINTS_QUANTIZE, rounding=ROUND_HALF_UP),
-            True,
-            "Objetivos clientes: presupuesto≤0 y ejecución 0 → puntos completos (hoja).",
-        )
     return proportional_points(
         full,
         measured,
         target_value,
         note_prefix="Objetivos clientes",
+    )
+
+
+def venta_cruzada_points_objetivos(
+    target,
+    measured,
+) -> tuple[Decimal, bool, str]:
+    """
+    Venta cruzada: min(P_vc, referidos_ejec/meta × P_vc), P_vc ≤ 10.
+    """
+    full = objetivos_proportion_max_points(
+        MetricDefinition.CODE_VENTA_CRUZADA,
+        target.points_if_achieved,
+    )
+    target_value = getattr(target, "target_value", None)
+    return proportional_points(
+        full,
+        measured,
+        target_value,
+        note_prefix="Objetivos venta cruzada",
     )
 
 

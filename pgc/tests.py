@@ -1006,6 +1006,36 @@ class ObjetivosScoringTests(TestCase):
         self.assertAlmostEqual(float(pts), 41.84, places=2)
         self.assertFalse(achieved)
 
+    def test_clientes_proportion_cap_15(self):
+        from decimal import Decimal
+
+        from pgc.objetivos_scoring import clientes_points_objetivos
+
+        class T:
+            points_if_achieved = 20
+            target_value = Decimal("10")
+
+        pts, achieved, _ = clientes_points_objetivos(T(), Decimal("3"))
+        self.assertEqual(pts, Decimal("4.50"))
+        self.assertFalse(achieved)
+
+    def test_venta_cruzada_proportion_cap_10(self):
+        from decimal import Decimal
+
+        from pgc.objetivos_scoring import venta_cruzada_points_objetivos
+
+        class T:
+            points_if_achieved = 12
+            target_value = Decimal("10")
+
+        pts, achieved, _ = venta_cruzada_points_objetivos(T(), Decimal("7"))
+        self.assertEqual(pts, Decimal("7.00"))
+        self.assertFalse(achieved)
+
+        pts_full, achieved_full, _ = venta_cruzada_points_objetivos(T(), Decimal("10"))
+        self.assertEqual(pts_full, Decimal("10.00"))
+        self.assertTrue(achieved_full)
+
     def test_insurance_ingresos_max_points_cap_75(self):
         from decimal import Decimal
 
